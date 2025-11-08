@@ -11,14 +11,15 @@ var queryBuilderTemplate string
 
 // QueryBuilderData contains the data for rendering the query builder template
 type QueryBuilderData struct {
-	BuilderName       string
-	StructName        string
-	TableName         string
-	Columns           []Column
-	NonPrimaryColumns []Column
-	PrimaryKey        string
-	PrimaryKeyField   string
-	PrimaryKeyType    string
+	BuilderName         string
+	StructName          string
+	TableName           string
+	Columns             []Column
+	NonPrimaryColumns   []Column
+	NonSequenceColumns  []Column
+	PrimaryKey          string
+	PrimaryKeyField     string
+	PrimaryKeyType      string
 }
 
 // Column represents template column data
@@ -27,6 +28,7 @@ type Column struct {
 	FieldName  string
 	GoType     string
 	IsNullable bool
+	IsPointer  bool // true if the Go field is a pointer type
 }
 
 // RenderQueryBuilder renders the query builder template with the given data

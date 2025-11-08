@@ -2,7 +2,6 @@ package gosqlgen
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -43,7 +42,7 @@ func (s *SQLGen) WithOutputPath(path string) *SQLGen {
 
 // ParseFile parses SQL from a file
 func (s *SQLGen) ParseFile(filename string) error {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", filename, err)
 	}
@@ -56,14 +55,37 @@ func (s *SQLGen) Parse(sql string) error {
 	return s.parser.Parse(sql)
 }
 
-// Generate generates Go code from parsed SQL
+// Generate generates Go code from parsed SQL and returns it as a string
 func (s *SQLGen) Generate() (string, error) {
 	return s.generator.Generate()
 }
 
+// GenerateFiles generates Go code from parsed SQL as separate files
+func (s *SQLGen) GenerateFiles() error {
+	code, err := s.generator.GenerateFiles()
+	if err != nil {
+		return fmt.Errorf("failed to generate code: %w", err)
+	}
+
+	for filename, content := range code {
+		// Create output directory if it doesn't exist
+		dir := filepath.Dir(filepath.Join(s.outputPath, filename))
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+
+		// Write generated code to file
+		if err := os.WriteFile(filepath.Join(s.outputPath, filename), []byte(content), 0644); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", filename, err)
+		}
+	}
+
+	return nil
+}
+
 // GenerateToFile generates Go code and writes it to a file
 func (s *SQLGen) GenerateToFile(filename string) error {
-	code, err := s.Generate()
+	code, err := s.generator.Generate()
 	if err != nil {
 		return fmt.Errorf("failed to generate code: %w", err)
 	}
@@ -75,7 +97,7 @@ func (s *SQLGen) GenerateToFile(filename string) error {
 	}
 
 	// Write generated code to file
-	if err := ioutil.WriteFile(filename, []byte(code), 0644); err != nil {
+	if err := os.WriteFile(filename, []byte(code), 0644); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", filename, err)
 	}
 

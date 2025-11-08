@@ -434,43 +434,53 @@ func (q *{{ .BuilderName }}) scanInto(rows *sql.Rows, dest *{{ .StructName }}) e
 }
 
 // Insert inserts a new record
+// Fields with nil values (defaults/sequences) are omitted, database handles them
 func (q *{{ .BuilderName }}) Insert(record *{{ .StructName }}) error {
-    query := "INSERT INTO {{ .TableName }} (" +
-        "{{- range $i, $col := .Columns }}{{if $i}}, {{end}}{{ $col.Name }}{{- end }}" +
-        ") VALUES (" +
-        "{{- range $i, $col := .Columns }}{{if $i}}, {{end}}${{ add $i 1 }}{{- end }}" +
-        "){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}"
+    var columns []string
+    var placeholders []string
+    var args []interface{}
+    argIdx := 1
+
+    // Dynamically build column list based on non-nil values
+    {{- range .NonSequenceColumns }}
+    {{ if .IsPointer }}
+    if record.{{ .FieldName }} != nil {
+        columns = append(columns, "{{ .Name }}")
+        placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+        args = append(args, record.{{ .FieldName }})
+        argIdx++
+    }
+    {{ else }}
+    // Required field (not nullable, no default)
+    columns = append(columns, "{{ .Name }}")
+    placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+    args = append(args, record.{{ .FieldName }})
+    argIdx++
+    {{ end }}
+    {{- end }}
+
+    if len(columns) == 0 {
+        return fmt.Errorf("no values provided for insert")
+    }
+
+    query := fmt.Sprintf("INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}",
+        strings.Join(columns, ", "),
+        strings.Join(placeholders, ", "))
 
     {{ if .PrimaryKey -}}
     var err error
     if q.tx != nil {
-        err = q.tx.QueryRow(query,
-            {{- range .Columns }}
-            record.{{ .FieldName }},
-            {{- end }}
-        ).Scan(&record.{{ .PrimaryKeyField }})
+        err = q.tx.QueryRow(query, args...).Scan(&record.{{ .PrimaryKeyField }})
     } else {
-        err = q.db.QueryRow(query,
-            {{- range .Columns }}
-            record.{{ .FieldName }},
-            {{- end }}
-        ).Scan(&record.{{ .PrimaryKeyField }})
+        err = q.db.QueryRow(query, args...).Scan(&record.{{ .PrimaryKeyField }})
     }
     return err
     {{- else -}}
     var err error
     if q.tx != nil {
-        _, err = q.tx.Exec(query,
-            {{- range .Columns }}
-            record.{{ .FieldName }},
-            {{- end }}
-        )
+        _, err = q.tx.Exec(query, args...)
     } else {
-        _, err = q.db.Exec(query,
-            {{- range .Columns }}
-            record.{{ .FieldName }},
-            {{- end }}
-        )
+        _, err = q.db.Exec(query, args...)
     }
     return err
     {{- end }}

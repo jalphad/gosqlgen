@@ -47,6 +47,7 @@
           CFLAGS="-I${pkgs.glibc.dev}/include";
           LDFLAGS="-L${glibcStatic}/lib";
           CGO_ENABLED=0;
+          DISABLE_TELEMETRY = "1";
         };
       });
 }

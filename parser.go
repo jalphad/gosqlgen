@@ -14,6 +14,8 @@ type Column struct {
 	IsPrimary    bool
 	IsNullable   bool
 	IsUnique     bool
+	IsSequence   bool // true for SERIAL, BIGSERIAL (sequence-based auto-increment)
+	HasDefault   bool // true for any DEFAULT clause
 	DefaultValue string
 	Tags         map[string]string
 }
@@ -121,6 +123,12 @@ func (p *Parser) parseColumn(table *Table, def string) {
 	// Map SQL type to Go type
 	column.GoType = p.mapSQLTypeToGo(parts[1])
 
+	// Check if column is a sequence type
+	column.IsSequence = p.isSequenceType(parts[1])
+
+	// Check if column has a DEFAULT clause
+	column.HasDefault = p.hasDefaultClause(def)
+
 	// Parse column constraints
 	defUpper := strings.ToUpper(def)
 	if strings.Contains(defUpper, "PRIMARY KEY") {
@@ -196,6 +204,24 @@ func (p *Parser) parseIndex(table *Table, def string) {
 	if len(matches) >= 2 {
 		table.Indexes = append(table.Indexes, matches[1])
 	}
+}
+
+// isSequenceType checks if a SQL type is a sequence (auto-increment)
+func (p *Parser) isSequenceType(sqlType string) bool {
+	sqlType = strings.ToUpper(sqlType)
+
+	// Remove size specifications
+	if idx := strings.Index(sqlType, "("); idx != -1 {
+		sqlType = sqlType[:idx]
+	}
+
+	return sqlType == "SERIAL" || sqlType == "BIGSERIAL"
+}
+
+// hasDefaultClause checks if a column definition has a DEFAULT clause
+func (p *Parser) hasDefaultClause(definition string) bool {
+	defUpper := strings.ToUpper(definition)
+	return strings.Contains(defUpper, "DEFAULT")
 }
 
 // mapSQLTypeToGo maps SQL types to Go types
