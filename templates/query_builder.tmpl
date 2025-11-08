@@ -1,0 +1,598 @@
+// {{ .BuilderName }} is a type-safe query builder for {{ .StructName }}
+type {{ .BuilderName }} struct {
+    db         *sql.DB
+    tx         *sql.Tx
+    selectFields []*FieldRef
+    conditions []Condition
+    joins      []JoinClause
+    orderBy    []OrderClause
+    groupBy    []*FieldRef
+    having     []Condition
+    limit      *int
+    offset     *int
+    logical    LogicalOp
+}
+
+// New{{ .BuilderName }} creates a new query builder
+func New{{ .BuilderName }}(db *sql.DB) *{{ .BuilderName }} {
+    return &{{ .BuilderName }}{
+        db:      db,
+        logical: AND,
+    }
+}
+
+// WithTx sets the transaction
+func (q *{{ .BuilderName }}) WithTx(tx *sql.Tx) *{{ .BuilderName }} {
+    q.tx = tx
+    return q
+}
+
+// Select specifies fields to select using type-safe field references
+func (q *{{ .BuilderName }}) Select(fields ...*FieldRef) *{{ .BuilderName }} {
+    q.selectFields = fields
+    return q
+}
+
+// SelectAll selects all fields
+func (q *{{ .BuilderName }}) SelectAll() *{{ .BuilderName }} {
+    q.selectFields = []*FieldRef{
+        {{- range .Columns }}
+        {{ $.StructName }}Table.{{ .FieldName }}(),
+        {{- end }}
+    }
+    return q
+}
+
+{{/* Generate type-safe Where methods for each field */}}
+{{- range .Columns }}
+
+// Where{{ .FieldName }} adds a condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}(op ComparisonOp, value {{ .GoType }}) *{{ $.BuilderName }} {
+    q.conditions = append(q.conditions, Condition{
+        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Op:      op,
+        Value:   value,
+        Logical: q.logical,
+    })
+    return q
+}
+
+// Where{{ .FieldName }}Eq adds an equality condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Eq(value {{ .GoType }}) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(EQ, value)
+}
+
+// Where{{ .FieldName }}NotEq adds a not-equal condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}NotEq(value {{ .GoType }}) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(NEQ, value)
+}
+
+{{- if or (eq .GoType "int64") (eq .GoType "float64") (eq .GoType "time.Time") }}
+
+// Where{{ .FieldName }}Gt adds a greater-than condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Gt(value {{ .GoType }}) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(GT, value)
+}
+
+// Where{{ .FieldName }}Gte adds a greater-than-or-equal condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Gte(value {{ .GoType }}) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(GTE, value)
+}
+
+// Where{{ .FieldName }}Lt adds a less-than condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Lt(value {{ .GoType }}) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(LT, value)
+}
+
+// Where{{ .FieldName }}Lte adds a less-than-or-equal condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Lte(value {{ .GoType }}) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(LTE, value)
+}
+{{- end }}
+
+{{- if eq .GoType "string" }}
+
+// Where{{ .FieldName }}Like adds a LIKE condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Like(pattern string) *{{ $.BuilderName }} {
+    return q.Where{{ .FieldName }}(LIKE, pattern)
+}
+{{- end }}
+
+// Where{{ .FieldName }}In adds an IN condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}In(values ...{{ .GoType }}) *{{ $.BuilderName }} {
+    q.conditions = append(q.conditions, Condition{
+        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Op:      IN,
+        Value:   values,
+        Logical: q.logical,
+    })
+    return q
+}
+
+{{- if .IsNullable }}
+
+// Where{{ .FieldName }}IsNull adds an IS NULL condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}IsNull() *{{ $.BuilderName }} {
+    q.conditions = append(q.conditions, Condition{
+        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Op:      EQ,
+        Value:   nil,
+        Logical: q.logical,
+    })
+    return q
+}
+
+// Where{{ .FieldName }}IsNotNull adds an IS NOT NULL condition for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) Where{{ .FieldName }}IsNotNull() *{{ $.BuilderName }} {
+    q.conditions = append(q.conditions, Condition{
+        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Op:      NEQ,
+        Value:   nil,
+        Logical: q.logical,
+    })
+    return q
+}
+{{- end }}
+
+// OrderBy{{ .FieldName }} adds ORDER BY for {{ .FieldName }}
+func (q *{{ $.BuilderName }}) OrderBy{{ .FieldName }}(dir OrderDirection) *{{ $.BuilderName }} {
+    q.orderBy = append(q.orderBy, OrderClause{
+        Field:     {{ $.StructName }}Table.{{ .FieldName }}(),
+        Direction: dir,
+    })
+    return q
+}
+{{- end }}
+
+// And sets the logical operator to AND for subsequent conditions
+func (q *{{ .BuilderName }}) And() *{{ .BuilderName }} {
+    q.logical = AND
+    return q
+}
+
+// Or sets the logical operator to OR for subsequent conditions
+func (q *{{ .BuilderName }}) Or() *{{ .BuilderName }} {
+    q.logical = OR
+    return q
+}
+
+// WhereGroup adds a group of conditions
+func (q *{{ .BuilderName }}) WhereGroup(fn func(*{{ .BuilderName }})) *{{ .BuilderName }} {
+    subQuery := &{{ .BuilderName }}{logical: AND}
+    fn(subQuery)
+
+    q.conditions = append(q.conditions, Condition{
+        Logical:  q.logical,
+        SubConds: subQuery.conditions,
+    })
+    return q
+}
+
+// GroupBy adds GROUP BY clause
+func (q *{{ .BuilderName }}) GroupBy(fields ...*FieldRef) *{{ .BuilderName }} {
+    q.groupBy = append(q.groupBy, fields...)
+    return q
+}
+
+// Having adds HAVING clause
+func (q *{{ .BuilderName }}) Having(field *FieldRef, op ComparisonOp, value interface{}) *{{ .BuilderName }} {
+    q.having = append(q.having, Condition{
+        Field: field,
+        Op:    op,
+        Value: value,
+    })
+    return q
+}
+
+// Limit sets the LIMIT
+func (q *{{ .BuilderName }}) Limit(limit int) *{{ .BuilderName }} {
+    q.limit = &limit
+    return q
+}
+
+// Offset sets the OFFSET
+func (q *{{ .BuilderName }}) Offset(offset int) *{{ .BuilderName }} {
+    q.offset = &offset
+    return q
+}
+
+// buildQuery builds the SQL query
+func (q *{{ .BuilderName }}) buildQuery() (string, []interface{}) {
+    var query strings.Builder
+    var args []interface{}
+    argIndex := 1
+
+    // SELECT clause
+    query.WriteString("SELECT ")
+    if len(q.selectFields) == 0 {
+        query.WriteString("{{ .TableName }}.*")
+    } else {
+        fields := make([]string, len(q.selectFields))
+        for i, field := range q.selectFields {
+            fields[i] = field.String()
+        }
+        query.WriteString(strings.Join(fields, ", "))
+    }
+
+    query.WriteString(" FROM {{ .TableName }}")
+
+    // JOIN clauses
+    for _, join := range q.joins {
+        query.WriteString(" ")
+        query.WriteString(join.Type)
+        query.WriteString(" ")
+        query.WriteString(join.Table)
+        query.WriteString(" ON ")
+        query.WriteString(join.LeftField.String())
+        query.WriteString(" = ")
+        query.WriteString(join.RightField.String())
+    }
+
+    // WHERE clause
+    if len(q.conditions) > 0 {
+        query.WriteString(" WHERE ")
+        whereStr, whereArgs := q.buildConditions(q.conditions, &argIndex)
+        query.WriteString(whereStr)
+        args = append(args, whereArgs...)
+    }
+
+    // GROUP BY clause
+    if len(q.groupBy) > 0 {
+        query.WriteString(" GROUP BY ")
+        groupFields := make([]string, len(q.groupBy))
+        for i, field := range q.groupBy {
+            groupFields[i] = field.String()
+        }
+        query.WriteString(strings.Join(groupFields, ", "))
+    }
+
+    // HAVING clause
+    if len(q.having) > 0 {
+        query.WriteString(" HAVING ")
+        havingStr, havingArgs := q.buildConditions(q.having, &argIndex)
+        query.WriteString(havingStr)
+        args = append(args, havingArgs...)
+    }
+
+    // ORDER BY clause
+    if len(q.orderBy) > 0 {
+        query.WriteString(" ORDER BY ")
+        orderClauses := make([]string, len(q.orderBy))
+        for i, order := range q.orderBy {
+            orderClauses[i] = fmt.Sprintf("%s %s", order.Field.String(), order.Direction)
+        }
+        query.WriteString(strings.Join(orderClauses, ", "))
+    }
+
+    // LIMIT clause
+    if q.limit != nil {
+        query.WriteString(fmt.Sprintf(" LIMIT %d", *q.limit))
+    }
+
+    // OFFSET clause
+    if q.offset != nil {
+        query.WriteString(fmt.Sprintf(" OFFSET %d", *q.offset))
+    }
+
+    return query.String(), args
+}
+
+// buildConditions builds WHERE/HAVING conditions
+func (q *{{ .BuilderName }}) buildConditions(conditions []Condition, argIndex *int) (string, []interface{}) {
+    var parts []string
+    var args []interface{}
+
+    for i, cond := range conditions {
+        if len(cond.SubConds) > 0 {
+            subStr, subArgs := q.buildConditions(cond.SubConds, argIndex)
+            if i > 0 {
+                parts = append(parts, fmt.Sprintf("%s (%s)", cond.Logical, subStr))
+            } else {
+                parts = append(parts, fmt.Sprintf("(%s)", subStr))
+            }
+            args = append(args, subArgs...)
+        } else {
+            var condStr string
+            if cond.Value == nil {
+                if cond.Op == EQ {
+                    condStr = fmt.Sprintf("%s IS NULL", cond.Field.String())
+                } else {
+                    condStr = fmt.Sprintf("%s IS NOT NULL", cond.Field.String())
+                }
+            } else if cond.Op == IN {
+                // Handle IN clause with reflection to support any slice type
+                v := cond.Value
+                switch vals := v.(type) {
+                case []int64:
+                    placeholders := make([]string, len(vals))
+                    for j, val := range vals {
+                        placeholders[j] = fmt.Sprintf("$%d", *argIndex)
+                        *argIndex++
+                        args = append(args, val)
+                    }
+                    condStr = fmt.Sprintf("%s IN (%s)", cond.Field.String(), strings.Join(placeholders, ", "))
+                case []string:
+                    placeholders := make([]string, len(vals))
+                    for j, val := range vals {
+                        placeholders[j] = fmt.Sprintf("$%d", *argIndex)
+                        *argIndex++
+                        args = append(args, val)
+                    }
+                    condStr = fmt.Sprintf("%s IN (%s)", cond.Field.String(), strings.Join(placeholders, ", "))
+                case []float64:
+                    placeholders := make([]string, len(vals))
+                    for j, val := range vals {
+                        placeholders[j] = fmt.Sprintf("$%d", *argIndex)
+                        *argIndex++
+                        args = append(args, val)
+                    }
+                    condStr = fmt.Sprintf("%s IN (%s)", cond.Field.String(), strings.Join(placeholders, ", "))
+                case []bool:
+                    placeholders := make([]string, len(vals))
+                    for j, val := range vals {
+                        placeholders[j] = fmt.Sprintf("$%d", *argIndex)
+                        *argIndex++
+                        args = append(args, val)
+                    }
+                    condStr = fmt.Sprintf("%s IN (%s)", cond.Field.String(), strings.Join(placeholders, ", "))
+                default:
+                    // Fallback for other types - this shouldn't normally happen
+                    condStr = fmt.Sprintf("%s IN (?)", cond.Field.String())
+                }
+            } else {
+                condStr = fmt.Sprintf("%s %s $%d", cond.Field.String(), cond.Op, *argIndex)
+                *argIndex++
+                args = append(args, cond.Value)
+            }
+
+            if i > 0 {
+                parts = append(parts, fmt.Sprintf("%s %s", cond.Logical, condStr))
+            } else {
+                parts = append(parts, condStr)
+            }
+        }
+    }
+
+    return strings.Join(parts, " "), args
+}
+
+// Find executes the query and returns results
+func (q *{{ .BuilderName }}) Find() ([]*{{ .StructName }}, error) {
+    query, args := q.buildQuery()
+
+    var rows *sql.Rows
+    var err error
+
+    if q.tx != nil {
+        rows, err = q.tx.Query(query, args...)
+    } else {
+        rows, err = q.db.Query(query, args...)
+    }
+
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var results []*{{ .StructName }}
+    for rows.Next() {
+        result := &{{ .StructName }}{}
+        if err := q.scanInto(rows, result); err != nil {
+            return nil, err
+        }
+        results = append(results, result)
+    }
+
+    return results, rows.Err()
+}
+
+// FindOne returns a single result
+func (q *{{ .BuilderName }}) FindOne() (*{{ .StructName }}, error) {
+    q.Limit(1)
+    results, err := q.Find()
+    if err != nil {
+        return nil, err
+    }
+    if len(results) == 0 {
+        return nil, sql.ErrNoRows
+    }
+    return results[0], nil
+}
+
+// Count returns the count
+func (q *{{ .BuilderName }}) Count() (int64, error) {
+    // Save and restore select fields
+    originalSelect := q.selectFields
+    countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
+    q.selectFields = []*FieldRef{countField}
+    defer func() { q.selectFields = originalSelect }()
+
+    query, args := q.buildQuery()
+
+    var count int64
+    if q.tx != nil {
+        err := q.tx.QueryRow(query, args...).Scan(&count)
+        return count, err
+    }
+    err := q.db.QueryRow(query, args...).Scan(&count)
+    return count, err
+}
+
+// scanInto scans a row into a struct
+func (q *{{ .BuilderName }}) scanInto(rows *sql.Rows, dest *{{ .StructName }}) error {
+    // If custom fields selected, use dynamic scanning
+    if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
+        // This would need more complex implementation for custom field scanning
+        // For now, scan all fields
+    }
+
+    return rows.Scan(
+        {{- range .Columns }}
+        &dest.{{ .FieldName }},
+        {{- end }}
+    )
+}
+
+// Insert inserts a new record
+func (q *{{ .BuilderName }}) Insert(record *{{ .StructName }}) error {
+    query := "INSERT INTO {{ .TableName }} (" +
+        "{{- range $i, $col := .Columns }}{{if $i}}, {{end}}{{ $col.Name }}{{- end }}" +
+        ") VALUES (" +
+        "{{- range $i, $col := .Columns }}{{if $i}}, {{end}}${{ add $i 1 }}{{- end }}" +
+        "){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}"
+
+    {{ if .PrimaryKey -}}
+    var err error
+    if q.tx != nil {
+        err = q.tx.QueryRow(query,
+            {{- range .Columns }}
+            record.{{ .FieldName }},
+            {{- end }}
+        ).Scan(&record.{{ .PrimaryKeyField }})
+    } else {
+        err = q.db.QueryRow(query,
+            {{- range .Columns }}
+            record.{{ .FieldName }},
+            {{- end }}
+        ).Scan(&record.{{ .PrimaryKeyField }})
+    }
+    return err
+    {{- else -}}
+    var err error
+    if q.tx != nil {
+        _, err = q.tx.Exec(query,
+            {{- range .Columns }}
+            record.{{ .FieldName }},
+            {{- end }}
+        )
+    } else {
+        _, err = q.db.Exec(query,
+            {{- range .Columns }}
+            record.{{ .FieldName }},
+            {{- end }}
+        )
+    }
+    return err
+    {{- end }}
+}
+
+// Update updates a record using its primary key
+func (q *{{ .BuilderName }}) Update(record *{{ .StructName }}) error {
+    {{ if not .PrimaryKey -}}
+    return fmt.Errorf("table {{ .TableName }} has no primary key")
+    {{- else -}}
+    query := "UPDATE {{ .TableName }} SET " +
+        "{{- range $i, $col := .NonPrimaryColumns }}{{if $i}}, {{end}}{{ $col.Name }} = ${{ add $i 2 }}{{- end }}" +
+        " WHERE {{ .PrimaryKey }} = $1"
+
+    var result sql.Result
+    var err error
+
+    if q.tx != nil {
+        result, err = q.tx.Exec(query,
+            record.{{ .PrimaryKeyField }},
+            {{- range .NonPrimaryColumns }}
+            record.{{ .FieldName }},
+            {{- end }}
+        )
+    } else {
+        result, err = q.db.Exec(query,
+            record.{{ .PrimaryKeyField }},
+            {{- range .NonPrimaryColumns }}
+            record.{{ .FieldName }},
+            {{- end }}
+        )
+    }
+
+    if err != nil {
+        return err
+    }
+
+    affected, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+
+    if affected == 0 {
+        return sql.ErrNoRows
+    }
+
+    return nil
+    {{- end }}
+}
+
+// UpdateFields updates specific fields for matching records
+func (q *{{ .BuilderName }}) UpdateFields(updates map[*FieldRef]interface{}) (int64, error) {
+    if len(updates) == 0 {
+        return 0, fmt.Errorf("no fields to update")
+    }
+
+    var query strings.Builder
+    var args []interface{}
+    argIndex := 1
+
+    query.WriteString("UPDATE {{ .TableName }} SET ")
+
+    setClauses := make([]string, 0, len(updates))
+    for field, value := range updates {
+        setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Column, argIndex))
+        args = append(args, value)
+        argIndex++
+    }
+    query.WriteString(strings.Join(setClauses, ", "))
+
+    // Add WHERE conditions
+    if len(q.conditions) > 0 {
+        query.WriteString(" WHERE ")
+        whereStr, whereArgs := q.buildConditions(q.conditions, &argIndex)
+        query.WriteString(whereStr)
+        args = append(args, whereArgs...)
+    }
+
+    var result sql.Result
+    var err error
+
+    if q.tx != nil {
+        result, err = q.tx.Exec(query.String(), args...)
+    } else {
+        result, err = q.db.Exec(query.String(), args...)
+    }
+
+    if err != nil {
+        return 0, err
+    }
+
+    return result.RowsAffected()
+}
+
+// Delete deletes matching records
+func (q *{{ .BuilderName }}) Delete() (int64, error) {
+    var query strings.Builder
+    var args []interface{}
+    argIndex := 1
+
+    query.WriteString("DELETE FROM {{ .TableName }}")
+
+    // Add WHERE conditions
+    if len(q.conditions) > 0 {
+        query.WriteString(" WHERE ")
+        whereStr, whereArgs := q.buildConditions(q.conditions, &argIndex)
+        query.WriteString(whereStr)
+        args = append(args, whereArgs...)
+    }
+
+    var result sql.Result
+    var err error
+
+    if q.tx != nil {
+        result, err = q.tx.Exec(query.String(), args...)
+    } else {
+        result, err = q.db.Exec(query.String(), args...)
+    }
+
+    if err != nil {
+        return 0, err
+    }
+
+    return result.RowsAffected()
+}
