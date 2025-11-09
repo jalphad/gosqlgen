@@ -1,0 +1,41 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/jalphad/gosqlgen"
+)
+
+func main() {
+	// Generate DTOs from SQL schema
+	generateModels()
+}
+
+func generateModels() {
+	// Define your SQL schema
+	bts, err := os.ReadFile("schema.sql")
+	if err != nil {
+		log.Fatal("Could not read schema.sql")
+	}
+	schema := string(bts)
+
+	// Create generator
+	gen := gosqlgen.New().
+		WithPackageName("models").
+		WithOutputPath("./models")
+
+	// Parse the schema
+	if err := gen.Parse(schema); err != nil {
+		log.Fatal("Failed to parse schema:", err)
+	}
+
+	// Generate Go code
+	err = gen.GenerateFiles()
+	if err != nil {
+		log.Fatal("Failed to generate code:", err)
+	}
+
+	fmt.Println("\nModels generated successfully to ./models")
+}

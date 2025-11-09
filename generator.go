@@ -23,10 +23,13 @@ func NewGenerator(parser *Parser) *Generator {
 		parser:      parser,
 		packageName: "models",
 		imports: map[string]bool{
-			"database/sql": true,
-			"fmt":          true,
-			"time":         true,
-			"strings":      true,
+			"context":                          true,
+			"fmt":                              true,
+			"time":                             true,
+			"strings":                          true,
+			"github.com/jackc/pgx/v5":          true,
+			"github.com/jackc/pgx/v5/pgxpool":   true,
+			"github.com/jackc/pgx/v5/pgconn":   true,
 		},
 	}
 }
@@ -451,14 +454,14 @@ func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error 
 
 // generateDatabaseWrapper generates the main database wrapper
 func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
-	buf.WriteString("// DB wraps the database connection\n")
+	buf.WriteString("// DB wraps the database connection pool\n")
 	buf.WriteString("type DB struct {\n")
-	buf.WriteString("\tconn *sql.DB\n")
+	buf.WriteString("\tpool *pgxpool.Pool\n")
 	buf.WriteString("}\n\n")
 
 	buf.WriteString("// NewDB creates a new database wrapper\n")
-	buf.WriteString("func NewDB(conn *sql.DB) *DB {\n")
-	buf.WriteString("\treturn &DB{conn: conn}\n")
+	buf.WriteString("func NewDB(pool *pgxpool.Pool) *DB {\n")
+	buf.WriteString("\treturn &DB{pool: pool}\n")
 	buf.WriteString("}\n\n")
 
 	// Generate methods for each table
@@ -469,33 +472,30 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 
 		fmt.Fprintf(buf, "// %s returns a query builder for %s\n", methodName, table.Name)
 		fmt.Fprintf(buf, "func (db *DB) %s() *%s {\n", methodName, builderName)
-		fmt.Fprintf(buf, "\treturn New%s(db.conn)\n", builderName)
+		fmt.Fprintf(buf, "\treturn New%s(db.pool)\n", builderName)
 		buf.WriteString("}\n\n")
 	}
 
 	// Transaction support
 	buf.WriteString("// Transaction executes a function within a transaction\n")
-	buf.WriteString("func (db *DB) Transaction(fn func(*Tx) error) error {\n")
-	buf.WriteString("\ttx, err := db.conn.Begin()\n")
-	buf.WriteString("\tif err != nil {\n")
-	buf.WriteString("\t\treturn err\n")
-	buf.WriteString("\t}\n")
-	buf.WriteString("\tdefer tx.Rollback()\n\n")
-	buf.WriteString("\ttxWrapper := &Tx{tx: tx, db: db}\n")
-	buf.WriteString("\tif err := fn(txWrapper); err != nil {\n")
-	buf.WriteString("\t\treturn err\n")
-	buf.WriteString("\t}\n\n")
-	buf.WriteString("\treturn tx.Commit()\n")
-	buf.WriteString("}\n\n")
-
-	// Transaction wrapper
-	buf.WriteString("// Tx wraps a database transaction\n")
-	buf.WriteString("type Tx struct {\n")
-	buf.WriteString("\ttx *sql.Tx\n")
-	buf.WriteString("\tdb *DB\n")
+	buf.WriteString("func (db *DB) Transaction(ctx context.Context, fn func(*Tx) error) error {\n")
+	buf.WriteString("\treturn pgx.BeginFunc(ctx, db.pool, func(pgxTx pgx.Tx) error {\n")
+	buf.WriteString("\t\ttx := NewTx(pgxTx)\n")
+	buf.WriteString("\t\treturn fn(tx)\n")
+	buf.WriteString("\t})\n")
 	buf.WriteString("}\n\n")
 
 	// Transaction methods for each table
+	buf.WriteString("// Tx provides transaction-aware query builders\n")
+	buf.WriteString("type Tx struct {\n")
+	buf.WriteString("\ttx pgx.Tx\n")
+	buf.WriteString("}\n\n")
+
+	buf.WriteString("// NewTx creates transaction-aware query builders\n")
+	buf.WriteString("func NewTx(tx pgx.Tx) *Tx {\n")
+	buf.WriteString("\treturn &Tx{tx: tx}\n")
+	buf.WriteString("}\n\n")
+
 	for _, table := range g.parser.GetTables() {
 		structName := g.toPascalCase(table.Name)
 		methodName := structName
@@ -503,7 +503,7 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 
 		fmt.Fprintf(buf, "// %s returns a query builder within the transaction\n", methodName)
 		fmt.Fprintf(buf, "func (tx *Tx) %s() *%s {\n", methodName, builderName)
-		fmt.Fprintf(buf, "\tq := New%s(tx.db.conn)\n", builderName)
+		fmt.Fprintf(buf, "\tq := New%s(nil)\n", builderName)
 		fmt.Fprintf(buf, "\tq.WithTx(tx.tx)\n")
 		fmt.Fprintf(buf, "\treturn q\n")
 		buf.WriteString("}\n\n")

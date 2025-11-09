@@ -1,28 +1,28 @@
 // {{ .BuilderName }} is a type-safe query builder for {{ .StructName }}
 type {{ .BuilderName }} struct {
-    db         *sql.DB
-    tx         *sql.Tx
+    pool         *pgxpool.Pool
+    tx           pgx.Tx
     selectFields []*FieldRef
-    conditions []Condition
-    joins      []JoinClause
-    orderBy    []OrderClause
-    groupBy    []*FieldRef
-    having     []Condition
-    limit      *int
-    offset     *int
-    logical    LogicalOp
+    conditions   []Condition
+    joins        []JoinClause
+    orderBy      []OrderClause
+    groupBy      []*FieldRef
+    having       []Condition
+    limit        *int
+    offset       *int
+    logical      LogicalOp
 }
 
 // New{{ .BuilderName }} creates a new query builder
-func New{{ .BuilderName }}(db *sql.DB) *{{ .BuilderName }} {
+func New{{ .BuilderName }}(pool *pgxpool.Pool) *{{ .BuilderName }} {
     return &{{ .BuilderName }}{
-        db:      db,
+        pool:    pool,
         logical: AND,
     }
 }
 
 // WithTx sets the transaction
-func (q *{{ .BuilderName }}) WithTx(tx *sql.Tx) *{{ .BuilderName }} {
+func (q *{{ .BuilderName }}) WithTx(tx pgx.Tx) *{{ .BuilderName }} {
     q.tx = tx
     return q
 }
@@ -357,16 +357,16 @@ func (q *{{ .BuilderName }}) buildConditions(conditions []Condition, argIndex *i
 }
 
 // Find executes the query and returns results
-func (q *{{ .BuilderName }}) Find() ([]*{{ .StructName }}, error) {
+func (q *{{ .BuilderName }}) Find(ctx context.Context) ([]*{{ .StructName }}, error) {
     query, args := q.buildQuery()
 
-    var rows *sql.Rows
+    var rows pgx.Rows
     var err error
 
     if q.tx != nil {
-        rows, err = q.tx.Query(query, args...)
+        rows, err = q.tx.Query(ctx, query, args...)
     } else {
-        rows, err = q.db.Query(query, args...)
+        rows, err = q.pool.Query(ctx, query, args...)
     }
 
     if err != nil {
@@ -387,20 +387,20 @@ func (q *{{ .BuilderName }}) Find() ([]*{{ .StructName }}, error) {
 }
 
 // FindOne returns a single result
-func (q *{{ .BuilderName }}) FindOne() (*{{ .StructName }}, error) {
+func (q *{{ .BuilderName }}) FindOne(ctx context.Context) (*{{ .StructName }}, error) {
     q.Limit(1)
-    results, err := q.Find()
+    results, err := q.Find(ctx)
     if err != nil {
         return nil, err
     }
     if len(results) == 0 {
-        return nil, sql.ErrNoRows
+        return nil, pgx.ErrNoRows
     }
     return results[0], nil
 }
 
 // Count returns the count
-func (q *{{ .BuilderName }}) Count() (int64, error) {
+func (q *{{ .BuilderName }}) Count(ctx context.Context) (int64, error) {
     // Save and restore select fields
     originalSelect := q.selectFields
     countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
@@ -411,15 +411,15 @@ func (q *{{ .BuilderName }}) Count() (int64, error) {
 
     var count int64
     if q.tx != nil {
-        err := q.tx.QueryRow(query, args...).Scan(&count)
+        err := q.tx.QueryRow(ctx, query, args...).Scan(&count)
         return count, err
     }
-    err := q.db.QueryRow(query, args...).Scan(&count)
+    err := q.pool.QueryRow(ctx, query, args...).Scan(&count)
     return count, err
 }
 
 // scanInto scans a row into a struct
-func (q *{{ .BuilderName }}) scanInto(rows *sql.Rows, dest *{{ .StructName }}) error {
+func (q *{{ .BuilderName }}) scanInto(rows pgx.Rows, dest *{{ .StructName }}) error {
     // If custom fields selected, use dynamic scanning
     if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
         // This would need more complex implementation for custom field scanning
@@ -435,7 +435,7 @@ func (q *{{ .BuilderName }}) scanInto(rows *sql.Rows, dest *{{ .StructName }}) e
 
 // Insert inserts a new record
 // Fields with nil values (defaults/sequences) are omitted, database handles them
-func (q *{{ .BuilderName }}) Insert(record *{{ .StructName }}) error {
+func (q *{{ .BuilderName }}) Insert(ctx context.Context, record *{{ .StructName }}) error {
     var columns []string
     var placeholders []string
     var args []interface{}
@@ -470,24 +470,92 @@ func (q *{{ .BuilderName }}) Insert(record *{{ .StructName }}) error {
     {{ if .PrimaryKey -}}
     var err error
     if q.tx != nil {
-        err = q.tx.QueryRow(query, args...).Scan(&record.{{ .PrimaryKeyField }})
+        err = q.tx.QueryRow(ctx, query, args...).Scan(&record.{{ .PrimaryKeyField }})
     } else {
-        err = q.db.QueryRow(query, args...).Scan(&record.{{ .PrimaryKeyField }})
+        err = q.pool.QueryRow(ctx, query, args...).Scan(&record.{{ .PrimaryKeyField }})
     }
     return err
     {{- else -}}
     var err error
     if q.tx != nil {
-        _, err = q.tx.Exec(query, args...)
+        _, err = q.tx.Exec(ctx, query, args...)
     } else {
-        _, err = q.db.Exec(query, args...)
+        _, err = q.pool.Exec(ctx, query, args...)
     }
     return err
     {{- end }}
 }
 
+// InsertBatch inserts multiple records efficiently using pgx batch
+func (q *{{ .BuilderName }}) InsertBatch(ctx context.Context, records []*{{ .StructName }}) error {
+    if len(records) == 0 {
+        return nil
+    }
+
+    batch := &pgx.Batch{}
+
+    for _, record := range records {
+        var columns []string
+        var placeholders []string
+        var args []interface{}
+        argIdx := 1
+
+        // Dynamically build column list based on non-nil values
+        {{- range .NonSequenceColumns }}
+        {{ if .IsPointer }}
+        if record.{{ .FieldName }} != nil {
+            columns = append(columns, "{{ .Name }}")
+            placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+            args = append(args, record.{{ .FieldName }})
+            argIdx++
+        }
+        {{ else }}
+        // Required field (not nullable, no default)
+        columns = append(columns, "{{ .Name }}")
+        placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+        args = append(args, record.{{ .FieldName }})
+        argIdx++
+        {{ end }}
+        {{- end }}
+
+        if len(columns) > 0 {
+            query := fmt.Sprintf("INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}",
+                strings.Join(columns, ", "),
+                strings.Join(placeholders, ", "))
+            batch.Queue(query, args...)
+        }
+    }
+
+    var br pgx.BatchResults
+
+    if q.tx != nil {
+        br = q.tx.SendBatch(ctx, batch)
+    } else {
+        br = q.pool.SendBatch(ctx, batch)
+    }
+    defer br.Close()
+
+    {{ if .PrimaryKey -}}
+    // Scan returned IDs back into records
+    for i := range records {
+        if err := br.QueryRow().Scan(&records[i].{{ .PrimaryKeyField }}); err != nil {
+            return fmt.Errorf("failed to scan batch result %d: %w", i, err)
+        }
+    }
+    {{- else -}}
+    // Just execute all batched queries
+    for range records {
+        if _, err := br.Exec(); err != nil {
+            return fmt.Errorf("failed to execute batch: %w", err)
+        }
+    }
+    {{- end }}
+
+    return br.Close()
+}
+
 // Update updates a record using its primary key
-func (q *{{ .BuilderName }}) Update(record *{{ .StructName }}) error {
+func (q *{{ .BuilderName }}) Update(ctx context.Context, record *{{ .StructName }}) error {
     {{ if not .PrimaryKey -}}
     return fmt.Errorf("table {{ .TableName }} has no primary key")
     {{- else -}}
@@ -495,18 +563,18 @@ func (q *{{ .BuilderName }}) Update(record *{{ .StructName }}) error {
         "{{- range $i, $col := .NonPrimaryColumns }}{{if $i}}, {{end}}{{ $col.Name }} = ${{ add $i 2 }}{{- end }}" +
         " WHERE {{ .PrimaryKey }} = $1"
 
-    var result sql.Result
+    var tag pgconn.CommandTag
     var err error
 
     if q.tx != nil {
-        result, err = q.tx.Exec(query,
+        tag, err = q.tx.Exec(ctx, query,
             record.{{ .PrimaryKeyField }},
             {{- range .NonPrimaryColumns }}
             record.{{ .FieldName }},
             {{- end }}
         )
     } else {
-        result, err = q.db.Exec(query,
+        tag, err = q.pool.Exec(ctx, query,
             record.{{ .PrimaryKeyField }},
             {{- range .NonPrimaryColumns }}
             record.{{ .FieldName }},
@@ -518,13 +586,8 @@ func (q *{{ .BuilderName }}) Update(record *{{ .StructName }}) error {
         return err
     }
 
-    affected, err := result.RowsAffected()
-    if err != nil {
-        return err
-    }
-
-    if affected == 0 {
-        return sql.ErrNoRows
+    if tag.RowsAffected() == 0 {
+        return pgx.ErrNoRows
     }
 
     return nil
@@ -532,7 +595,7 @@ func (q *{{ .BuilderName }}) Update(record *{{ .StructName }}) error {
 }
 
 // UpdateFields updates specific fields for matching records
-func (q *{{ .BuilderName }}) UpdateFields(updates map[*FieldRef]interface{}) (int64, error) {
+func (q *{{ .BuilderName }}) UpdateFields(ctx context.Context, updates map[*FieldRef]interface{}) (int64, error) {
     if len(updates) == 0 {
         return 0, fmt.Errorf("no fields to update")
     }
@@ -559,24 +622,24 @@ func (q *{{ .BuilderName }}) UpdateFields(updates map[*FieldRef]interface{}) (in
         args = append(args, whereArgs...)
     }
 
-    var result sql.Result
+    var tag pgconn.CommandTag
     var err error
 
     if q.tx != nil {
-        result, err = q.tx.Exec(query.String(), args...)
+        tag, err = q.tx.Exec(ctx, query.String(), args...)
     } else {
-        result, err = q.db.Exec(query.String(), args...)
+        tag, err = q.pool.Exec(ctx, query.String(), args...)
     }
 
     if err != nil {
         return 0, err
     }
 
-    return result.RowsAffected()
+    return tag.RowsAffected(), nil
 }
 
 // Delete deletes matching records
-func (q *{{ .BuilderName }}) Delete() (int64, error) {
+func (q *{{ .BuilderName }}) Delete(ctx context.Context) (int64, error) {
     var query strings.Builder
     var args []interface{}
     argIndex := 1
@@ -591,18 +654,18 @@ func (q *{{ .BuilderName }}) Delete() (int64, error) {
         args = append(args, whereArgs...)
     }
 
-    var result sql.Result
+    var tag pgconn.CommandTag
     var err error
 
     if q.tx != nil {
-        result, err = q.tx.Exec(query.String(), args...)
+        tag, err = q.tx.Exec(ctx, query.String(), args...)
     } else {
-        result, err = q.db.Exec(query.String(), args...)
+        tag, err = q.pool.Exec(ctx, query.String(), args...)
     }
 
     if err != nil {
         return 0, err
     }
 
-    return result.RowsAffected()
+    return tag.RowsAffected(), nil
 }
