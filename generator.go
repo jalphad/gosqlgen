@@ -3,6 +3,7 @@ package gosqlgen
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jalphad/gosqlgen/templates"
@@ -401,6 +402,11 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 		})
 	}
 
+	// Sort tables alphabetically by table name for deterministic output
+	sort.Slice(data.Tables, func(i, j int) bool {
+		return data.Tables[i].TableName < data.Tables[j].TableName
+	})
+
 	// Render the DB wrapper using the template
 	rendered, err := templates.RenderDBWrapper(data)
 	if err != nil {
@@ -414,13 +420,23 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 
 // Helper methods remain the same
 func (g *Generator) buildStructTags(col Column) string {
-	var tags []string
-	for key, value := range col.Tags {
-		tags = append(tags, fmt.Sprintf(`%s:"%s"`, key, value))
-	}
-	if len(tags) == 0 {
+	if len(col.Tags) == 0 {
 		return ""
 	}
+
+	// Get keys and sort them for deterministic output
+	keys := make([]string, 0, len(col.Tags))
+	for key := range col.Tags {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	// Build tags in sorted order
+	tags := make([]string, 0, len(keys))
+	for _, key := range keys {
+		tags = append(tags, fmt.Sprintf(`%s:"%s"`, key, col.Tags[key]))
+	}
+
 	return "`" + strings.Join(tags, " ") + "`"
 }
 

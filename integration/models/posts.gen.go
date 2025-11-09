@@ -13,10 +13,10 @@ import (
 
 // Posts represents the posts table
 type Posts struct {
-	Id          *int64     `json:"id" db:"id"`
+	Id          *int64     `db:"id" json:"id"`
 	UserId      string     `db:"user_id" json:"user_id"`
 	Title       string     `db:"title" json:"title"`
-	Content     *string    `json:"content" db:"content"`
+	Content     *string    `db:"content" json:"content"`
 	Status      *string    `db:"status" json:"status"`
 	PublishedAt *time.Time `db:"published_at" json:"published_at"`
 	ViewCount   *int64     `db:"view_count" json:"view_count"`
