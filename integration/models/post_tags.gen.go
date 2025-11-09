@@ -12,7 +12,7 @@ import (
 
 // PostTags represents the post_tags table
 type PostTags struct {
-	PostId int64 `json:"post_id" db:"post_id"`
+	PostId int64 `db:"post_id" json:"post_id"`
 	TagId  int64 `db:"tag_id" json:"tag_id"`
 }
 
@@ -672,7 +672,9 @@ func (q *PostTagsQuery) Delete(ctx context.Context) (int64, error) {
 	}
 
 	return tag.RowsAffected(), nil
-} // JoinPosts performs a type-safe inner join with posts
+}
+
+// JoinPosts performs a type-safe inner join with posts
 func (q *PostTagsQuery) JoinPosts() *PostTagsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       "INNER JOIN",

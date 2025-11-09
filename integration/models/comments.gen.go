@@ -13,9 +13,9 @@ import (
 
 // Comments represents the comments table
 type Comments struct {
-	Id         *int64     `db:"id" json:"id"`
+	Id         *int64     `json:"id" db:"id"`
 	PostId     int64      `db:"post_id" json:"post_id"`
-	UserId     string     `db:"user_id" json:"user_id"`
+	UserId     string     `json:"user_id" db:"user_id"`
 	Content    string     `db:"content" json:"content"`
 	IsApproved *bool      `db:"is_approved" json:"is_approved"`
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
@@ -1034,7 +1034,9 @@ func (q *CommentsQuery) Delete(ctx context.Context) (int64, error) {
 	}
 
 	return tag.RowsAffected(), nil
-} // JoinPosts performs a type-safe inner join with posts
+}
+
+// JoinPosts performs a type-safe inner join with posts
 func (q *CommentsQuery) JoinPosts() *CommentsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       "INNER JOIN",

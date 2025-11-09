@@ -16,7 +16,7 @@ type Posts struct {
 	Id          *int64     `json:"id" db:"id"`
 	UserId      string     `db:"user_id" json:"user_id"`
 	Title       string     `db:"title" json:"title"`
-	Content     *string    `db:"content" json:"content"`
+	Content     *string    `json:"content" db:"content"`
 	Status      *string    `db:"status" json:"status"`
 	PublishedAt *time.Time `db:"published_at" json:"published_at"`
 	ViewCount   *int64     `db:"view_count" json:"view_count"`
@@ -1381,7 +1381,9 @@ func (q *PostsQuery) Delete(ctx context.Context) (int64, error) {
 	}
 
 	return tag.RowsAffected(), nil
-} // JoinUsers performs a type-safe inner join with users
+}
+
+// JoinUsers performs a type-safe inner join with users
 func (q *PostsQuery) JoinUsers() *PostsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       "INNER JOIN",

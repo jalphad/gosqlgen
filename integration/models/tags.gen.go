@@ -744,7 +744,9 @@ func (q *TagsQuery) Delete(ctx context.Context) (int64, error) {
 	}
 
 	return tag.RowsAffected(), nil
-} // JoinOn performs a custom join with type-safe field references
+}
+
+// JoinOn performs a custom join with type-safe field references
 func (q *TagsQuery) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *TagsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       joinType,

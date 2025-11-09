@@ -94,7 +94,7 @@ func TestMain(m *testing.M) {
 }
 
 func loadSchema(pool *pgxpool.Pool) error {
-	schema, err := os.ReadFile("cmd/schema.sql")
+	schema, err := os.ReadFile("schema.sql")
 	if err != nil {
 		return fmt.Errorf("failed to read schema file: %w", err)
 	}

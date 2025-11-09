@@ -1,0 +1,17 @@
+// {{ .FieldsTypeName }} provides type-safe field references for {{ .StructName }}
+type {{ .FieldsTypeName }} struct{}
+
+// Fields returns field references for {{ .StructName }}
+var {{ .StructName }}Table = {{ .FieldsTypeName }}{}
+
+{{- range .Fields }}
+
+// {{ .FieldName }} returns a field reference for {{ $.StructName }}.{{ .FieldName }}
+func ({{ $.ReceiverName }} {{ $.FieldsTypeName }}) {{ .FieldName }}() *FieldRef {
+	return &FieldRef{
+		Table:  "{{ $.TableName }}",
+		Column: "{{ .ColumnName }}",
+		GoType: "{{ .GoType }}",
+	}
+}
+{{- end }}

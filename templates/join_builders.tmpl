@@ -1,0 +1,41 @@
+{{- range .Joins }}
+// {{ .JoinMethodName }} performs a type-safe inner join with {{ .ReferencedTableName }}
+func (q *{{ $.BuilderName }}) {{ .JoinMethodName }}() *{{ $.BuilderName }} {
+	q.joins = append(q.joins, JoinClause{
+		Type:       "INNER JOIN",
+		Table:      "{{ .ReferencedTableName }}",
+		LeftField:  {{ $.StructName }}Table.{{ .LeftFieldName }}(),
+		RightField: {{ .ReferencedStructName }}Table.{{ .RightFieldName }}(),
+	})
+	return q
+}
+
+// {{ .LeftJoinMethodName }} performs a type-safe left join with {{ .ReferencedTableName }}
+func (q *{{ $.BuilderName }}) {{ .LeftJoinMethodName }}() *{{ $.BuilderName }} {
+	q.joins = append(q.joins, JoinClause{
+		Type:       "LEFT JOIN",
+		Table:      "{{ .ReferencedTableName }}",
+		LeftField:  {{ $.StructName }}Table.{{ .LeftFieldName }}(),
+		RightField: {{ .ReferencedStructName }}Table.{{ .RightFieldName }}(),
+	})
+	return q
+}
+
+// {{ .JoinStructName }} represents a join result between {{ $.TableName }} and {{ .ReferencedTableName }}
+type {{ .JoinStructName }} struct {
+	{{ $.StructName }} *{{ $.StructName }}
+	{{ .ReferencedStructName }} *{{ .ReferencedStructName }}
+}
+
+{{- end }}
+
+// JoinOn performs a custom join with type-safe field references
+func (q *{{ .BuilderName }}) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *{{ .BuilderName }} {
+	q.joins = append(q.joins, JoinClause{
+		Type:       joinType,
+		Table:      table,
+		LeftField:  leftField,
+		RightField: rightField,
+	})
+	return q
+}

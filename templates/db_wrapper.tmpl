@@ -1,0 +1,45 @@
+// DB wraps the database connection pool
+type DB struct {
+	pool *pgxpool.Pool
+}
+
+// NewDB creates a new database wrapper
+func NewDB(pool *pgxpool.Pool) *DB {
+	return &DB{pool: pool}
+}
+
+{{- range .Tables }}
+
+// {{ .MethodName }} returns a query builder for {{ .TableName }}
+func (db *DB) {{ .MethodName }}() *{{ .BuilderName }} {
+	return New{{ .BuilderName }}(db.pool)
+}
+{{- end }}
+
+// Transaction executes a function within a transaction
+func (db *DB) Transaction(ctx context.Context, fn func(*Tx) error) error {
+	return pgx.BeginFunc(ctx, db.pool, func(pgxTx pgx.Tx) error {
+		tx := NewTx(pgxTx)
+		return fn(tx)
+	})
+}
+
+// Tx provides transaction-aware query builders
+type Tx struct {
+	tx pgx.Tx
+}
+
+// NewTx creates transaction-aware query builders
+func NewTx(tx pgx.Tx) *Tx {
+	return &Tx{tx: tx}
+}
+
+{{- range .Tables }}
+
+// {{ .MethodName }} returns a query builder within the transaction
+func (tx *Tx) {{ .MethodName }}() *{{ .BuilderName }} {
+	q := New{{ .BuilderName }}(nil)
+	q.WithTx(tx.tx)
+	return q
+}
+{{- end }}
