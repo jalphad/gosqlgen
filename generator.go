@@ -24,13 +24,13 @@ func NewGenerator(parser *Parser) *Generator {
 		parser:      parser,
 		packageName: "models",
 		imports: map[string]bool{
-			"context":                          true,
-			"fmt":                              true,
-			"time":                             true,
-			"strings":                          true,
-			"github.com/jackc/pgx/v5":          true,
-			"github.com/jackc/pgx/v5/pgxpool":   true,
-			"github.com/jackc/pgx/v5/pgconn":   true,
+			"context":                         true,
+			"fmt":                             true,
+			"time":                            true,
+			"strings":                         true,
+			"github.com/jackc/pgx/v5":         true,
+			"github.com/jackc/pgx/v5/pgxpool": true,
+			"github.com/jackc/pgx/v5/pgconn":  true,
 		},
 	}
 }
@@ -195,8 +195,9 @@ func (g *Generator) generateCommonTypes(buf *bytes.Buffer) error {
 
 // generateTableStruct generates a struct for a table
 func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
-	structName := g.toPascalCase(table.Name)
-	receiverName := strings.ToLower(structName[0:1])
+	baseName := g.toPascalCase(table.Name)
+	structName := baseName + "Dto"
+	receiverName := strings.ToLower(baseName[0:1])
 
 	// Prepare template data
 	data := templates.TableStructData{
@@ -240,12 +241,14 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 
 // generateFieldReferences generates type-safe field references
 func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *Table) error {
-	structName := g.toPascalCase(table.Name)
-	fieldsTypeName := structName + "Fields"
+	baseName := g.toPascalCase(table.Name)
+	structName := baseName + "Dto"
+	fieldsTypeName := baseName + "Fields"
 	receiverName := strings.ToLower(fieldsTypeName[0:1])
 
 	// Prepare template data
 	data := templates.FieldReferencesData{
+		BaseName:       baseName,
 		StructName:     structName,
 		TableName:      table.Name,
 		FieldsTypeName: fieldsTypeName,
@@ -275,8 +278,9 @@ func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *Table) err
 
 // generateTypeSafeQueryBuilder generates type-safe query builder
 func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table) error {
-	structName := g.toPascalCase(table.Name)
-	builderName := structName + "Query"
+	baseName := g.toPascalCase(table.Name)
+	structName := baseName + "Dto"
+	builderName := baseName + "Query"
 
 	// Get primary key info
 	var primaryKey string
@@ -294,6 +298,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 
 	// Prepare template data
 	data := templates.QueryBuilderData{
+		BaseName:        baseName,
 		BuilderName:     builderName,
 		StructName:      structName,
 		TableName:       table.Name,
@@ -337,11 +342,13 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 
 // generateJoinBuilders generates type-safe join builders
 func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error {
-	structName := g.toPascalCase(table.Name)
-	builderName := structName + "Query"
+	baseName := g.toPascalCase(table.Name)
+	structName := baseName + "Dto"
+	builderName := baseName + "Query"
 
 	// Prepare template data
 	data := templates.JoinBuildersData{
+		BaseName:    baseName,
 		BuilderName: builderName,
 		StructName:  structName,
 		TableName:   table.Name,
@@ -355,16 +362,18 @@ func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error 
 			continue
 		}
 
-		referencedStructName := g.toPascalCase(referencedTable.Name)
-		joinMethodName := "Join" + referencedStructName
-		leftJoinMethodName := "LeftJoin" + referencedStructName
-		joinStructName := structName + referencedStructName + "Join"
+		referencedBaseName := g.toPascalCase(referencedTable.Name)
+		referencedStructName := referencedBaseName + "Dto"
+		joinMethodName := "Join" + referencedBaseName
+		leftJoinMethodName := "LeftJoin" + referencedBaseName
+		joinStructName := baseName + referencedBaseName + "Join"
 
 		data.Joins = append(data.Joins, templates.JoinData{
 			JoinMethodName:       joinMethodName,
 			LeftJoinMethodName:   leftJoinMethodName,
 			JoinStructName:       joinStructName,
 			ReferencedTableName:  referencedTable.Name,
+			ReferencedBaseName:   referencedBaseName,
 			ReferencedStructName: referencedStructName,
 			LeftFieldName:        g.toPascalCase(fk.Column),
 			RightFieldName:       g.toPascalCase(fk.ReferencedColumn),

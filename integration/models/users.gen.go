@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Users represents the users table
-type Users struct {
+// UsersDto represents the users table
+type UsersDto struct {
 	Id        *string    `db:"id" json:"id"`
 	Username  string     `db:"username" json:"username"`
 	Email     string     `db:"email" json:"email"`
@@ -22,18 +22,18 @@ type Users struct {
 	IsActive  *bool      `db:"is_active" json:"is_active"`
 }
 
-// TableName returns the table name for Users
-func (u *Users) TableName() string {
+// TableName returns the table name for UsersDto
+func (u *UsersDto) TableName() string {
 	return "users"
 }
 
-// UsersFields provides type-safe field references for Users
+// UsersFields provides type-safe field references for UsersDto
 type UsersFields struct{}
 
-// Fields returns field references for Users
+// UsersTable returns field references for UsersDto
 var UsersTable = UsersFields{}
 
-// Id returns a field reference for Users.Id
+// Id returns a field reference for UsersDto.Id
 func (u UsersFields) Id() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -42,7 +42,7 @@ func (u UsersFields) Id() *FieldRef {
 	}
 }
 
-// Username returns a field reference for Users.Username
+// Username returns a field reference for UsersDto.Username
 func (u UsersFields) Username() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -51,7 +51,7 @@ func (u UsersFields) Username() *FieldRef {
 	}
 }
 
-// Email returns a field reference for Users.Email
+// Email returns a field reference for UsersDto.Email
 func (u UsersFields) Email() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -60,7 +60,7 @@ func (u UsersFields) Email() *FieldRef {
 	}
 }
 
-// FullName returns a field reference for Users.FullName
+// FullName returns a field reference for UsersDto.FullName
 func (u UsersFields) FullName() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -69,7 +69,7 @@ func (u UsersFields) FullName() *FieldRef {
 	}
 }
 
-// CreatedAt returns a field reference for Users.CreatedAt
+// CreatedAt returns a field reference for UsersDto.CreatedAt
 func (u UsersFields) CreatedAt() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -78,7 +78,7 @@ func (u UsersFields) CreatedAt() *FieldRef {
 	}
 }
 
-// UpdatedAt returns a field reference for Users.UpdatedAt
+// UpdatedAt returns a field reference for UsersDto.UpdatedAt
 func (u UsersFields) UpdatedAt() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -87,7 +87,7 @@ func (u UsersFields) UpdatedAt() *FieldRef {
 	}
 }
 
-// IsActive returns a field reference for Users.IsActive
+// IsActive returns a field reference for UsersDto.IsActive
 func (u UsersFields) IsActive() *FieldRef {
 	return &FieldRef{
 		Table:  "users",
@@ -96,7 +96,7 @@ func (u UsersFields) IsActive() *FieldRef {
 	}
 }
 
-// UsersQuery is a type-safe query builder for Users
+// UsersQuery is a type-safe query builder for UsersDto
 type UsersQuery struct {
 	pool         *pgxpool.Pool
 	tx           pgx.Tx
@@ -793,7 +793,7 @@ func (q *UsersQuery) buildConditions(conditions []Condition, argIndex *int) (str
 }
 
 // Find executes the query and returns results
-func (q *UsersQuery) Find(ctx context.Context) ([]*Users, error) {
+func (q *UsersQuery) Find(ctx context.Context) ([]*UsersDto, error) {
 	query, args := q.buildQuery()
 
 	var rows pgx.Rows
@@ -810,9 +810,9 @@ func (q *UsersQuery) Find(ctx context.Context) ([]*Users, error) {
 	}
 	defer rows.Close()
 
-	var results []*Users
+	var results []*UsersDto
 	for rows.Next() {
-		result := &Users{}
+		result := &UsersDto{}
 		if err := q.scanInto(rows, result); err != nil {
 			return nil, err
 		}
@@ -823,7 +823,7 @@ func (q *UsersQuery) Find(ctx context.Context) ([]*Users, error) {
 }
 
 // FindOne returns a single result
-func (q *UsersQuery) FindOne(ctx context.Context) (*Users, error) {
+func (q *UsersQuery) FindOne(ctx context.Context) (*UsersDto, error) {
 	q.Limit(1)
 	results, err := q.Find(ctx)
 	if err != nil {
@@ -855,7 +855,7 @@ func (q *UsersQuery) Count(ctx context.Context) (int64, error) {
 }
 
 // scanInto scans a row into a struct
-func (q *UsersQuery) scanInto(rows pgx.Rows, dest *Users) error {
+func (q *UsersQuery) scanInto(rows pgx.Rows, dest *UsersDto) error {
 	// If custom fields selected, use dynamic scanning
 	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
 		// This would need more complex implementation for custom field scanning
@@ -875,7 +875,7 @@ func (q *UsersQuery) scanInto(rows pgx.Rows, dest *Users) error {
 
 // Insert inserts a new record
 // Fields with nil values (defaults/sequences) are omitted, database handles them
-func (q *UsersQuery) Insert(ctx context.Context, record *Users) error {
+func (q *UsersQuery) Insert(ctx context.Context, record *UsersDto) error {
 	var columns []string
 	var placeholders []string
 	var args []interface{}
@@ -948,7 +948,7 @@ func (q *UsersQuery) Insert(ctx context.Context, record *Users) error {
 }
 
 // InsertBatch inserts multiple records efficiently using pgx batch
-func (q *UsersQuery) InsertBatch(ctx context.Context, records []*Users) error {
+func (q *UsersQuery) InsertBatch(ctx context.Context, records []*UsersDto) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -1038,7 +1038,7 @@ func (q *UsersQuery) InsertBatch(ctx context.Context, records []*Users) error {
 }
 
 // Update updates a record using its primary key
-func (q *UsersQuery) Update(ctx context.Context, record *Users) error {
+func (q *UsersQuery) Update(ctx context.Context, record *UsersDto) error {
 	query := "UPDATE users SET " +
 		"username = $2, email = $3, full_name = $4, created_at = $5, updated_at = $6, is_active = $7" +
 		" WHERE id = $1"

@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Posts represents the posts table
-type Posts struct {
+// PostsDto represents the posts table
+type PostsDto struct {
 	Id          *int64     `db:"id" json:"id"`
 	UserId      string     `db:"user_id" json:"user_id"`
 	Title       string     `db:"title" json:"title"`
@@ -24,18 +24,18 @@ type Posts struct {
 	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at"`
 }
 
-// TableName returns the table name for Posts
-func (p *Posts) TableName() string {
+// TableName returns the table name for PostsDto
+func (p *PostsDto) TableName() string {
 	return "posts"
 }
 
-// PostsFields provides type-safe field references for Posts
+// PostsFields provides type-safe field references for PostsDto
 type PostsFields struct{}
 
-// Fields returns field references for Posts
+// PostsTable returns field references for PostsDto
 var PostsTable = PostsFields{}
 
-// Id returns a field reference for Posts.Id
+// Id returns a field reference for PostsDto.Id
 func (p PostsFields) Id() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -44,7 +44,7 @@ func (p PostsFields) Id() *FieldRef {
 	}
 }
 
-// UserId returns a field reference for Posts.UserId
+// UserId returns a field reference for PostsDto.UserId
 func (p PostsFields) UserId() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -53,7 +53,7 @@ func (p PostsFields) UserId() *FieldRef {
 	}
 }
 
-// Title returns a field reference for Posts.Title
+// Title returns a field reference for PostsDto.Title
 func (p PostsFields) Title() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -62,7 +62,7 @@ func (p PostsFields) Title() *FieldRef {
 	}
 }
 
-// Content returns a field reference for Posts.Content
+// Content returns a field reference for PostsDto.Content
 func (p PostsFields) Content() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -71,7 +71,7 @@ func (p PostsFields) Content() *FieldRef {
 	}
 }
 
-// Status returns a field reference for Posts.Status
+// Status returns a field reference for PostsDto.Status
 func (p PostsFields) Status() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -80,7 +80,7 @@ func (p PostsFields) Status() *FieldRef {
 	}
 }
 
-// PublishedAt returns a field reference for Posts.PublishedAt
+// PublishedAt returns a field reference for PostsDto.PublishedAt
 func (p PostsFields) PublishedAt() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -89,7 +89,7 @@ func (p PostsFields) PublishedAt() *FieldRef {
 	}
 }
 
-// ViewCount returns a field reference for Posts.ViewCount
+// ViewCount returns a field reference for PostsDto.ViewCount
 func (p PostsFields) ViewCount() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -98,7 +98,7 @@ func (p PostsFields) ViewCount() *FieldRef {
 	}
 }
 
-// CreatedAt returns a field reference for Posts.CreatedAt
+// CreatedAt returns a field reference for PostsDto.CreatedAt
 func (p PostsFields) CreatedAt() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -107,7 +107,7 @@ func (p PostsFields) CreatedAt() *FieldRef {
 	}
 }
 
-// UpdatedAt returns a field reference for Posts.UpdatedAt
+// UpdatedAt returns a field reference for PostsDto.UpdatedAt
 func (p PostsFields) UpdatedAt() *FieldRef {
 	return &FieldRef{
 		Table:  "posts",
@@ -116,7 +116,7 @@ func (p PostsFields) UpdatedAt() *FieldRef {
 	}
 }
 
-// PostsQuery is a type-safe query builder for Posts
+// PostsQuery is a type-safe query builder for PostsDto
 type PostsQuery struct {
 	pool         *pgxpool.Pool
 	tx           pgx.Tx
@@ -1001,7 +1001,7 @@ func (q *PostsQuery) buildConditions(conditions []Condition, argIndex *int) (str
 }
 
 // Find executes the query and returns results
-func (q *PostsQuery) Find(ctx context.Context) ([]*Posts, error) {
+func (q *PostsQuery) Find(ctx context.Context) ([]*PostsDto, error) {
 	query, args := q.buildQuery()
 
 	var rows pgx.Rows
@@ -1018,9 +1018,9 @@ func (q *PostsQuery) Find(ctx context.Context) ([]*Posts, error) {
 	}
 	defer rows.Close()
 
-	var results []*Posts
+	var results []*PostsDto
 	for rows.Next() {
-		result := &Posts{}
+		result := &PostsDto{}
 		if err := q.scanInto(rows, result); err != nil {
 			return nil, err
 		}
@@ -1031,7 +1031,7 @@ func (q *PostsQuery) Find(ctx context.Context) ([]*Posts, error) {
 }
 
 // FindOne returns a single result
-func (q *PostsQuery) FindOne(ctx context.Context) (*Posts, error) {
+func (q *PostsQuery) FindOne(ctx context.Context) (*PostsDto, error) {
 	q.Limit(1)
 	results, err := q.Find(ctx)
 	if err != nil {
@@ -1063,7 +1063,7 @@ func (q *PostsQuery) Count(ctx context.Context) (int64, error) {
 }
 
 // scanInto scans a row into a struct
-func (q *PostsQuery) scanInto(rows pgx.Rows, dest *Posts) error {
+func (q *PostsQuery) scanInto(rows pgx.Rows, dest *PostsDto) error {
 	// If custom fields selected, use dynamic scanning
 	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
 		// This would need more complex implementation for custom field scanning
@@ -1085,7 +1085,7 @@ func (q *PostsQuery) scanInto(rows pgx.Rows, dest *Posts) error {
 
 // Insert inserts a new record
 // Fields with nil values (defaults/sequences) are omitted, database handles them
-func (q *PostsQuery) Insert(ctx context.Context, record *Posts) error {
+func (q *PostsQuery) Insert(ctx context.Context, record *PostsDto) error {
 	var columns []string
 	var placeholders []string
 	var args []interface{}
@@ -1165,7 +1165,7 @@ func (q *PostsQuery) Insert(ctx context.Context, record *Posts) error {
 }
 
 // InsertBatch inserts multiple records efficiently using pgx batch
-func (q *PostsQuery) InsertBatch(ctx context.Context, records []*Posts) error {
+func (q *PostsQuery) InsertBatch(ctx context.Context, records []*PostsDto) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -1262,7 +1262,7 @@ func (q *PostsQuery) InsertBatch(ctx context.Context, records []*Posts) error {
 }
 
 // Update updates a record using its primary key
-func (q *PostsQuery) Update(ctx context.Context, record *Posts) error {
+func (q *PostsQuery) Update(ctx context.Context, record *PostsDto) error {
 	query := "UPDATE posts SET " +
 		"user_id = $2, title = $3, content = $4, status = $5, published_at = $6, view_count = $7, created_at = $8, updated_at = $9" +
 		" WHERE id = $1"
@@ -1407,8 +1407,8 @@ func (q *PostsQuery) LeftJoinUsers() *PostsQuery {
 
 // PostsUsersJoin represents a join result between posts and users
 type PostsUsersJoin struct {
-	Posts *Posts
-	Users *Users
+	PostsDto *PostsDto
+	UsersDto *UsersDto
 }
 
 // JoinOn performs a custom join with type-safe field references

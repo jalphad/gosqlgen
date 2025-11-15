@@ -10,24 +10,24 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// PostTags represents the post_tags table
-type PostTags struct {
+// PostTagsDto represents the post_tags table
+type PostTagsDto struct {
 	PostId int64 `db:"post_id" json:"post_id"`
 	TagId  int64 `db:"tag_id" json:"tag_id"`
 }
 
-// TableName returns the table name for PostTags
-func (p *PostTags) TableName() string {
+// TableName returns the table name for PostTagsDto
+func (p *PostTagsDto) TableName() string {
 	return "post_tags"
 }
 
-// PostTagsFields provides type-safe field references for PostTags
+// PostTagsFields provides type-safe field references for PostTagsDto
 type PostTagsFields struct{}
 
-// Fields returns field references for PostTags
+// PostTagsTable returns field references for PostTagsDto
 var PostTagsTable = PostTagsFields{}
 
-// PostId returns a field reference for PostTags.PostId
+// PostId returns a field reference for PostTagsDto.PostId
 func (p PostTagsFields) PostId() *FieldRef {
 	return &FieldRef{
 		Table:  "post_tags",
@@ -36,7 +36,7 @@ func (p PostTagsFields) PostId() *FieldRef {
 	}
 }
 
-// TagId returns a field reference for PostTags.TagId
+// TagId returns a field reference for PostTagsDto.TagId
 func (p PostTagsFields) TagId() *FieldRef {
 	return &FieldRef{
 		Table:  "post_tags",
@@ -45,7 +45,7 @@ func (p PostTagsFields) TagId() *FieldRef {
 	}
 }
 
-// PostTagsQuery is a type-safe query builder for PostTags
+// PostTagsQuery is a type-safe query builder for PostTagsDto
 type PostTagsQuery struct {
 	pool         *pgxpool.Pool
 	tx           pgx.Tx
@@ -424,7 +424,7 @@ func (q *PostTagsQuery) buildConditions(conditions []Condition, argIndex *int) (
 }
 
 // Find executes the query and returns results
-func (q *PostTagsQuery) Find(ctx context.Context) ([]*PostTags, error) {
+func (q *PostTagsQuery) Find(ctx context.Context) ([]*PostTagsDto, error) {
 	query, args := q.buildQuery()
 
 	var rows pgx.Rows
@@ -441,9 +441,9 @@ func (q *PostTagsQuery) Find(ctx context.Context) ([]*PostTags, error) {
 	}
 	defer rows.Close()
 
-	var results []*PostTags
+	var results []*PostTagsDto
 	for rows.Next() {
-		result := &PostTags{}
+		result := &PostTagsDto{}
 		if err := q.scanInto(rows, result); err != nil {
 			return nil, err
 		}
@@ -454,7 +454,7 @@ func (q *PostTagsQuery) Find(ctx context.Context) ([]*PostTags, error) {
 }
 
 // FindOne returns a single result
-func (q *PostTagsQuery) FindOne(ctx context.Context) (*PostTags, error) {
+func (q *PostTagsQuery) FindOne(ctx context.Context) (*PostTagsDto, error) {
 	q.Limit(1)
 	results, err := q.Find(ctx)
 	if err != nil {
@@ -486,7 +486,7 @@ func (q *PostTagsQuery) Count(ctx context.Context) (int64, error) {
 }
 
 // scanInto scans a row into a struct
-func (q *PostTagsQuery) scanInto(rows pgx.Rows, dest *PostTags) error {
+func (q *PostTagsQuery) scanInto(rows pgx.Rows, dest *PostTagsDto) error {
 	// If custom fields selected, use dynamic scanning
 	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
 		// This would need more complex implementation for custom field scanning
@@ -501,7 +501,7 @@ func (q *PostTagsQuery) scanInto(rows pgx.Rows, dest *PostTags) error {
 
 // Insert inserts a new record
 // Fields with nil values (defaults/sequences) are omitted, database handles them
-func (q *PostTagsQuery) Insert(ctx context.Context, record *PostTags) error {
+func (q *PostTagsQuery) Insert(ctx context.Context, record *PostTagsDto) error {
 	var columns []string
 	var placeholders []string
 	var args []interface{}
@@ -539,7 +539,7 @@ func (q *PostTagsQuery) Insert(ctx context.Context, record *PostTags) error {
 }
 
 // InsertBatch inserts multiple records efficiently using pgx batch
-func (q *PostTagsQuery) InsertBatch(ctx context.Context, records []*PostTags) error {
+func (q *PostTagsQuery) InsertBatch(ctx context.Context, records []*PostTagsDto) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -594,7 +594,7 @@ func (q *PostTagsQuery) InsertBatch(ctx context.Context, records []*PostTags) er
 }
 
 // Update updates a record using its primary key
-func (q *PostTagsQuery) Update(ctx context.Context, record *PostTags) error {
+func (q *PostTagsQuery) Update(ctx context.Context, record *PostTagsDto) error {
 	return fmt.Errorf("table post_tags has no primary key")
 }
 
@@ -698,8 +698,8 @@ func (q *PostTagsQuery) LeftJoinPosts() *PostTagsQuery {
 
 // PostTagsPostsJoin represents a join result between post_tags and posts
 type PostTagsPostsJoin struct {
-	PostTags *PostTags
-	Posts    *Posts
+	PostTagsDto *PostTagsDto
+	PostsDto    *PostsDto
 }
 
 // JoinTags performs a type-safe inner join with tags
@@ -726,8 +726,8 @@ func (q *PostTagsQuery) LeftJoinTags() *PostTagsQuery {
 
 // PostTagsTagsJoin represents a join result between post_tags and tags
 type PostTagsTagsJoin struct {
-	PostTags *PostTags
-	Tags     *Tags
+	PostTagsDto *PostTagsDto
+	TagsDto     *TagsDto
 }
 
 // JoinOn performs a custom join with type-safe field references

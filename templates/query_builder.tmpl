@@ -37,7 +37,7 @@ func (q *{{ .BuilderName }}) Select(fields ...*FieldRef) *{{ .BuilderName }} {
 func (q *{{ .BuilderName }}) SelectAll() *{{ .BuilderName }} {
     q.selectFields = []*FieldRef{
         {{- range .Columns }}
-        {{ $.StructName }}Table.{{ .FieldName }}(),
+        {{ $.BaseName }}Table.{{ .FieldName }}(),
         {{- end }}
     }
     return q
@@ -49,7 +49,7 @@ func (q *{{ .BuilderName }}) SelectAll() *{{ .BuilderName }} {
 // Where{{ .FieldName }} adds a condition for {{ .FieldName }}
 func (q *{{ $.BuilderName }}) Where{{ .FieldName }}(op ComparisonOp, value {{ .GoType }}) *{{ $.BuilderName }} {
     q.conditions = append(q.conditions, Condition{
-        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Field:   {{ $.BaseName }}Table.{{ .FieldName }}(),
         Op:      op,
         Value:   value,
         Logical: q.logical,
@@ -101,7 +101,7 @@ func (q *{{ $.BuilderName }}) Where{{ .FieldName }}Like(pattern string) *{{ $.Bu
 // Where{{ .FieldName }}In adds an IN condition for {{ .FieldName }}
 func (q *{{ $.BuilderName }}) Where{{ .FieldName }}In(values ...{{ .GoType }}) *{{ $.BuilderName }} {
     q.conditions = append(q.conditions, Condition{
-        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Field:   {{ $.BaseName }}Table.{{ .FieldName }}(),
         Op:      IN,
         Value:   values,
         Logical: q.logical,
@@ -114,7 +114,7 @@ func (q *{{ $.BuilderName }}) Where{{ .FieldName }}In(values ...{{ .GoType }}) *
 // Where{{ .FieldName }}IsNull adds an IS NULL condition for {{ .FieldName }}
 func (q *{{ $.BuilderName }}) Where{{ .FieldName }}IsNull() *{{ $.BuilderName }} {
     q.conditions = append(q.conditions, Condition{
-        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Field:   {{ $.BaseName }}Table.{{ .FieldName }}(),
         Op:      EQ,
         Value:   nil,
         Logical: q.logical,
@@ -125,7 +125,7 @@ func (q *{{ $.BuilderName }}) Where{{ .FieldName }}IsNull() *{{ $.BuilderName }}
 // Where{{ .FieldName }}IsNotNull adds an IS NOT NULL condition for {{ .FieldName }}
 func (q *{{ $.BuilderName }}) Where{{ .FieldName }}IsNotNull() *{{ $.BuilderName }} {
     q.conditions = append(q.conditions, Condition{
-        Field:   {{ $.StructName }}Table.{{ .FieldName }}(),
+        Field:   {{ $.BaseName }}Table.{{ .FieldName }}(),
         Op:      NEQ,
         Value:   nil,
         Logical: q.logical,
@@ -137,7 +137,7 @@ func (q *{{ $.BuilderName }}) Where{{ .FieldName }}IsNotNull() *{{ $.BuilderName
 // OrderBy{{ .FieldName }} adds ORDER BY for {{ .FieldName }}
 func (q *{{ $.BuilderName }}) OrderBy{{ .FieldName }}(dir OrderDirection) *{{ $.BuilderName }} {
     q.orderBy = append(q.orderBy, OrderClause{
-        Field:     {{ $.StructName }}Table.{{ .FieldName }}(),
+        Field:     {{ $.BaseName }}Table.{{ .FieldName }}(),
         Direction: dir,
     })
     return q

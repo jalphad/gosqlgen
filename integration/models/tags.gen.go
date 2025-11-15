@@ -10,25 +10,25 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Tags represents the tags table
-type Tags struct {
+// TagsDto represents the tags table
+type TagsDto struct {
 	Id   *int64 `db:"id" json:"id"`
 	Name string `db:"name" json:"name"`
 	Slug string `db:"slug" json:"slug"`
 }
 
-// TableName returns the table name for Tags
-func (t *Tags) TableName() string {
+// TableName returns the table name for TagsDto
+func (t *TagsDto) TableName() string {
 	return "tags"
 }
 
-// TagsFields provides type-safe field references for Tags
+// TagsFields provides type-safe field references for TagsDto
 type TagsFields struct{}
 
-// Fields returns field references for Tags
+// TagsTable returns field references for TagsDto
 var TagsTable = TagsFields{}
 
-// Id returns a field reference for Tags.Id
+// Id returns a field reference for TagsDto.Id
 func (t TagsFields) Id() *FieldRef {
 	return &FieldRef{
 		Table:  "tags",
@@ -37,7 +37,7 @@ func (t TagsFields) Id() *FieldRef {
 	}
 }
 
-// Name returns a field reference for Tags.Name
+// Name returns a field reference for TagsDto.Name
 func (t TagsFields) Name() *FieldRef {
 	return &FieldRef{
 		Table:  "tags",
@@ -46,7 +46,7 @@ func (t TagsFields) Name() *FieldRef {
 	}
 }
 
-// Slug returns a field reference for Tags.Slug
+// Slug returns a field reference for TagsDto.Slug
 func (t TagsFields) Slug() *FieldRef {
 	return &FieldRef{
 		Table:  "tags",
@@ -55,7 +55,7 @@ func (t TagsFields) Slug() *FieldRef {
 	}
 }
 
-// TagsQuery is a type-safe query builder for Tags
+// TagsQuery is a type-safe query builder for TagsDto
 type TagsQuery struct {
 	pool         *pgxpool.Pool
 	tx           pgx.Tx
@@ -466,7 +466,7 @@ func (q *TagsQuery) buildConditions(conditions []Condition, argIndex *int) (stri
 }
 
 // Find executes the query and returns results
-func (q *TagsQuery) Find(ctx context.Context) ([]*Tags, error) {
+func (q *TagsQuery) Find(ctx context.Context) ([]*TagsDto, error) {
 	query, args := q.buildQuery()
 
 	var rows pgx.Rows
@@ -483,9 +483,9 @@ func (q *TagsQuery) Find(ctx context.Context) ([]*Tags, error) {
 	}
 	defer rows.Close()
 
-	var results []*Tags
+	var results []*TagsDto
 	for rows.Next() {
-		result := &Tags{}
+		result := &TagsDto{}
 		if err := q.scanInto(rows, result); err != nil {
 			return nil, err
 		}
@@ -496,7 +496,7 @@ func (q *TagsQuery) Find(ctx context.Context) ([]*Tags, error) {
 }
 
 // FindOne returns a single result
-func (q *TagsQuery) FindOne(ctx context.Context) (*Tags, error) {
+func (q *TagsQuery) FindOne(ctx context.Context) (*TagsDto, error) {
 	q.Limit(1)
 	results, err := q.Find(ctx)
 	if err != nil {
@@ -528,7 +528,7 @@ func (q *TagsQuery) Count(ctx context.Context) (int64, error) {
 }
 
 // scanInto scans a row into a struct
-func (q *TagsQuery) scanInto(rows pgx.Rows, dest *Tags) error {
+func (q *TagsQuery) scanInto(rows pgx.Rows, dest *TagsDto) error {
 	// If custom fields selected, use dynamic scanning
 	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
 		// This would need more complex implementation for custom field scanning
@@ -544,7 +544,7 @@ func (q *TagsQuery) scanInto(rows pgx.Rows, dest *Tags) error {
 
 // Insert inserts a new record
 // Fields with nil values (defaults/sequences) are omitted, database handles them
-func (q *TagsQuery) Insert(ctx context.Context, record *Tags) error {
+func (q *TagsQuery) Insert(ctx context.Context, record *TagsDto) error {
 	var columns []string
 	var placeholders []string
 	var args []interface{}
@@ -582,7 +582,7 @@ func (q *TagsQuery) Insert(ctx context.Context, record *Tags) error {
 }
 
 // InsertBatch inserts multiple records efficiently using pgx batch
-func (q *TagsQuery) InsertBatch(ctx context.Context, records []*Tags) error {
+func (q *TagsQuery) InsertBatch(ctx context.Context, records []*TagsDto) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -637,7 +637,7 @@ func (q *TagsQuery) InsertBatch(ctx context.Context, records []*Tags) error {
 }
 
 // Update updates a record using its primary key
-func (q *TagsQuery) Update(ctx context.Context, record *Tags) error {
+func (q *TagsQuery) Update(ctx context.Context, record *TagsDto) error {
 	query := "UPDATE tags SET " +
 		"name = $2, slug = $3" +
 		" WHERE id = $1"

@@ -1,8 +1,8 @@
 // {{ .FieldsTypeName }} provides type-safe field references for {{ .StructName }}
 type {{ .FieldsTypeName }} struct{}
 
-// Fields returns field references for {{ .StructName }}
-var {{ .StructName }}Table = {{ .FieldsTypeName }}{}
+// {{ .BaseName }}Table returns field references for {{ .StructName }}
+var {{ .BaseName }}Table = {{ .FieldsTypeName }}{}
 
 {{- range .Fields }}
 

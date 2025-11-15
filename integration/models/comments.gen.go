@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Comments represents the comments table
-type Comments struct {
+// CommentsDto represents the comments table
+type CommentsDto struct {
 	Id         *int64     `db:"id" json:"id"`
 	PostId     int64      `db:"post_id" json:"post_id"`
 	UserId     string     `db:"user_id" json:"user_id"`
@@ -21,18 +21,18 @@ type Comments struct {
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
 }
 
-// TableName returns the table name for Comments
-func (c *Comments) TableName() string {
+// TableName returns the table name for CommentsDto
+func (c *CommentsDto) TableName() string {
 	return "comments"
 }
 
-// CommentsFields provides type-safe field references for Comments
+// CommentsFields provides type-safe field references for CommentsDto
 type CommentsFields struct{}
 
-// Fields returns field references for Comments
+// CommentsTable returns field references for CommentsDto
 var CommentsTable = CommentsFields{}
 
-// Id returns a field reference for Comments.Id
+// Id returns a field reference for CommentsDto.Id
 func (c CommentsFields) Id() *FieldRef {
 	return &FieldRef{
 		Table:  "comments",
@@ -41,7 +41,7 @@ func (c CommentsFields) Id() *FieldRef {
 	}
 }
 
-// PostId returns a field reference for Comments.PostId
+// PostId returns a field reference for CommentsDto.PostId
 func (c CommentsFields) PostId() *FieldRef {
 	return &FieldRef{
 		Table:  "comments",
@@ -50,7 +50,7 @@ func (c CommentsFields) PostId() *FieldRef {
 	}
 }
 
-// UserId returns a field reference for Comments.UserId
+// UserId returns a field reference for CommentsDto.UserId
 func (c CommentsFields) UserId() *FieldRef {
 	return &FieldRef{
 		Table:  "comments",
@@ -59,7 +59,7 @@ func (c CommentsFields) UserId() *FieldRef {
 	}
 }
 
-// Content returns a field reference for Comments.Content
+// Content returns a field reference for CommentsDto.Content
 func (c CommentsFields) Content() *FieldRef {
 	return &FieldRef{
 		Table:  "comments",
@@ -68,7 +68,7 @@ func (c CommentsFields) Content() *FieldRef {
 	}
 }
 
-// IsApproved returns a field reference for Comments.IsApproved
+// IsApproved returns a field reference for CommentsDto.IsApproved
 func (c CommentsFields) IsApproved() *FieldRef {
 	return &FieldRef{
 		Table:  "comments",
@@ -77,7 +77,7 @@ func (c CommentsFields) IsApproved() *FieldRef {
 	}
 }
 
-// CreatedAt returns a field reference for Comments.CreatedAt
+// CreatedAt returns a field reference for CommentsDto.CreatedAt
 func (c CommentsFields) CreatedAt() *FieldRef {
 	return &FieldRef{
 		Table:  "comments",
@@ -86,7 +86,7 @@ func (c CommentsFields) CreatedAt() *FieldRef {
 	}
 }
 
-// CommentsQuery is a type-safe query builder for Comments
+// CommentsQuery is a type-safe query builder for CommentsDto
 type CommentsQuery struct {
 	pool         *pgxpool.Pool
 	tx           pgx.Tx
@@ -707,7 +707,7 @@ func (q *CommentsQuery) buildConditions(conditions []Condition, argIndex *int) (
 }
 
 // Find executes the query and returns results
-func (q *CommentsQuery) Find(ctx context.Context) ([]*Comments, error) {
+func (q *CommentsQuery) Find(ctx context.Context) ([]*CommentsDto, error) {
 	query, args := q.buildQuery()
 
 	var rows pgx.Rows
@@ -724,9 +724,9 @@ func (q *CommentsQuery) Find(ctx context.Context) ([]*Comments, error) {
 	}
 	defer rows.Close()
 
-	var results []*Comments
+	var results []*CommentsDto
 	for rows.Next() {
-		result := &Comments{}
+		result := &CommentsDto{}
 		if err := q.scanInto(rows, result); err != nil {
 			return nil, err
 		}
@@ -737,7 +737,7 @@ func (q *CommentsQuery) Find(ctx context.Context) ([]*Comments, error) {
 }
 
 // FindOne returns a single result
-func (q *CommentsQuery) FindOne(ctx context.Context) (*Comments, error) {
+func (q *CommentsQuery) FindOne(ctx context.Context) (*CommentsDto, error) {
 	q.Limit(1)
 	results, err := q.Find(ctx)
 	if err != nil {
@@ -769,7 +769,7 @@ func (q *CommentsQuery) Count(ctx context.Context) (int64, error) {
 }
 
 // scanInto scans a row into a struct
-func (q *CommentsQuery) scanInto(rows pgx.Rows, dest *Comments) error {
+func (q *CommentsQuery) scanInto(rows pgx.Rows, dest *CommentsDto) error {
 	// If custom fields selected, use dynamic scanning
 	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
 		// This would need more complex implementation for custom field scanning
@@ -788,7 +788,7 @@ func (q *CommentsQuery) scanInto(rows pgx.Rows, dest *Comments) error {
 
 // Insert inserts a new record
 // Fields with nil values (defaults/sequences) are omitted, database handles them
-func (q *CommentsQuery) Insert(ctx context.Context, record *Comments) error {
+func (q *CommentsQuery) Insert(ctx context.Context, record *CommentsDto) error {
 	var columns []string
 	var placeholders []string
 	var args []interface{}
@@ -846,7 +846,7 @@ func (q *CommentsQuery) Insert(ctx context.Context, record *Comments) error {
 }
 
 // InsertBatch inserts multiple records efficiently using pgx batch
-func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*Comments) error {
+func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*CommentsDto) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -921,7 +921,7 @@ func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*Comments) er
 }
 
 // Update updates a record using its primary key
-func (q *CommentsQuery) Update(ctx context.Context, record *Comments) error {
+func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 	query := "UPDATE comments SET " +
 		"post_id = $2, user_id = $3, content = $4, is_approved = $5, created_at = $6" +
 		" WHERE id = $1"
@@ -1060,8 +1060,8 @@ func (q *CommentsQuery) LeftJoinPosts() *CommentsQuery {
 
 // CommentsPostsJoin represents a join result between comments and posts
 type CommentsPostsJoin struct {
-	Comments *Comments
-	Posts    *Posts
+	CommentsDto *CommentsDto
+	PostsDto    *PostsDto
 }
 
 // JoinUsers performs a type-safe inner join with users
@@ -1088,8 +1088,8 @@ func (q *CommentsQuery) LeftJoinUsers() *CommentsQuery {
 
 // CommentsUsersJoin represents a join result between comments and users
 type CommentsUsersJoin struct {
-	Comments *Comments
-	Users    *Users
+	CommentsDto *CommentsDto
+	UsersDto    *UsersDto
 }
 
 // JoinOn performs a custom join with type-safe field references

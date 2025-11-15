@@ -26,6 +26,7 @@ var dbWrapperTemplate string
 
 // QueryBuilderData contains the data for rendering the query builder template
 type QueryBuilderData struct {
+	BaseName           string
 	BuilderName        string
 	StructName         string
 	TableName          string
@@ -63,6 +64,7 @@ type StructField struct {
 
 // FieldReferencesData contains the data for rendering field references template
 type FieldReferencesData struct {
+	BaseName       string
 	StructName     string
 	TableName      string
 	FieldsTypeName string
@@ -79,6 +81,7 @@ type FieldRefData struct {
 
 // JoinBuildersData contains the data for rendering join builders template
 type JoinBuildersData struct {
+	BaseName    string
 	BuilderName string
 	StructName  string
 	TableName   string
@@ -90,6 +93,7 @@ type JoinData struct {
 	JoinMethodName       string
 	LeftJoinMethodName   string
 	JoinStructName       string
+	ReferencedBaseName   string
 	ReferencedTableName  string
 	ReferencedStructName string
 	LeftFieldName        string

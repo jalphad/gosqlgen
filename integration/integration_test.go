@@ -10,14 +10,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	models2 "github.com/jalphad/gosqlgen/integration/models"
+	"github.com/jalphad/gosqlgen/integration/models"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 )
 
 var (
 	pgxPool  *pgxpool.Pool
-	testDB   *models2.DB
+	testDB   *models.DB
 	pool     *dockertest.Pool
 	resource *dockertest.Resource
 )
@@ -80,7 +80,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Create DB wrapper
-	testDB = models2.NewDB(pgxPool)
+	testDB = models.NewDB(pgxPool)
 
 	// Run tests
 	code := m.Run()
@@ -125,7 +125,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Create User", func(t *testing.T) {
-		user := &models2.Users{
+		user := &models.UsersDto{
 			Username:  "johndoe",
 			Email:     "john@example.com",
 			FullName:  strPtr("John Doe"),
@@ -148,7 +148,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Find User by ID", func(t *testing.T) {
 		// Insert a user first
-		user := &models2.Users{
+		user := &models.UsersDto{
 			Username: "janedoe",
 			Email:    "jane@example.com",
 		}
@@ -173,7 +173,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Update User", func(t *testing.T) {
 		// Insert a user
-		user := &models2.Users{
+		user := &models.UsersDto{
 			Username: "updateme",
 			Email:    "update@example.com",
 		}
@@ -207,7 +207,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Delete User", func(t *testing.T) {
 		// Insert a user
-		user := &models2.Users{
+		user := &models.UsersDto{
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
@@ -239,7 +239,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	cleanupTables(t)
 
 	// Insert test data
-	users := []*models2.Users{
+	users := []*models.UsersDto{
 		{Username: "alice", Email: "alice@example.com", FullName: strPtr("Alice Smith"), IsActive: boolPtr(true)},
 		{Username: "bob", Email: "bob@example.com", FullName: strPtr("Bob Jones"), IsActive: boolPtr(true)},
 		{Username: "charlie", Email: "charlie@example.com", FullName: strPtr("Charlie Brown"), IsActive: boolPtr(false)},
@@ -301,7 +301,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 
 	t.Run("Order By", func(t *testing.T) {
 		results, err := testDB.Users().
-			OrderByUsername(models2.ASC).
+			OrderByUsername(models.ASC).
 			Find(context.Background())
 		if err != nil {
 			t.Fatalf("Failed to find users: %v", err)
@@ -322,7 +322,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 
 	t.Run("Limit and Offset", func(t *testing.T) {
 		results, err := testDB.Users().
-			OrderByUsername(models2.ASC).
+			OrderByUsername(models.ASC).
 			Limit(2).
 			Offset(1).
 			Find(context.Background())
@@ -360,7 +360,7 @@ func TestIntegration_Joins(t *testing.T) {
 	cleanupTables(t)
 
 	// Insert test data
-	user := &models2.Users{
+	user := &models.UsersDto{
 		Username: "blogger",
 		Email:    "blogger@example.com",
 	}
@@ -368,7 +368,7 @@ func TestIntegration_Joins(t *testing.T) {
 		t.Fatalf("Failed to insert user: %v", err)
 	}
 
-	posts := []*models2.Posts{
+	posts := []*models.PostsDto{
 		{UserId: *user.Id, Title: "First Post", Content: strPtr("Content 1"), Status: strPtr("published")},
 		{UserId: *user.Id, Title: "Second Post", Content: strPtr("Content 2"), Status: strPtr("draft")},
 	}
@@ -423,9 +423,9 @@ func TestIntegration_Transactions(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Successful Transaction", func(t *testing.T) {
-		err := testDB.Transaction(context.Background(), func(tx *models2.Tx) error {
+		err := testDB.Transaction(context.Background(), func(tx *models.Tx) error {
 			// Insert user
-			user := &models2.Users{
+			user := &models.UsersDto{
 				Username: "txuser",
 				Email:    "tx@example.com",
 			}
@@ -434,7 +434,7 @@ func TestIntegration_Transactions(t *testing.T) {
 			}
 
 			// Insert post
-			post := &models2.Posts{
+			post := &models.PostsDto{
 				UserId: *user.Id,
 				Title:  "Transaction Post",
 			}
@@ -468,9 +468,9 @@ func TestIntegration_Transactions(t *testing.T) {
 	})
 
 	t.Run("Failed Transaction Rollback", func(t *testing.T) {
-		err := testDB.Transaction(context.Background(), func(tx *models2.Tx) error {
+		err := testDB.Transaction(context.Background(), func(tx *models.Tx) error {
 			// Insert user
-			user := &models2.Users{
+			user := &models.UsersDto{
 				Username: "rollbackuser",
 				Email:    "rollback@example.com",
 			}
@@ -502,7 +502,7 @@ func TestIntegration_NullableFields(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Insert with NULL values", func(t *testing.T) {
-		user := &models2.Users{
+		user := &models.UsersDto{
 			Username: "nulltest",
 			Email:    "null@example.com",
 			FullName: nil, // NULL value
@@ -525,7 +525,7 @@ func TestIntegration_NullableFields(t *testing.T) {
 	})
 
 	t.Run("Update to NULL", func(t *testing.T) {
-		user := &models2.Users{
+		user := &models.UsersDto{
 			Username: "nullupdate",
 			Email:    "nullupdate@example.com",
 			FullName: strPtr("Initial Name"),
@@ -560,14 +560,14 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 	cleanupTables(t)
 
 	// Setup test data
-	user1 := &models2.Users{Username: "user1", Email: "user1@example.com"}
-	user2 := &models2.Users{Username: "user2", Email: "user2@example.com"}
+	user1 := &models.UsersDto{Username: "user1", Email: "user1@example.com"}
+	user2 := &models.UsersDto{Username: "user2", Email: "user2@example.com"}
 
 	testDB.Users().Insert(context.Background(), user1)
 	testDB.Users().Insert(context.Background(), user2)
 
 	// Create posts for both users
-	posts := []*models2.Posts{
+	posts := []*models.PostsDto{
 		{UserId: *user1.Id, Title: "User1 Post 1", ViewCount: int64Ptr(100)},
 		{UserId: *user1.Id, Title: "User1 Post 2", ViewCount: int64Ptr(200)},
 		{UserId: *user2.Id, Title: "User2 Post 1", ViewCount: int64Ptr(50)},
@@ -607,8 +607,8 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 		// Update view_count for all user1's posts
 		affected, err := testDB.Posts().
 			WhereUserIdEq(*user1.Id).
-			UpdateFields(context.Background(), map[*models2.FieldRef]interface{}{
-				models2.PostsTable.ViewCount(): int64(999),
+			UpdateFields(context.Background(), map[*models.FieldRef]interface{}{
+				models.PostsTable.ViewCount(): int64(999),
 			})
 
 		if err != nil {
