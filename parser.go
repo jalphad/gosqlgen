@@ -25,6 +25,8 @@ type ForeignKey struct {
 	Column           string
 	ReferencedTable  string
 	ReferencedColumn string
+	Prefix           string // Derived from column name (e.g., "user" from "user_id")
+	Suffix           string // Derived from column name (e.g., "id" from "user_id")
 }
 
 // Table represents a database table
@@ -75,6 +77,11 @@ func (p *Parser) Parse(sql string) error {
 		}
 
 		p.tables[tableName] = table
+	}
+
+	// Validate foreign keys after all tables are parsed
+	if err := p.validateForeignKeys(); err != nil {
+		return err
 	}
 
 	return nil
@@ -169,6 +176,97 @@ func (p *Parser) parseForeignKey(table *Table, def string) {
 		}
 		table.ForeignKeys = append(table.ForeignKeys, fk)
 	}
+}
+
+// parseFKColumnName parses a foreign key column name into prefix and suffix
+// Returns prefix, suffix, and error if parsing fails
+func parseFKColumnName(fkColumn string) (prefix, suffix string, err error) {
+	parts := strings.Split(fkColumn, "_")
+	if len(parts) < 2 {
+		return "", "", fmt.Errorf("FK column '%s' does not follow <prefix>_<suffix> pattern", fkColumn)
+	}
+
+	suffix = parts[len(parts)-1]
+	prefix = strings.Join(parts[:len(parts)-1], "_")
+	return prefix, suffix, nil
+}
+
+// validateForeignKeys validates all foreign keys after parsing
+func (p *Parser) validateForeignKeys() error {
+	for tableName, table := range p.tables {
+		for i := range table.ForeignKeys {
+			fk := &table.ForeignKeys[i]
+
+			// Parse FK column name
+			prefix, suffix, err := parseFKColumnName(fk.Column)
+			if err != nil {
+				return fmt.Errorf("invalid FK column name in table '%s': %w", tableName, err)
+			}
+
+			// Store parsed values
+			fk.Prefix = prefix
+			fk.Suffix = suffix
+
+			// Validate suffix matches referenced column
+			if suffix != fk.ReferencedColumn {
+				return fmt.Errorf(
+					"Invalid foreign key in table '%s'\n"+
+					"  FK column: '%s'\n"+
+					"  References: %s.%s\n"+
+					"\n"+
+					"  Foreign key column name '%s' has suffix '%s' but references column '%s'.\n"+
+					"\n"+
+					"  Expected FK column to be named: '%s_%s' (following pattern <prefix>_<referenced_column>)\n"+
+					"\n"+
+					"  Please rename the column to follow the convention: <semantic_prefix>_<referenced_column_name>\n"+
+					"\n"+
+					"  Examples of valid FK names:\n"+
+					"    - user_id (references users.id)\n"+
+					"    - author_id (references users.id)\n"+
+					"    - sender_id (references users.id)",
+					tableName,
+					fk.Column,
+					fk.ReferencedTable,
+					fk.ReferencedColumn,
+					fk.Column,
+					suffix,
+					fk.ReferencedColumn,
+					prefix,
+					fk.ReferencedColumn,
+				)
+			}
+
+			// Verify referenced table exists
+			refTable, ok := p.tables[fk.ReferencedTable]
+			if !ok {
+				return fmt.Errorf(
+					"foreign key in table '%s' references non-existent table '%s'",
+					tableName,
+					fk.ReferencedTable,
+				)
+			}
+
+			// Verify referenced column exists in referenced table
+			foundColumn := false
+			for _, col := range refTable.Columns {
+				if col.Name == fk.ReferencedColumn {
+					foundColumn = true
+					break
+				}
+			}
+
+			if !foundColumn {
+				return fmt.Errorf(
+					"foreign key in table '%s' references non-existent column '%s' in table '%s'",
+					tableName,
+					fk.ReferencedColumn,
+					fk.ReferencedTable,
+				)
+			}
+		}
+	}
+
+	return nil
 }
 
 // parsePrimaryKey parses a primary key constraint

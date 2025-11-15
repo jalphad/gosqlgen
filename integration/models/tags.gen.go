@@ -62,6 +62,7 @@ type TagsQuery struct {
 	selectFields []*FieldRef
 	conditions   []Condition
 	joins        []JoinClause
+	activeJoins  map[string]bool // tracks which tables are joined for dynamic column selection
 	orderBy      []OrderClause
 	groupBy      []*FieldRef
 	having       []Condition
@@ -73,8 +74,9 @@ type TagsQuery struct {
 // NewTagsQuery creates a new query builder
 func NewTagsQuery(pool *pgxpool.Pool) *TagsQuery {
 	return &TagsQuery{
-		pool:    pool,
-		logical: AND,
+		pool:        pool,
+		activeJoins: make(map[string]bool),
+		logical:     AND,
 	}
 }
 
@@ -314,7 +316,15 @@ func (q *TagsQuery) buildQuery() (string, []interface{}) {
 	// SELECT clause
 	query.WriteString("SELECT ")
 	if len(q.selectFields) == 0 {
+		// Select all fields from main table
 		query.WriteString("tags.*")
+
+		// Select all fields from joined tables
+		for tableName := range q.activeJoins {
+			query.WriteString(", ")
+			query.WriteString(tableName)
+			query.WriteString(".*")
+		}
 	} else {
 		fields := make([]string, len(q.selectFields))
 		for i, field := range q.selectFields {
@@ -529,17 +539,17 @@ func (q *TagsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *TagsQuery) scanInto(rows pgx.Rows, dest *TagsDto) error {
-	// If custom fields selected, use dynamic scanning
-	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
-		// This would need more complex implementation for custom field scanning
-		// For now, scan all fields
-	}
+	// Build scan destinations dynamically based on active joins
+	var scanDest []interface{}
 
-	return rows.Scan(
-		&dest.Id,
-		&dest.Name,
-		&dest.Slug,
-	)
+	// Add main table columns
+	scanDest = append(scanDest, &dest.Id)
+	scanDest = append(scanDest, &dest.Name)
+	scanDest = append(scanDest, &dest.Slug)
+
+	// Add joined table columns if active
+
+	return rows.Scan(scanDest...)
 }
 
 // Insert inserts a new record

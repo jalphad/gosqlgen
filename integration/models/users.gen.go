@@ -103,6 +103,7 @@ type UsersQuery struct {
 	selectFields []*FieldRef
 	conditions   []Condition
 	joins        []JoinClause
+	activeJoins  map[string]bool // tracks which tables are joined for dynamic column selection
 	orderBy      []OrderClause
 	groupBy      []*FieldRef
 	having       []Condition
@@ -114,8 +115,9 @@ type UsersQuery struct {
 // NewUsersQuery creates a new query builder
 func NewUsersQuery(pool *pgxpool.Pool) *UsersQuery {
 	return &UsersQuery{
-		pool:    pool,
-		logical: AND,
+		pool:        pool,
+		activeJoins: make(map[string]bool),
+		logical:     AND,
 	}
 }
 
@@ -641,7 +643,15 @@ func (q *UsersQuery) buildQuery() (string, []interface{}) {
 	// SELECT clause
 	query.WriteString("SELECT ")
 	if len(q.selectFields) == 0 {
+		// Select all fields from main table
 		query.WriteString("users.*")
+
+		// Select all fields from joined tables
+		for tableName := range q.activeJoins {
+			query.WriteString(", ")
+			query.WriteString(tableName)
+			query.WriteString(".*")
+		}
 	} else {
 		fields := make([]string, len(q.selectFields))
 		for i, field := range q.selectFields {
@@ -856,21 +866,21 @@ func (q *UsersQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *UsersQuery) scanInto(rows pgx.Rows, dest *UsersDto) error {
-	// If custom fields selected, use dynamic scanning
-	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
-		// This would need more complex implementation for custom field scanning
-		// For now, scan all fields
-	}
+	// Build scan destinations dynamically based on active joins
+	var scanDest []interface{}
 
-	return rows.Scan(
-		&dest.Id,
-		&dest.Username,
-		&dest.Email,
-		&dest.FullName,
-		&dest.CreatedAt,
-		&dest.UpdatedAt,
-		&dest.IsActive,
-	)
+	// Add main table columns
+	scanDest = append(scanDest, &dest.Id)
+	scanDest = append(scanDest, &dest.Username)
+	scanDest = append(scanDest, &dest.Email)
+	scanDest = append(scanDest, &dest.FullName)
+	scanDest = append(scanDest, &dest.CreatedAt)
+	scanDest = append(scanDest, &dest.UpdatedAt)
+	scanDest = append(scanDest, &dest.IsActive)
+
+	// Add joined table columns if active
+
+	return rows.Scan(scanDest...)
 }
 
 // Insert inserts a new record

@@ -36,6 +36,7 @@ type QueryBuilderData struct {
 	PrimaryKey         string
 	PrimaryKeyField    string
 	PrimaryKeyType     string
+	ForeignKeys        []ForeignKeyData // FK information for join handling
 }
 
 // Column represents template column data
@@ -47,12 +48,21 @@ type Column struct {
 	IsPointer  bool // true if the Go field is a pointer type
 }
 
+// ForeignKeyData contains FK information for query building
+type ForeignKeyData struct {
+	JoinedFieldName      string   // e.g., "User" (field name in struct)
+	ReferencedTable      string   // e.g., "users"
+	ReferencedStructName string   // e.g., "UsersDto"
+	ReferencedColumns    []Column // columns in the referenced table
+}
+
 // TableStructData contains the data for rendering the table struct template
 type TableStructData struct {
 	StructName   string
 	TableName    string
 	ReceiverName string
 	Fields       []StructField
+	JoinedFields []JoinedField
 }
 
 // StructField represents a field in the generated struct
@@ -60,6 +70,15 @@ type StructField struct {
 	FieldName  string
 	GoType     string
 	StructTags string
+}
+
+// JoinedField represents a joined relationship field
+type JoinedField struct {
+	FieldName        string // e.g., "User", "Author", "Sender"
+	StructType       string // e.g., "*UsersDto"
+	ReferencedTable  string // e.g., "users"
+	FKColumn         string // e.g., "user_id"
+	ReferencedColumn string // e.g., "id"
 }
 
 // FieldReferencesData contains the data for rendering field references template

@@ -14,6 +14,10 @@ import (
 type PostTagsDto struct {
 	PostId int64 `db:"post_id" json:"post_id"`
 	TagId  int64 `db:"tag_id" json:"tag_id"`
+
+	// Joined relationships (populated when corresponding Join method is called)
+	Post *PostsDto `joined:"posts" fk:"post_id"`
+	Tag  *TagsDto  `joined:"tags" fk:"tag_id"`
 }
 
 // TableName returns the table name for PostTagsDto
@@ -52,6 +56,7 @@ type PostTagsQuery struct {
 	selectFields []*FieldRef
 	conditions   []Condition
 	joins        []JoinClause
+	activeJoins  map[string]bool // tracks which tables are joined for dynamic column selection
 	orderBy      []OrderClause
 	groupBy      []*FieldRef
 	having       []Condition
@@ -63,8 +68,9 @@ type PostTagsQuery struct {
 // NewPostTagsQuery creates a new query builder
 func NewPostTagsQuery(pool *pgxpool.Pool) *PostTagsQuery {
 	return &PostTagsQuery{
-		pool:    pool,
-		logical: AND,
+		pool:        pool,
+		activeJoins: make(map[string]bool),
+		logical:     AND,
 	}
 }
 
@@ -272,7 +278,15 @@ func (q *PostTagsQuery) buildQuery() (string, []interface{}) {
 	// SELECT clause
 	query.WriteString("SELECT ")
 	if len(q.selectFields) == 0 {
+		// Select all fields from main table
 		query.WriteString("post_tags.*")
+
+		// Select all fields from joined tables
+		for tableName := range q.activeJoins {
+			query.WriteString(", ")
+			query.WriteString(tableName)
+			query.WriteString(".*")
+		}
 	} else {
 		fields := make([]string, len(q.selectFields))
 		for i, field := range q.selectFields {
@@ -487,16 +501,36 @@ func (q *PostTagsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *PostTagsQuery) scanInto(rows pgx.Rows, dest *PostTagsDto) error {
-	// If custom fields selected, use dynamic scanning
-	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
-		// This would need more complex implementation for custom field scanning
-		// For now, scan all fields
+	// Build scan destinations dynamically based on active joins
+	var scanDest []interface{}
+
+	// Add main table columns
+	scanDest = append(scanDest, &dest.PostId)
+	scanDest = append(scanDest, &dest.TagId)
+
+	// Add joined table columns if active
+	if q.activeJoins["posts"] {
+		joinedPost := &PostsDto{}
+		scanDest = append(scanDest, &joinedPost.Id)
+		scanDest = append(scanDest, &joinedPost.UserId)
+		scanDest = append(scanDest, &joinedPost.Title)
+		scanDest = append(scanDest, &joinedPost.Content)
+		scanDest = append(scanDest, &joinedPost.Status)
+		scanDest = append(scanDest, &joinedPost.PublishedAt)
+		scanDest = append(scanDest, &joinedPost.ViewCount)
+		scanDest = append(scanDest, &joinedPost.CreatedAt)
+		scanDest = append(scanDest, &joinedPost.UpdatedAt)
+		dest.Post = joinedPost
+	}
+	if q.activeJoins["tags"] {
+		joinedTag := &TagsDto{}
+		scanDest = append(scanDest, &joinedTag.Id)
+		scanDest = append(scanDest, &joinedTag.Name)
+		scanDest = append(scanDest, &joinedTag.Slug)
+		dest.Tag = joinedTag
 	}
 
-	return rows.Scan(
-		&dest.PostId,
-		&dest.TagId,
-	)
+	return rows.Scan(scanDest...)
 }
 
 // Insert inserts a new record
@@ -682,6 +716,7 @@ func (q *PostTagsQuery) JoinPosts() *PostTagsQuery {
 		LeftField:  PostTagsTable.PostId(),
 		RightField: PostsTable.Id(),
 	})
+	q.activeJoins["posts"] = true
 	return q
 }
 
@@ -693,13 +728,8 @@ func (q *PostTagsQuery) LeftJoinPosts() *PostTagsQuery {
 		LeftField:  PostTagsTable.PostId(),
 		RightField: PostsTable.Id(),
 	})
+	q.activeJoins["posts"] = true
 	return q
-}
-
-// PostTagsPostsJoin represents a join result between post_tags and posts
-type PostTagsPostsJoin struct {
-	PostTagsDto *PostTagsDto
-	PostsDto    *PostsDto
 }
 
 // JoinTags performs a type-safe inner join with tags
@@ -710,6 +740,7 @@ func (q *PostTagsQuery) JoinTags() *PostTagsQuery {
 		LeftField:  PostTagsTable.TagId(),
 		RightField: TagsTable.Id(),
 	})
+	q.activeJoins["tags"] = true
 	return q
 }
 
@@ -721,13 +752,8 @@ func (q *PostTagsQuery) LeftJoinTags() *PostTagsQuery {
 		LeftField:  PostTagsTable.TagId(),
 		RightField: TagsTable.Id(),
 	})
+	q.activeJoins["tags"] = true
 	return q
-}
-
-// PostTagsTagsJoin represents a join result between post_tags and tags
-type PostTagsTagsJoin struct {
-	PostTagsDto *PostTagsDto
-	TagsDto     *TagsDto
 }
 
 // JoinOn performs a custom join with type-safe field references

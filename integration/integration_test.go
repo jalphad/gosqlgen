@@ -416,6 +416,67 @@ func TestIntegration_Joins(t *testing.T) {
 			t.Errorf("Expected 'First Post', got '%s'", results[0].Title)
 		}
 	})
+
+	t.Run("Join Returns User Data", func(t *testing.T) {
+		// Find posts with join to users - should populate User field
+		results, err := testDB.Posts().
+			JoinUsers().
+			WhereUserIdEq(*user.Id).
+			Find(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find posts with join: %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Errorf("Expected 2 posts, got %d", len(results))
+		}
+
+		// Verify User field is populated
+		for i, post := range results {
+			if post.User == nil {
+				t.Errorf("Post %d: Expected User field to be populated, got nil", i)
+				continue
+			}
+
+			if post.User.Id == nil {
+				t.Errorf("Post %d: Expected User.Id to be set", i)
+				continue
+			}
+
+			if *post.User.Id != *user.Id {
+				t.Errorf("Post %d: Expected User.Id to be %s, got %s", i, *user.Id, *post.User.Id)
+			}
+
+			if post.User.Username != "blogger" {
+				t.Errorf("Post %d: Expected User.Username to be 'blogger', got '%s'", i, post.User.Username)
+			}
+
+			if post.User.Email != "blogger@example.com" {
+				t.Errorf("Post %d: Expected User.Email to be 'blogger@example.com', got '%s'", i, post.User.Email)
+			}
+		}
+	})
+
+	t.Run("No Join Means No User Data", func(t *testing.T) {
+		// Find posts WITHOUT join - User field should be nil
+		results, err := testDB.Posts().
+			WhereUserIdEq(*user.Id).
+			Find(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find posts: %v", err)
+		}
+
+		if len(results) != 2 {
+			t.Errorf("Expected 2 posts, got %d", len(results))
+		}
+
+		// Verify User field is NOT populated when no join is used
+		for i, post := range results {
+			if post.User != nil {
+				t.Errorf("Post %d: Expected User field to be nil (no join), got %+v", i, post.User)
+			}
+		}
+	})
 }
 
 // TestIntegration_Transactions tests transaction support

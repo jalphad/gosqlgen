@@ -5,6 +5,7 @@ type {{ .BuilderName }} struct {
     selectFields []*FieldRef
     conditions   []Condition
     joins        []JoinClause
+    activeJoins  map[string]bool // tracks which tables are joined for dynamic column selection
     orderBy      []OrderClause
     groupBy      []*FieldRef
     having       []Condition
@@ -16,8 +17,9 @@ type {{ .BuilderName }} struct {
 // New{{ .BuilderName }} creates a new query builder
 func New{{ .BuilderName }}(pool *pgxpool.Pool) *{{ .BuilderName }} {
     return &{{ .BuilderName }}{
-        pool:    pool,
-        logical: AND,
+        pool:        pool,
+        activeJoins: make(map[string]bool),
+        logical:     AND,
     }
 }
 
@@ -205,7 +207,15 @@ func (q *{{ .BuilderName }}) buildQuery() (string, []interface{}) {
     // SELECT clause
     query.WriteString("SELECT ")
     if len(q.selectFields) == 0 {
+        // Select all fields from main table
         query.WriteString("{{ .TableName }}.*")
+
+        // Select all fields from joined tables
+        for tableName := range q.activeJoins {
+            query.WriteString(", ")
+            query.WriteString(tableName)
+            query.WriteString(".*")
+        }
     } else {
         fields := make([]string, len(q.selectFields))
         for i, field := range q.selectFields {
@@ -420,17 +430,26 @@ func (q *{{ .BuilderName }}) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *{{ .BuilderName }}) scanInto(rows pgx.Rows, dest *{{ .StructName }}) error {
-    // If custom fields selected, use dynamic scanning
-    if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
-        // This would need more complex implementation for custom field scanning
-        // For now, scan all fields
-    }
+    // Build scan destinations dynamically based on active joins
+    var scanDest []interface{}
 
-    return rows.Scan(
-        {{- range .Columns }}
-        &dest.{{ .FieldName }},
+    // Add main table columns
+    {{- range .Columns }}
+    scanDest = append(scanDest, &dest.{{ .FieldName }})
+    {{- end }}
+
+    // Add joined table columns if active
+    {{- range $fk := .ForeignKeys }}
+    if q.activeJoins["{{ $fk.ReferencedTable }}"] {
+        joined{{ $fk.JoinedFieldName }} := &{{ $fk.ReferencedStructName }}{}
+        {{- range $fk.ReferencedColumns }}
+        scanDest = append(scanDest, &joined{{ $fk.JoinedFieldName }}.{{ .FieldName }})
         {{- end }}
-    )
+        dest.{{ $fk.JoinedFieldName }} = joined{{ $fk.JoinedFieldName }}
+    }
+    {{- end }}
+
+    return rows.Scan(scanDest...)
 }
 
 // Insert inserts a new record

@@ -225,6 +225,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 		TableName:    table.Name,
 		ReceiverName: receiverName,
 		Fields:       make([]templates.StructField, 0, len(table.Columns)),
+		JoinedFields: make([]templates.JoinedField, 0, len(table.ForeignKeys)),
 	}
 
 	for _, col := range table.Columns {
@@ -245,6 +246,28 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 			FieldName:  fieldName,
 			GoType:     goType,
 			StructTags: tags,
+		})
+	}
+
+	// Add joined fields for each foreign key
+	for _, fk := range table.ForeignKeys {
+		// FK.Prefix was populated during validation
+		joinedFieldName := g.toPascalCase(fk.Prefix)
+
+		// Get referenced table to build struct type
+		referencedTable, ok := g.parser.GetTable(fk.ReferencedTable)
+		if !ok {
+			continue // Skip if referenced table doesn't exist
+		}
+
+		referencedStructName := g.toPascalCase(referencedTable.Name) + "Dto"
+
+		data.JoinedFields = append(data.JoinedFields, templates.JoinedField{
+			FieldName:        joinedFieldName,
+			StructType:       "*" + referencedStructName,
+			ReferencedTable:  fk.ReferencedTable,
+			FKColumn:         fk.Column,
+			ReferencedColumn: fk.ReferencedColumn,
 		})
 	}
 
@@ -348,6 +371,38 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 		if !col.IsSequence {
 			data.NonSequenceColumns = append(data.NonSequenceColumns, tc)
 		}
+	}
+
+	// Add FK information for join handling
+	for _, fk := range table.ForeignKeys {
+		referencedTable, ok := g.parser.GetTable(fk.ReferencedTable)
+		if !ok {
+			continue
+		}
+
+		referencedBaseName := g.toPascalCase(referencedTable.Name)
+		referencedStructName := referencedBaseName + "Dto"
+		joinedFieldName := g.toPascalCase(fk.Prefix)
+
+		// Convert referenced table columns
+		var referencedColumns []templates.Column
+		for _, col := range referencedTable.Columns {
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
+			referencedColumns = append(referencedColumns, templates.Column{
+				Name:       col.Name,
+				FieldName:  g.toPascalCase(col.Name),
+				GoType:     col.GoType,
+				IsNullable: col.IsNullable,
+				IsPointer:  isPointer,
+			})
+		}
+
+		data.ForeignKeys = append(data.ForeignKeys, templates.ForeignKeyData{
+			JoinedFieldName:      joinedFieldName,
+			ReferencedTable:      fk.ReferencedTable,
+			ReferencedStructName: referencedStructName,
+			ReferencedColumns:    referencedColumns,
+		})
 	}
 
 	// Render the query builder using the templates package

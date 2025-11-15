@@ -22,6 +22,9 @@ type PostsDto struct {
 	ViewCount   *int64     `db:"view_count" json:"view_count"`
 	CreatedAt   *time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at"`
+
+	// Joined relationships (populated when corresponding Join method is called)
+	User *UsersDto `joined:"users" fk:"user_id"`
 }
 
 // TableName returns the table name for PostsDto
@@ -123,6 +126,7 @@ type PostsQuery struct {
 	selectFields []*FieldRef
 	conditions   []Condition
 	joins        []JoinClause
+	activeJoins  map[string]bool // tracks which tables are joined for dynamic column selection
 	orderBy      []OrderClause
 	groupBy      []*FieldRef
 	having       []Condition
@@ -134,8 +138,9 @@ type PostsQuery struct {
 // NewPostsQuery creates a new query builder
 func NewPostsQuery(pool *pgxpool.Pool) *PostsQuery {
 	return &PostsQuery{
-		pool:    pool,
-		logical: AND,
+		pool:        pool,
+		activeJoins: make(map[string]bool),
+		logical:     AND,
 	}
 }
 
@@ -849,7 +854,15 @@ func (q *PostsQuery) buildQuery() (string, []interface{}) {
 	// SELECT clause
 	query.WriteString("SELECT ")
 	if len(q.selectFields) == 0 {
+		// Select all fields from main table
 		query.WriteString("posts.*")
+
+		// Select all fields from joined tables
+		for tableName := range q.activeJoins {
+			query.WriteString(", ")
+			query.WriteString(tableName)
+			query.WriteString(".*")
+		}
 	} else {
 		fields := make([]string, len(q.selectFields))
 		for i, field := range q.selectFields {
@@ -1064,23 +1077,34 @@ func (q *PostsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *PostsQuery) scanInto(rows pgx.Rows, dest *PostsDto) error {
-	// If custom fields selected, use dynamic scanning
-	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
-		// This would need more complex implementation for custom field scanning
-		// For now, scan all fields
+	// Build scan destinations dynamically based on active joins
+	var scanDest []interface{}
+
+	// Add main table columns
+	scanDest = append(scanDest, &dest.Id)
+	scanDest = append(scanDest, &dest.UserId)
+	scanDest = append(scanDest, &dest.Title)
+	scanDest = append(scanDest, &dest.Content)
+	scanDest = append(scanDest, &dest.Status)
+	scanDest = append(scanDest, &dest.PublishedAt)
+	scanDest = append(scanDest, &dest.ViewCount)
+	scanDest = append(scanDest, &dest.CreatedAt)
+	scanDest = append(scanDest, &dest.UpdatedAt)
+
+	// Add joined table columns if active
+	if q.activeJoins["users"] {
+		joinedUser := &UsersDto{}
+		scanDest = append(scanDest, &joinedUser.Id)
+		scanDest = append(scanDest, &joinedUser.Username)
+		scanDest = append(scanDest, &joinedUser.Email)
+		scanDest = append(scanDest, &joinedUser.FullName)
+		scanDest = append(scanDest, &joinedUser.CreatedAt)
+		scanDest = append(scanDest, &joinedUser.UpdatedAt)
+		scanDest = append(scanDest, &joinedUser.IsActive)
+		dest.User = joinedUser
 	}
 
-	return rows.Scan(
-		&dest.Id,
-		&dest.UserId,
-		&dest.Title,
-		&dest.Content,
-		&dest.Status,
-		&dest.PublishedAt,
-		&dest.ViewCount,
-		&dest.CreatedAt,
-		&dest.UpdatedAt,
-	)
+	return rows.Scan(scanDest...)
 }
 
 // Insert inserts a new record
@@ -1391,6 +1415,7 @@ func (q *PostsQuery) JoinUsers() *PostsQuery {
 		LeftField:  PostsTable.UserId(),
 		RightField: UsersTable.Id(),
 	})
+	q.activeJoins["users"] = true
 	return q
 }
 
@@ -1402,13 +1427,8 @@ func (q *PostsQuery) LeftJoinUsers() *PostsQuery {
 		LeftField:  PostsTable.UserId(),
 		RightField: UsersTable.Id(),
 	})
+	q.activeJoins["users"] = true
 	return q
-}
-
-// PostsUsersJoin represents a join result between posts and users
-type PostsUsersJoin struct {
-	PostsDto *PostsDto
-	UsersDto *UsersDto
 }
 
 // JoinOn performs a custom join with type-safe field references

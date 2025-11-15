@@ -19,6 +19,10 @@ type CommentsDto struct {
 	Content    string     `db:"content" json:"content"`
 	IsApproved *bool      `db:"is_approved" json:"is_approved"`
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
+
+	// Joined relationships (populated when corresponding Join method is called)
+	Post *PostsDto `joined:"posts" fk:"post_id"`
+	User *UsersDto `joined:"users" fk:"user_id"`
 }
 
 // TableName returns the table name for CommentsDto
@@ -93,6 +97,7 @@ type CommentsQuery struct {
 	selectFields []*FieldRef
 	conditions   []Condition
 	joins        []JoinClause
+	activeJoins  map[string]bool // tracks which tables are joined for dynamic column selection
 	orderBy      []OrderClause
 	groupBy      []*FieldRef
 	having       []Condition
@@ -104,8 +109,9 @@ type CommentsQuery struct {
 // NewCommentsQuery creates a new query builder
 func NewCommentsQuery(pool *pgxpool.Pool) *CommentsQuery {
 	return &CommentsQuery{
-		pool:    pool,
-		logical: AND,
+		pool:        pool,
+		activeJoins: make(map[string]bool),
+		logical:     AND,
 	}
 }
 
@@ -555,7 +561,15 @@ func (q *CommentsQuery) buildQuery() (string, []interface{}) {
 	// SELECT clause
 	query.WriteString("SELECT ")
 	if len(q.selectFields) == 0 {
+		// Select all fields from main table
 		query.WriteString("comments.*")
+
+		// Select all fields from joined tables
+		for tableName := range q.activeJoins {
+			query.WriteString(", ")
+			query.WriteString(tableName)
+			query.WriteString(".*")
+		}
 	} else {
 		fields := make([]string, len(q.selectFields))
 		for i, field := range q.selectFields {
@@ -770,20 +784,44 @@ func (q *CommentsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *CommentsQuery) scanInto(rows pgx.Rows, dest *CommentsDto) error {
-	// If custom fields selected, use dynamic scanning
-	if len(q.selectFields) > 0 && q.selectFields[0].Table != "" {
-		// This would need more complex implementation for custom field scanning
-		// For now, scan all fields
+	// Build scan destinations dynamically based on active joins
+	var scanDest []interface{}
+
+	// Add main table columns
+	scanDest = append(scanDest, &dest.Id)
+	scanDest = append(scanDest, &dest.PostId)
+	scanDest = append(scanDest, &dest.UserId)
+	scanDest = append(scanDest, &dest.Content)
+	scanDest = append(scanDest, &dest.IsApproved)
+	scanDest = append(scanDest, &dest.CreatedAt)
+
+	// Add joined table columns if active
+	if q.activeJoins["posts"] {
+		joinedPost := &PostsDto{}
+		scanDest = append(scanDest, &joinedPost.Id)
+		scanDest = append(scanDest, &joinedPost.UserId)
+		scanDest = append(scanDest, &joinedPost.Title)
+		scanDest = append(scanDest, &joinedPost.Content)
+		scanDest = append(scanDest, &joinedPost.Status)
+		scanDest = append(scanDest, &joinedPost.PublishedAt)
+		scanDest = append(scanDest, &joinedPost.ViewCount)
+		scanDest = append(scanDest, &joinedPost.CreatedAt)
+		scanDest = append(scanDest, &joinedPost.UpdatedAt)
+		dest.Post = joinedPost
+	}
+	if q.activeJoins["users"] {
+		joinedUser := &UsersDto{}
+		scanDest = append(scanDest, &joinedUser.Id)
+		scanDest = append(scanDest, &joinedUser.Username)
+		scanDest = append(scanDest, &joinedUser.Email)
+		scanDest = append(scanDest, &joinedUser.FullName)
+		scanDest = append(scanDest, &joinedUser.CreatedAt)
+		scanDest = append(scanDest, &joinedUser.UpdatedAt)
+		scanDest = append(scanDest, &joinedUser.IsActive)
+		dest.User = joinedUser
 	}
 
-	return rows.Scan(
-		&dest.Id,
-		&dest.PostId,
-		&dest.UserId,
-		&dest.Content,
-		&dest.IsApproved,
-		&dest.CreatedAt,
-	)
+	return rows.Scan(scanDest...)
 }
 
 // Insert inserts a new record
@@ -1044,6 +1082,7 @@ func (q *CommentsQuery) JoinPosts() *CommentsQuery {
 		LeftField:  CommentsTable.PostId(),
 		RightField: PostsTable.Id(),
 	})
+	q.activeJoins["posts"] = true
 	return q
 }
 
@@ -1055,13 +1094,8 @@ func (q *CommentsQuery) LeftJoinPosts() *CommentsQuery {
 		LeftField:  CommentsTable.PostId(),
 		RightField: PostsTable.Id(),
 	})
+	q.activeJoins["posts"] = true
 	return q
-}
-
-// CommentsPostsJoin represents a join result between comments and posts
-type CommentsPostsJoin struct {
-	CommentsDto *CommentsDto
-	PostsDto    *PostsDto
 }
 
 // JoinUsers performs a type-safe inner join with users
@@ -1072,6 +1106,7 @@ func (q *CommentsQuery) JoinUsers() *CommentsQuery {
 		LeftField:  CommentsTable.UserId(),
 		RightField: UsersTable.Id(),
 	})
+	q.activeJoins["users"] = true
 	return q
 }
 
@@ -1083,13 +1118,8 @@ func (q *CommentsQuery) LeftJoinUsers() *CommentsQuery {
 		LeftField:  CommentsTable.UserId(),
 		RightField: UsersTable.Id(),
 	})
+	q.activeJoins["users"] = true
 	return q
-}
-
-// CommentsUsersJoin represents a join result between comments and users
-type CommentsUsersJoin struct {
-	CommentsDto *CommentsDto
-	UsersDto    *UsersDto
 }
 
 // JoinOn performs a custom join with type-safe field references

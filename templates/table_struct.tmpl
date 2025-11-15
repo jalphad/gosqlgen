@@ -3,6 +3,13 @@ type {{ .StructName }} struct {
 {{- range .Fields }}
 	{{ .FieldName }} {{ .GoType }} {{ .StructTags }}
 {{- end }}
+{{- if .JoinedFields }}
+
+	// Joined relationships (populated when corresponding Join method is called)
+{{- range .JoinedFields }}
+	{{ .FieldName }} {{ .StructType }} `joined:"{{ .ReferencedTable }}" fk:"{{ .FKColumn }}"`
+{{- end }}
+{{- end }}
 }
 
 // TableName returns the table name for {{ .StructName }}
