@@ -47,8 +47,12 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 
 	// Generate common.gen.go with utility types
 	commonBuf := bytes.Buffer{}
-	fmt.Fprintf(&commonBuf, "package %s\n\n", g.packageName)
-	g.writeImports(&commonBuf)
+	if _, err := fmt.Fprintf(&commonBuf, "package %s\n\n", g.packageName); err != nil {
+		return nil, err
+	}
+	if err := g.writeImports(&commonBuf); err != nil {
+		return nil, err
+	}
 	if err := g.generateCommonTypes(&commonBuf); err != nil {
 		return nil, err
 	}
@@ -64,10 +68,14 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		tableBuf := bytes.Buffer{}
 
 		// Package declaration
-		fmt.Fprintf(&tableBuf, "package %s\n\n", g.packageName)
+		if _, err = fmt.Fprintf(&tableBuf, "package %s\n\n", g.packageName); err != nil {
+			return nil, err
+		}
 
 		// Imports for table file
-		g.writeImports(&tableBuf)
+		if err = g.writeImports(&tableBuf); err != nil {
+			return nil, err
+		}
 
 		// Table struct
 		if err := g.generateTableStruct(&tableBuf, table); err != nil {
@@ -100,9 +108,13 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 
 	// Generate db.gen.go for database wrapper
 	dbBuf := bytes.Buffer{}
-	fmt.Fprintf(&dbBuf, "package %s\n\n", g.packageName)
-	g.writeImports(&dbBuf)
-	if err := g.generateDatabaseWrapper(&dbBuf); err != nil {
+	if _, err = fmt.Fprintf(&dbBuf, "package %s\n\n", g.packageName); err != nil {
+		return nil, err
+	}
+	if err = g.writeImports(&dbBuf); err != nil {
+		return nil, err
+	}
+	if err = g.generateDatabaseWrapper(&dbBuf); err != nil {
 		return nil, err
 	}
 
@@ -121,10 +133,14 @@ func (g *Generator) Generate() (string, error) {
 	var buf bytes.Buffer
 
 	// Write package declaration
-	fmt.Fprintf(&buf, "package %s\n\n", g.packageName)
+	if _, err := fmt.Fprintf(&buf, "package %s\n\n", g.packageName); err != nil {
+		return "", err
+	}
 
 	// Write imports
-	g.writeImports(&buf)
+	if err := g.writeImports(&buf); err != nil {
+		return "", err
+	}
 
 	// Generate common types
 	if err := g.generateCommonTypes(&buf); err != nil {
@@ -175,12 +191,16 @@ func (g *Generator) Generate() (string, error) {
 }
 
 // writeImports writes import statements
-func (g *Generator) writeImports(buf *bytes.Buffer) {
+func (g *Generator) writeImports(buf *bytes.Buffer) error {
 	buf.WriteString("import (\n")
 	for imp := range g.imports {
-		fmt.Fprintf(buf, "\t\"%s\"\n", imp)
+		if _, err := fmt.Fprintf(buf, "\t\"%s\"\n", imp); err != nil {
+			return err
+		}
 	}
 	buf.WriteString(")\n\n")
+
+	return nil
 }
 
 // generateCommonTypes generates common types used across queries
@@ -285,7 +305,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 	// Get primary key info
 	var primaryKey string
 	var primaryKeyField string
-	var primaryKeyType string = "int64" // default
+	var primaryKeyType = "int64" // default
 
 	for _, col := range table.Columns {
 		if col.IsPrimary {
