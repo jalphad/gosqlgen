@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,11 +16,54 @@ type TagsDto struct {
 	Id   *int64 `db:"id" json:"id"`
 	Name string `db:"name" json:"name"`
 	Slug string `db:"slug" json:"slug"`
+
+	// Many-to-many relationships (populated via LoadXxx methods)
+	Posts []*PostsDto `manytomany:"post_tags"`
+
+	// FromExpressions stores custom aggregations and expressions not mapped to fields
+	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for TagsDto
 func (t *TagsDto) TableName() string {
 	return "tags"
+}
+
+// LoadPosts loads associated posts through post_tags
+func (t *TagsDto) LoadPosts(ctx context.Context, db *DB) error {
+	if t.Id == nil {
+		return nil
+	}
+
+	// Query junction table to get referenced IDs
+	query := "SELECT post_id FROM post_tags WHERE tag_id = $1"
+
+	rows, err := db.pool.Query(ctx, query, *t.Id)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		ids = append(ids, id)
+	}
+
+	if len(ids) == 0 {
+		t.Posts = []*PostsDto{}
+		return nil
+	}
+
+	results, err := db.Posts().WhereIdIn(ids...).Find(ctx)
+	if err != nil {
+		return err
+	}
+	t.Posts = results
+	return nil
 }
 
 // TagsFields provides type-safe field references for TagsDto
@@ -31,28 +75,46 @@ var TagsTable = TagsFields{}
 // Id returns a field reference for TagsDto.Id
 func (t TagsFields) Id() *FieldRef {
 	return &FieldRef{
-		Table:  "tags",
-		Column: "id",
-		GoType: "int64",
+		Table:      "tags",
+		Expression: "id",
 	}
 }
 
 // Name returns a field reference for TagsDto.Name
 func (t TagsFields) Name() *FieldRef {
 	return &FieldRef{
-		Table:  "tags",
-		Column: "name",
-		GoType: "string",
+		Table:      "tags",
+		Expression: "name",
 	}
 }
 
 // Slug returns a field reference for TagsDto.Slug
 func (t TagsFields) Slug() *FieldRef {
 	return &FieldRef{
-		Table:  "tags",
-		Column: "slug",
-		GoType: "string",
+		Table:      "tags",
+		Expression: "slug",
 	}
+}
+
+// AllFields returns all field references for TagsDto
+func (t TagsFields) AllFields() []*FieldRef {
+	return []*FieldRef{
+		t.Id(),
+		t.Name(),
+		t.Slug(),
+	}
+}
+
+// AggregatePosts returns a JSON aggregation for Posts (many-to-many)
+// Note: Requires manual joins through post_tags
+func (t TagsFields) AggregatePosts(fields ...*FieldRef) *FieldRef {
+	if len(fields) == 0 {
+		fields = PostsTable.AllFields()
+	}
+
+	filterField := PostsTable.Id()
+
+	return JsonAgg("posts", true, filterField, fields...)
 }
 
 // TagsQuery is a type-safe query builder for TagsDto
@@ -89,16 +151,6 @@ func (q *TagsQuery) WithTx(tx pgx.Tx) *TagsQuery {
 // Select specifies fields to select using type-safe field references
 func (q *TagsQuery) Select(fields ...*FieldRef) *TagsQuery {
 	q.selectFields = fields
-	return q
-}
-
-// SelectAll selects all fields
-func (q *TagsQuery) SelectAll() *TagsQuery {
-	q.selectFields = []*FieldRef{
-		TagsTable.Id(),
-		TagsTable.Name(),
-		TagsTable.Slug(),
-	}
 	return q
 }
 
@@ -338,7 +390,7 @@ func (q *TagsQuery) buildQuery() (string, []interface{}) {
 	// JOIN clauses
 	for _, join := range q.joins {
 		query.WriteString(" ")
-		query.WriteString(join.Type)
+		query.WriteString(string(join.Type))
 		query.WriteString(" ")
 		query.WriteString(join.Table)
 		query.WriteString(" ON ")
@@ -522,7 +574,7 @@ func (q *TagsQuery) FindOne(ctx context.Context) (*TagsDto, error) {
 func (q *TagsQuery) Count(ctx context.Context) (int64, error) {
 	// Save and restore select fields
 	originalSelect := q.selectFields
-	countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
+	countField := &FieldRef{Table: "", Expression: "COUNT(*)", Alias: ""}
 	q.selectFields = []*FieldRef{countField}
 	defer func() { q.selectFields = originalSelect }()
 
@@ -539,17 +591,103 @@ func (q *TagsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *TagsQuery) scanInto(rows pgx.Rows, dest *TagsDto) error {
-	// Build scan destinations dynamically based on active joins
 	var scanDest []interface{}
+	var jsonUnmarshalFuncs []func() error
 
-	// Add main table columns
-	scanDest = append(scanDest, &dest.Id)
-	scanDest = append(scanDest, &dest.Name)
-	scanDest = append(scanDest, &dest.Slug)
+	if len(q.selectFields) > 0 {
+		// Use selectFields - scan in exact order
+		for _, field := range q.selectFields {
+			destPtr, unmarshalFunc := q.getScanDestForField(field, dest)
+			scanDest = append(scanDest, destPtr)
+			if unmarshalFunc != nil {
+				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+			}
+		}
+	} else {
+		// Default behavior - scan all table columns + joined tables
+		scanDest = append(scanDest, &dest.Id)
+		scanDest = append(scanDest, &dest.Name)
+		scanDest = append(scanDest, &dest.Slug)
 
-	// Add joined table columns if active
+		// Add joined table columns if active
+	}
 
-	return rows.Scan(scanDest...)
+	// Perform scan
+	if err := rows.Scan(scanDest...); err != nil {
+		return err
+	}
+
+	// Execute JSON unmarshal functions and collect errors
+	var unmarshalErrors []error
+	for _, fn := range jsonUnmarshalFuncs {
+		if err := fn(); err != nil {
+			unmarshalErrors = append(unmarshalErrors, err)
+		}
+	}
+
+	if len(unmarshalErrors) > 0 {
+		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+	}
+
+	return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (q *TagsQuery) getScanDestForField(field *FieldRef, dest *TagsDto) (interface{}, func() error) {
+	alias := field.Alias
+	if alias == "" {
+		// Use expression as alias if no explicit alias
+		alias = field.Expression
+	}
+
+	// Normalize alias for matching (lowercase)
+	aliasLower := strings.ToLower(alias)
+	// Check if alias matches a many-to-many collection field
+	if aliasLower == "posts" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*PostsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Posts: %w", err)
+				}
+				dest.Posts = items
+			} else {
+				dest.Posts = []*PostsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+
+	// Check if alias matches a regular table column
+	if field.Table == "tags" {
+
+		if aliasLower == "id" {
+			return &dest.Id, nil
+		}
+
+		if aliasLower == "name" {
+			return &dest.Name, nil
+		}
+
+		if aliasLower == "slug" {
+			return &dest.Slug, nil
+		}
+	}
+
+	// No match - store in FromExpressions as interface{}
+	if dest.FromExpressions == nil {
+		dest.FromExpressions = make(map[string]interface{})
+	}
+	var value interface{}
+	// Store a pointer to value that we'll populate after scan
+	unmarshalFunc := func() error {
+		dest.FromExpressions[alias] = value
+		return nil
+	}
+	return &value, unmarshalFunc
 }
 
 // Insert inserts a new record
@@ -694,7 +832,7 @@ func (q *TagsQuery) UpdateFields(ctx context.Context, updates map[*FieldRef]inte
 
 	setClauses := make([]string, 0, len(updates))
 	for field, value := range updates {
-		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Column, argIndex))
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Expression, argIndex))
 		args = append(args, value)
 		argIndex++
 	}
@@ -757,7 +895,7 @@ func (q *TagsQuery) Delete(ctx context.Context) (int64, error) {
 }
 
 // JoinOn performs a custom join with type-safe field references
-func (q *TagsQuery) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *TagsQuery {
+func (q *TagsQuery) JoinOn(joinType JoinType, table string, leftField, rightField *FieldRef) *TagsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       joinType,
 		Table:      table,

@@ -18,6 +18,9 @@ type PostTagsDto struct {
 	// Joined relationships (populated when corresponding Join method is called)
 	Post *PostsDto `joined:"posts" fk:"post_id"`
 	Tag  *TagsDto  `joined:"tags" fk:"tag_id"`
+
+	// FromExpressions stores custom aggregations and expressions not mapped to fields
+	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for PostTagsDto
@@ -34,18 +37,24 @@ var PostTagsTable = PostTagsFields{}
 // PostId returns a field reference for PostTagsDto.PostId
 func (p PostTagsFields) PostId() *FieldRef {
 	return &FieldRef{
-		Table:  "post_tags",
-		Column: "post_id",
-		GoType: "int64",
+		Table:      "post_tags",
+		Expression: "post_id",
 	}
 }
 
 // TagId returns a field reference for PostTagsDto.TagId
 func (p PostTagsFields) TagId() *FieldRef {
 	return &FieldRef{
-		Table:  "post_tags",
-		Column: "tag_id",
-		GoType: "int64",
+		Table:      "post_tags",
+		Expression: "tag_id",
+	}
+}
+
+// AllFields returns all field references for PostTagsDto
+func (p PostTagsFields) AllFields() []*FieldRef {
+	return []*FieldRef{
+		p.PostId(),
+		p.TagId(),
 	}
 }
 
@@ -83,15 +92,6 @@ func (q *PostTagsQuery) WithTx(tx pgx.Tx) *PostTagsQuery {
 // Select specifies fields to select using type-safe field references
 func (q *PostTagsQuery) Select(fields ...*FieldRef) *PostTagsQuery {
 	q.selectFields = fields
-	return q
-}
-
-// SelectAll selects all fields
-func (q *PostTagsQuery) SelectAll() *PostTagsQuery {
-	q.selectFields = []*FieldRef{
-		PostTagsTable.PostId(),
-		PostTagsTable.TagId(),
-	}
 	return q
 }
 
@@ -300,7 +300,7 @@ func (q *PostTagsQuery) buildQuery() (string, []interface{}) {
 	// JOIN clauses
 	for _, join := range q.joins {
 		query.WriteString(" ")
-		query.WriteString(join.Type)
+		query.WriteString(string(join.Type))
 		query.WriteString(" ")
 		query.WriteString(join.Table)
 		query.WriteString(" ON ")
@@ -484,7 +484,7 @@ func (q *PostTagsQuery) FindOne(ctx context.Context) (*PostTagsDto, error) {
 func (q *PostTagsQuery) Count(ctx context.Context) (int64, error) {
 	// Save and restore select fields
 	originalSelect := q.selectFields
-	countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
+	countField := &FieldRef{Table: "", Expression: "COUNT(*)", Alias: ""}
 	q.selectFields = []*FieldRef{countField}
 	defer func() { q.selectFields = originalSelect }()
 
@@ -501,36 +501,160 @@ func (q *PostTagsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *PostTagsQuery) scanInto(rows pgx.Rows, dest *PostTagsDto) error {
-	// Build scan destinations dynamically based on active joins
 	var scanDest []interface{}
+	var jsonUnmarshalFuncs []func() error
 
-	// Add main table columns
-	scanDest = append(scanDest, &dest.PostId)
-	scanDest = append(scanDest, &dest.TagId)
+	if len(q.selectFields) > 0 {
+		// Use selectFields - scan in exact order
+		for _, field := range q.selectFields {
+			destPtr, unmarshalFunc := q.getScanDestForField(field, dest)
+			scanDest = append(scanDest, destPtr)
+			if unmarshalFunc != nil {
+				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+			}
+		}
+	} else {
+		// Default behavior - scan all table columns + joined tables
+		scanDest = append(scanDest, &dest.PostId)
+		scanDest = append(scanDest, &dest.TagId)
 
-	// Add joined table columns if active
-	if q.activeJoins["posts"] {
-		joinedPost := &PostsDto{}
-		scanDest = append(scanDest, &joinedPost.Id)
-		scanDest = append(scanDest, &joinedPost.UserId)
-		scanDest = append(scanDest, &joinedPost.Title)
-		scanDest = append(scanDest, &joinedPost.Content)
-		scanDest = append(scanDest, &joinedPost.Status)
-		scanDest = append(scanDest, &joinedPost.PublishedAt)
-		scanDest = append(scanDest, &joinedPost.ViewCount)
-		scanDest = append(scanDest, &joinedPost.CreatedAt)
-		scanDest = append(scanDest, &joinedPost.UpdatedAt)
-		dest.Post = joinedPost
+		// Add joined table columns if active
+		if q.activeJoins["posts"] {
+			joinedPost := &PostsDto{}
+			scanDest = append(scanDest, &joinedPost.Id)
+			scanDest = append(scanDest, &joinedPost.UserId)
+			scanDest = append(scanDest, &joinedPost.Title)
+			scanDest = append(scanDest, &joinedPost.Content)
+			scanDest = append(scanDest, &joinedPost.Status)
+			scanDest = append(scanDest, &joinedPost.PublishedAt)
+			scanDest = append(scanDest, &joinedPost.ViewCount)
+			scanDest = append(scanDest, &joinedPost.CreatedAt)
+			scanDest = append(scanDest, &joinedPost.UpdatedAt)
+			dest.Post = joinedPost
+		}
+		if q.activeJoins["tags"] {
+			joinedTag := &TagsDto{}
+			scanDest = append(scanDest, &joinedTag.Id)
+			scanDest = append(scanDest, &joinedTag.Name)
+			scanDest = append(scanDest, &joinedTag.Slug)
+			dest.Tag = joinedTag
+		}
 	}
-	if q.activeJoins["tags"] {
-		joinedTag := &TagsDto{}
-		scanDest = append(scanDest, &joinedTag.Id)
-		scanDest = append(scanDest, &joinedTag.Name)
-		scanDest = append(scanDest, &joinedTag.Slug)
-		dest.Tag = joinedTag
+
+	// Perform scan
+	if err := rows.Scan(scanDest...); err != nil {
+		return err
 	}
 
-	return rows.Scan(scanDest...)
+	// Execute JSON unmarshal functions and collect errors
+	var unmarshalErrors []error
+	for _, fn := range jsonUnmarshalFuncs {
+		if err := fn(); err != nil {
+			unmarshalErrors = append(unmarshalErrors, err)
+		}
+	}
+
+	if len(unmarshalErrors) > 0 {
+		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+	}
+
+	return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (q *PostTagsQuery) getScanDestForField(field *FieldRef, dest *PostTagsDto) (interface{}, func() error) {
+	alias := field.Alias
+	if alias == "" {
+		// Use expression as alias if no explicit alias
+		alias = field.Expression
+	}
+
+	// Normalize alias for matching (lowercase)
+	aliasLower := strings.ToLower(alias)
+
+	// Check if alias matches a regular table column
+	if field.Table == "post_tags" {
+
+		if aliasLower == "post_id" || aliasLower == "postid" {
+			return &dest.PostId, nil
+		}
+
+		if aliasLower == "tag_id" || aliasLower == "tagid" {
+			return &dest.TagId, nil
+		}
+	}
+	// Check if it matches a joined table column
+	if field.Table == "posts" && q.activeJoins["posts"] {
+		if dest.Post == nil {
+			dest.Post = &PostsDto{}
+		}
+
+		if aliasLower == "id" {
+			return &dest.Post.Id, nil
+		}
+
+		if aliasLower == "user_id" || aliasLower == "userid" {
+			return &dest.Post.UserId, nil
+		}
+
+		if aliasLower == "title" {
+			return &dest.Post.Title, nil
+		}
+
+		if aliasLower == "content" {
+			return &dest.Post.Content, nil
+		}
+
+		if aliasLower == "status" {
+			return &dest.Post.Status, nil
+		}
+
+		if aliasLower == "published_at" || aliasLower == "publishedat" {
+			return &dest.Post.PublishedAt, nil
+		}
+
+		if aliasLower == "view_count" || aliasLower == "viewcount" {
+			return &dest.Post.ViewCount, nil
+		}
+
+		if aliasLower == "created_at" || aliasLower == "createdat" {
+			return &dest.Post.CreatedAt, nil
+		}
+
+		if aliasLower == "updated_at" || aliasLower == "updatedat" {
+			return &dest.Post.UpdatedAt, nil
+		}
+	}
+	if field.Table == "tags" && q.activeJoins["tags"] {
+		if dest.Tag == nil {
+			dest.Tag = &TagsDto{}
+		}
+
+		if aliasLower == "id" {
+			return &dest.Tag.Id, nil
+		}
+
+		if aliasLower == "name" {
+			return &dest.Tag.Name, nil
+		}
+
+		if aliasLower == "slug" {
+			return &dest.Tag.Slug, nil
+		}
+	}
+
+	// No match - store in FromExpressions as interface{}
+	if dest.FromExpressions == nil {
+		dest.FromExpressions = make(map[string]interface{})
+	}
+	var value interface{}
+	// Store a pointer to value that we'll populate after scan
+	unmarshalFunc := func() error {
+		dest.FromExpressions[alias] = value
+		return nil
+	}
+	return &value, unmarshalFunc
 }
 
 // Insert inserts a new record
@@ -559,15 +683,15 @@ func (q *PostTagsQuery) Insert(ctx context.Context, record *PostTagsDto) error {
 		return fmt.Errorf("no values provided for insert")
 	}
 
-	query := fmt.Sprintf("INSERT INTO post_tags (%s) VALUES (%s)",
+	query := fmt.Sprintf("INSERT INTO post_tags (%s) VALUES (%s) RETURNING post_id",
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "))
 
 	var err error
 	if q.tx != nil {
-		_, err = q.tx.Exec(ctx, query, args...)
+		err = q.tx.QueryRow(ctx, query, args...).Scan(&record.PostId)
 	} else {
-		_, err = q.pool.Exec(ctx, query, args...)
+		err = q.pool.QueryRow(ctx, query, args...).Scan(&record.PostId)
 	}
 	return err
 }
@@ -601,7 +725,7 @@ func (q *PostTagsQuery) InsertBatch(ctx context.Context, records []*PostTagsDto)
 		argIdx++
 
 		if len(columns) > 0 {
-			query := fmt.Sprintf("INSERT INTO post_tags (%s) VALUES (%s)",
+			query := fmt.Sprintf("INSERT INTO post_tags (%s) VALUES (%s) RETURNING post_id",
 				strings.Join(columns, ", "),
 				strings.Join(placeholders, ", "))
 			batch.Queue(query, args...)
@@ -617,10 +741,10 @@ func (q *PostTagsQuery) InsertBatch(ctx context.Context, records []*PostTagsDto)
 	}
 	defer br.Close()
 
-	// Just execute all batched queries
-	for range records {
-		if _, err := br.Exec(); err != nil {
-			return fmt.Errorf("failed to execute batch: %w", err)
+	// Scan returned IDs back into records
+	for i := range records {
+		if err := br.QueryRow().Scan(&records[i].PostId); err != nil {
+			return fmt.Errorf("failed to scan batch result %d: %w", i, err)
 		}
 	}
 
@@ -629,7 +753,32 @@ func (q *PostTagsQuery) InsertBatch(ctx context.Context, records []*PostTagsDto)
 
 // Update updates a record using its primary key
 func (q *PostTagsQuery) Update(ctx context.Context, record *PostTagsDto) error {
-	return fmt.Errorf("table post_tags has no primary key")
+	query := "UPDATE post_tags SET " +
+		"" +
+		" WHERE post_id = $1"
+
+	var tag pgconn.CommandTag
+	var err error
+
+	if q.tx != nil {
+		tag, err = q.tx.Exec(ctx, query,
+			record.PostId,
+		)
+	} else {
+		tag, err = q.pool.Exec(ctx, query,
+			record.PostId,
+		)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }
 
 // UpdateFields updates specific fields for matching records
@@ -646,7 +795,7 @@ func (q *PostTagsQuery) UpdateFields(ctx context.Context, updates map[*FieldRef]
 
 	setClauses := make([]string, 0, len(updates))
 	for field, value := range updates {
-		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Column, argIndex))
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Expression, argIndex))
 		args = append(args, value)
 		argIndex++
 	}
@@ -711,7 +860,7 @@ func (q *PostTagsQuery) Delete(ctx context.Context) (int64, error) {
 // JoinPosts performs a type-safe inner join with posts
 func (q *PostTagsQuery) JoinPosts() *PostTagsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "INNER JOIN",
+		Type:       InnerJoin,
 		Table:      "posts",
 		LeftField:  PostTagsTable.PostId(),
 		RightField: PostsTable.Id(),
@@ -723,7 +872,7 @@ func (q *PostTagsQuery) JoinPosts() *PostTagsQuery {
 // LeftJoinPosts performs a type-safe left join with posts
 func (q *PostTagsQuery) LeftJoinPosts() *PostTagsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "LEFT JOIN",
+		Type:       LeftJoin,
 		Table:      "posts",
 		LeftField:  PostTagsTable.PostId(),
 		RightField: PostsTable.Id(),
@@ -735,7 +884,7 @@ func (q *PostTagsQuery) LeftJoinPosts() *PostTagsQuery {
 // JoinTags performs a type-safe inner join with tags
 func (q *PostTagsQuery) JoinTags() *PostTagsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "INNER JOIN",
+		Type:       InnerJoin,
 		Table:      "tags",
 		LeftField:  PostTagsTable.TagId(),
 		RightField: TagsTable.Id(),
@@ -747,7 +896,7 @@ func (q *PostTagsQuery) JoinTags() *PostTagsQuery {
 // LeftJoinTags performs a type-safe left join with tags
 func (q *PostTagsQuery) LeftJoinTags() *PostTagsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "LEFT JOIN",
+		Type:       LeftJoin,
 		Table:      "tags",
 		LeftField:  PostTagsTable.TagId(),
 		RightField: TagsTable.Id(),
@@ -757,7 +906,7 @@ func (q *PostTagsQuery) LeftJoinTags() *PostTagsQuery {
 }
 
 // JoinOn performs a custom join with type-safe field references
-func (q *PostTagsQuery) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *PostTagsQuery {
+func (q *PostTagsQuery) JoinOn(joinType JoinType, table string, leftField, rightField *FieldRef) *PostTagsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       joinType,
 		Table:      table,

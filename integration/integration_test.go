@@ -13,6 +13,8 @@ import (
 	"github.com/jalphad/gosqlgen/integration/models"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -123,6 +125,20 @@ func cleanupTables(t *testing.T) {
 // TestIntegration_UserCRUD tests basic CRUD operations on Users
 func TestIntegration_UserCRUD(t *testing.T) {
 	cleanupTables(t)
+
+	t.Run("foo", func(t *testing.T) {
+		var id int64 = 1
+		ctx := context.Background()
+
+		_, err := testDB.Posts().Select(models.PostsTable.Id(), models.PostsTable.AggregateComments(), models.PostsTable.AggregateTags()).WhereIdEq(id).
+			JoinOn(models.LeftJoin, (&models.CommentsDto{}).TableName(), models.CommentsFields{}.PostId(), models.PostsFields{}.Id()).
+			JoinOn(models.LeftJoin, (&models.PostTagsDto{}).TableName(), models.PostTagsFields{}.PostId(), models.PostsFields{}.Id()).
+			JoinOn(models.LeftJoin, (&models.TagsDto{}).TableName(), models.TagsFields{}.Id(), models.PostTagsFields{}.TagId()).
+			GroupBy(models.PostsFields{}.Id()).FindOne(ctx)
+		if err != nil {
+			return
+		}
+	})
 
 	t.Run("Create User", func(t *testing.T) {
 		user := &models.UsersDto{
@@ -690,6 +706,330 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 			if post.ViewCount == nil || *post.ViewCount != 999 {
 				t.Error("Expected view_count to be updated to 999")
 			}
+		}
+	})
+}
+
+// TestIntegration_ReverseRelationships tests one-to-many reverse relationships
+func TestIntegration_ReverseRelationships(t *testing.T) {
+	cleanupTables(t)
+
+	// Setup test data
+	user1 := &models.UsersDto{Username: "author1", Email: "author1@example.com"}
+	user2 := &models.UsersDto{Username: "author2", Email: "author2@example.com"}
+	testDB.Users().Insert(context.Background(), user1)
+	testDB.Users().Insert(context.Background(), user2)
+
+	// Create posts for user1
+	post1 := &models.PostsDto{UserId: *user1.Id, Title: "Post 1", Content: strPtr("Content 1")}
+	post2 := &models.PostsDto{UserId: *user1.Id, Title: "Post 2", Content: strPtr("Content 2")}
+	post3 := &models.PostsDto{UserId: *user2.Id, Title: "Post 3", Content: strPtr("Content 3")}
+	testDB.Posts().Insert(context.Background(), post1)
+	testDB.Posts().Insert(context.Background(), post2)
+	testDB.Posts().Insert(context.Background(), post3)
+
+	// Create comments
+	comment1 := &models.CommentsDto{PostId: *post1.Id, UserId: *user1.Id, Content: "Comment 1"}
+	comment2 := &models.CommentsDto{PostId: *post1.Id, UserId: *user2.Id, Content: "Comment 2"}
+	testDB.Comments().Insert(context.Background(), comment1)
+	testDB.Comments().Insert(context.Background(), comment2)
+
+	t.Run("Load Posts for User", func(t *testing.T) {
+		user, err := testDB.Users().WhereIdEq(*user1.Id).FindOne(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find user: %v", err)
+		}
+
+		err = user.LoadPosts(context.Background(), testDB)
+		if err != nil {
+			t.Fatalf("Failed to load posts: %v", err)
+		}
+
+		if len(user.Posts) != 2 {
+			t.Errorf("Expected 2 posts for user1, got %d", len(user.Posts))
+		}
+
+		// Verify post titles
+		postTitles := make(map[string]bool)
+		for _, post := range user.Posts {
+			postTitles[post.Title] = true
+		}
+
+		if !postTitles["Post 1"] {
+			t.Error("Expected 'Post 1'")
+		}
+		if !postTitles["Post 2"] {
+			t.Error("Expected 'Post 2'")
+		}
+	})
+
+	t.Run("Load Comments for Post", func(t *testing.T) {
+		post, err := testDB.Posts().WhereIdEq(*post1.Id).FindOne(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find post: %v", err)
+		}
+
+		err = post.LoadComments(context.Background(), testDB)
+		if err != nil {
+			t.Fatalf("Failed to load comments: %v", err)
+		}
+
+		if len(post.Comments) != 2 {
+			t.Errorf("Expected 2 comments for post1, got %d", len(post.Comments))
+		}
+
+		// Verify comment content
+		commentContent := make(map[string]bool)
+		for _, comment := range post.Comments {
+			commentContent[comment.Content] = true
+		}
+
+		if !commentContent["Comment 1"] {
+			t.Error("Expected 'Comment 1'")
+		}
+		if !commentContent["Comment 2"] {
+			t.Error("Expected 'Comment 2'")
+		}
+	})
+
+	t.Run("Load Comments for User", func(t *testing.T) {
+		user, err := testDB.Users().WhereIdEq(*user1.Id).FindOne(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find user: %v", err)
+		}
+
+		err = user.LoadComments(context.Background(), testDB)
+		if err != nil {
+			t.Fatalf("Failed to load comments: %v", err)
+		}
+
+		if len(user.Comments) != 1 {
+			t.Errorf("Expected 1 comment for user1, got %d", len(user.Comments))
+		}
+
+		if user.Comments[0].Content != "Comment 1" {
+			t.Errorf("Expected 'Comment 1', got '%s'", user.Comments[0].Content)
+		}
+	})
+
+	t.Run("Eager load comments for User", func(t *testing.T) {
+		user, err := testDB.Users().
+			Select(append(models.UsersTable.AllFields(), models.UsersTable.AggregateComments())...).
+			JoinOn(models.LeftJoin, (&models.CommentsDto{}).TableName(), models.CommentsTable.UserId(), models.UsersTable.Id()).
+			WhereIdEq(*user1.Id).
+			GroupBy(models.UsersTable.AllFields()...).FindOne(context.Background())
+
+		require.NoError(t, err)
+		assert.Len(t, user.Comments, 1)
+		assert.NotNil(t, user.Comments[0].CreatedAt)
+		assert.Equal(t, "Comment 1", user.Comments[0].Content)
+	})
+}
+
+// TestIntegration_ManyToMany tests many-to-many relationships through junction tables
+func TestIntegration_ManyToMany(t *testing.T) {
+	cleanupTables(t)
+
+	// Setup test data
+	user := &models.UsersDto{Username: "blogger", Email: "blogger@example.com"}
+	testDB.Users().Insert(context.Background(), user)
+
+	post1 := &models.PostsDto{UserId: *user.Id, Title: "Go Programming", Content: strPtr("Learn Go")}
+	post2 := &models.PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: strPtr("Optimize queries")}
+	testDB.Posts().Insert(context.Background(), post1)
+	testDB.Posts().Insert(context.Background(), post2)
+
+	tag1 := &models.TagsDto{Name: "programming", Slug: "programming"}
+	tag2 := &models.TagsDto{Name: "database", Slug: "database"}
+	tag3 := &models.TagsDto{Name: "golang", Slug: "golang"}
+	testDB.Tags().Insert(context.Background(), tag1)
+	testDB.Tags().Insert(context.Background(), tag2)
+	testDB.Tags().Insert(context.Background(), tag3)
+
+	// Create many-to-many associations
+	// post1 -> programming, golang
+	// post2 -> programming, database
+	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post1.Id, *tag1.Id)
+	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post1.Id, *tag3.Id)
+	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post2.Id, *tag1.Id)
+	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post2.Id, *tag2.Id)
+
+	t.Run("Load Tags for Post", func(t *testing.T) {
+		// Fetch post1
+		post, err := testDB.Posts().WhereIdEq(*post1.Id).FindOne(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find post: %v", err)
+		}
+
+		// Load tags
+		err = post.LoadTags(context.Background(), testDB)
+		if err != nil {
+			t.Fatalf("Failed to load tags: %v", err)
+		}
+
+		// Verify tags are loaded
+		if len(post.Tags) != 2 {
+			t.Errorf("Expected 2 tags for post1, got %d", len(post.Tags))
+		}
+
+		// Verify tag names
+		tagNames := make(map[string]bool)
+		for _, tag := range post.Tags {
+			tagNames[tag.Name] = true
+		}
+
+		if !tagNames["programming"] {
+			t.Error("Expected 'programming' tag")
+		}
+		if !tagNames["golang"] {
+			t.Error("Expected 'golang' tag")
+		}
+	})
+
+	t.Run("Load Posts for Tag", func(t *testing.T) {
+		// Fetch programming tag
+		tag, err := testDB.Tags().WhereNameEq("programming").FindOne(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find tag: %v", err)
+		}
+
+		// Load posts
+		err = tag.LoadPosts(context.Background(), testDB)
+		if err != nil {
+			t.Fatalf("Failed to load posts: %v", err)
+		}
+
+		// Verify posts are loaded
+		if len(tag.Posts) != 2 {
+			t.Errorf("Expected 2 posts for 'programming' tag, got %d", len(tag.Posts))
+		}
+
+		// Verify post titles
+		postTitles := make(map[string]bool)
+		for _, post := range tag.Posts {
+			postTitles[post.Title] = true
+		}
+
+		if !postTitles["Go Programming"] {
+			t.Error("Expected 'Go Programming' post")
+		}
+		if !postTitles["SQL Optimization"] {
+			t.Error("Expected 'SQL Optimization' post")
+		}
+	})
+
+	t.Run("Load Empty Collection", func(t *testing.T) {
+		// Create a post with no tags
+		post3 := &models.PostsDto{UserId: *user.Id, Title: "Untagged Post"}
+		testDB.Posts().Insert(context.Background(), post3)
+
+		post, err := testDB.Posts().WhereIdEq(*post3.Id).FindOne(context.Background())
+		if err != nil {
+			t.Fatalf("Failed to find post: %v", err)
+		}
+
+		err = post.LoadTags(context.Background(), testDB)
+		if err != nil {
+			t.Fatalf("Failed to load tags: %v", err)
+		}
+
+		// Verify empty slice (not nil)
+		if post.Tags == nil {
+			t.Error("Expected empty slice, got nil")
+		}
+		if len(post.Tags) != 0 {
+			t.Errorf("Expected 0 tags, got %d", len(post.Tags))
+		}
+	})
+
+	t.Run("Eager load tags for posts", func(t *testing.T) {
+		post, err := testDB.Posts().
+			Select(
+				models.PostsTable.Id(),
+				models.PostsTable.Title(),
+				models.PostsTable.UserId(),
+				models.PostsTable.AggregateTags()).
+			JoinOn(models.LeftJoin, (&models.PostTagsDto{}).TableName(), models.PostTagsTable.PostId(), models.PostsTable.Id()).
+			JoinOn(models.LeftJoin, (&models.TagsDto{}).TableName(), models.TagsTable.Id(), models.PostTagsTable.TagId()).
+			WhereIdEq(*post1.Id).
+			GroupBy(models.PostsTable.Id(), models.PostsTable.Title(), models.PostsTable.UserId()).
+			FindOne(context.Background())
+
+		require.NoError(t, err)
+		assert.Len(t, post.Tags, 2)
+	})
+}
+
+// TestIntegration_ExpressionFromString tests custom SQL expressions
+func TestIntegration_ExpressionFromString(t *testing.T) {
+	cleanupTables(t)
+
+	// Setup test data
+	user := &models.UsersDto{Username: "testuser", Email: "test@example.com"}
+	testDB.Users().Insert(context.Background(), user)
+
+	post1 := &models.PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: int64Ptr(100)}
+	post2 := &models.PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: int64Ptr(200)}
+	post3 := &models.PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: int64Ptr(300)}
+	testDB.Posts().Insert(context.Background(), post1)
+	testDB.Posts().Insert(context.Background(), post2)
+	testDB.Posts().Insert(context.Background(), post3)
+
+	t.Run("Custom COUNT expression", func(t *testing.T) {
+		// Use ExpressionFromString to create a custom COUNT expression
+		countExpr := models.ExpressionFromString("COUNT(*)", "total_count")
+
+		// Verify it constructs correctly
+		expectedSQL := "COUNT(*) AS total_count"
+		if countExpr.String() != expectedSQL {
+			t.Errorf("Expected SQL %q, got %q", expectedSQL, countExpr.String())
+		}
+
+		// Verify fields are set correctly
+		if countExpr.Table != "" {
+			t.Errorf("Expected empty Table, got %q", countExpr.Table)
+		}
+		if countExpr.Expression != "COUNT(*)" {
+			t.Errorf("Expected Expression %q, got %q", "COUNT(*)", countExpr.Expression)
+		}
+		if countExpr.Alias != "total_count" {
+			t.Errorf("Expected Alias %q, got %q", "total_count", countExpr.Alias)
+		}
+	})
+
+	t.Run("Custom AVG expression", func(t *testing.T) {
+		avgExpr := models.ExpressionFromString("AVG(view_count)", "avg_views")
+
+		expectedSQL := "AVG(view_count) AS avg_views"
+		if avgExpr.String() != expectedSQL {
+			t.Errorf("Expected SQL %q, got %q", expectedSQL, avgExpr.String())
+		}
+	})
+
+	t.Run("FromExpressions field exists", func(t *testing.T) {
+		// Create a post and verify FromExpressions field exists
+		post := &models.PostsDto{
+			UserId: *user.Id,
+			Title:  "Test Post",
+		}
+
+		// Verify FromExpressions field exists and is nil initially
+		if post.FromExpressions != nil {
+			t.Error("Expected FromExpressions to be nil initially")
+		}
+
+		// Set a value in FromExpressions
+		post.FromExpressions = map[string]interface{}{
+			"custom_count": int64(42),
+			"custom_avg":   123.45,
+		}
+
+		// Verify values are stored correctly
+		if count, ok := post.FromExpressions["custom_count"].(int64); !ok || count != 42 {
+			t.Errorf("Expected custom_count=42, got %v", post.FromExpressions["custom_count"])
+		}
+		if avg, ok := post.FromExpressions["custom_avg"].(float64); !ok || avg != 123.45 {
+			t.Errorf("Expected custom_avg=123.45, got %v", post.FromExpressions["custom_avg"])
 		}
 	})
 }

@@ -175,8 +175,8 @@ func TestParser_ForeignKeys(t *testing.T) {
 		t.Errorf("Expected foreign key column 'user_id', got %s", posts.ForeignKeys[0].Column)
 	}
 
-	if posts.ForeignKeys[0].ReferencedTable != "users" {
-		t.Errorf("Expected referenced table 'users', got %s", posts.ForeignKeys[0].ReferencedTable)
+	if posts.ForeignKeys[0].ReferencedTableName != "users" {
+		t.Errorf("Expected referenced table 'users', got %s", posts.ForeignKeys[0].ReferencedTableName)
 	}
 
 	// Check comments foreign keys

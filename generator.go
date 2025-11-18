@@ -215,21 +215,23 @@ func (g *Generator) generateCommonTypes(buf *bytes.Buffer) error {
 
 // generateTableStruct generates a struct for a table
 func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
-	baseName := g.toPascalCase(table.Name)
+	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	receiverName := strings.ToLower(baseName[0:1])
 
 	// Prepare template data
 	data := templates.TableStructData{
-		StructName:   structName,
-		TableName:    table.Name,
-		ReceiverName: receiverName,
-		Fields:       make([]templates.StructField, 0, len(table.Columns)),
-		JoinedFields: make([]templates.JoinedField, 0, len(table.ForeignKeys)),
+		StructName:       structName,
+		TableName:        table.Name,
+		ReceiverName:     receiverName,
+		Fields:           make([]templates.StructField, 0, len(table.Columns)),
+		JoinedFields:     make([]templates.JoinedField, 0, len(table.ForeignKeys)),
+		ReverseRelFields: g.reverseRelations(table),
+		ManyToManyFields: g.manyToManyRelations(table),
 	}
 
 	for _, col := range table.Columns {
-		fieldName := g.toPascalCase(col.Name)
+		fieldName := templates.ToPascalCase(col.Name)
 		goType := col.GoType
 
 		// Make nullable pointer if:
@@ -245,6 +247,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 		data.Fields = append(data.Fields, templates.StructField{
 			FieldName:  fieldName,
 			GoType:     goType,
+			SQLType:    col.SQLType,
 			StructTags: tags,
 		})
 	}
@@ -252,20 +255,20 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 	// Add joined fields for each foreign key
 	for _, fk := range table.ForeignKeys {
 		// FK.Prefix was populated during validation
-		joinedFieldName := g.toPascalCase(fk.Prefix)
+		joinedFieldName := templates.ToPascalCase(fk.Prefix)
 
 		// Get referenced table to build struct type
-		referencedTable, ok := g.parser.GetTable(fk.ReferencedTable)
+		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)
 		if !ok {
 			continue // Skip if referenced table doesn't exist
 		}
 
-		referencedStructName := g.toPascalCase(referencedTable.Name) + "Dto"
+		referencedStructName := templates.ToPascalCase(referencedTable.Name) + "Dto"
 
 		data.JoinedFields = append(data.JoinedFields, templates.JoinedField{
 			FieldName:        joinedFieldName,
-			StructType:       "*" + referencedStructName,
-			ReferencedTable:  fk.ReferencedTable,
+			GoType:           "*" + referencedStructName,
+			ReferencedTable:  fk.ReferencedTableName,
 			FKColumn:         fk.Column,
 			ReferencedColumn: fk.ReferencedColumn,
 		})
@@ -279,28 +282,119 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 
 	buf.WriteString(rendered)
 	buf.WriteString("\n")
+
+	// Generate collection loader methods if there are reverse rels or M2M rels
+	if len(table.ReverseRelationships) > 0 || len(table.ManyToManyRels) > 0 {
+		// Determine if table has a primary key
+		var primaryKeyField string
+		var primaryKeyType string
+		hasPrimaryKey := false
+		for _, col := range table.Columns {
+			if col.IsPrimary {
+				primaryKeyField = templates.ToPascalCase(col.Name)
+				primaryKeyType = col.GoType
+				hasPrimaryKey = true
+				break
+			}
+		}
+
+		// Build loader data for reverse relationships
+		reverseRelLoaderFields := make([]templates.ReverseRelLoaderField, 0)
+		for _, reverseRel := range table.ReverseRelationships {
+			fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
+			fromStructName := fromTableBaseName + "Dto"
+			fromTableMethod := fromTableBaseName // DB wrapper method uses table name
+			fkFieldName := templates.ToPascalCase(reverseRel.FKColumn)
+
+			reverseRelLoaderFields = append(reverseRelLoaderFields, templates.ReverseRelLoaderField{
+				FieldName:       reverseRel.FieldName,
+				FromTable:       reverseRel.FromTable.Name,
+				FromStructName:  fromStructName,
+				FromTableMethod: fromTableMethod,
+				FKFieldName:     fkFieldName,
+			})
+		}
+
+		// Build loader data for M2M relationships
+		m2mLoaderFields := make([]templates.ManyToManyLoaderField, 0)
+		for _, m2m := range table.ManyToManyRels {
+			refTable, ok := g.parser.GetTable(m2m.ReferencedTable.Name)
+			if !ok {
+				continue
+			}
+
+			// Find the primary key of the referenced table
+			var refPKField string
+			var refPKType string
+			for _, col := range refTable.Columns {
+				if col.IsPrimary {
+					refPKField = templates.ToPascalCase(col.Name)
+					refPKType = col.GoType
+					break
+				}
+			}
+
+			refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)
+			refStructName := refTableBaseName + "Dto"
+			refTableMethod := refTableBaseName // DB wrapper method uses table name
+
+			m2mLoaderFields = append(m2mLoaderFields, templates.ManyToManyLoaderField{
+				FieldName:             m2m.FieldName,
+				JunctionTable:         m2m.JunctionTable.Name,
+				LeftFKColumn:          m2m.LeftFKColumn,
+				RightFKColumn:         m2m.RightFKColumn,
+				ReferencedTable:       m2m.ReferencedTable.Name,
+				ReferencedStructName:  refStructName,
+				ReferencedTableMethod: refTableMethod,
+				ReferencedPKField:     refPKField,
+				ReferencedPKType:      refPKType,
+			})
+		}
+
+		loaderData := templates.CollectionLoaderData{
+			StructName:       structName,
+			TableName:        table.Name,
+			ReceiverName:     receiverName,
+			HasPrimaryKey:    hasPrimaryKey,
+			PrimaryKeyField:  primaryKeyField,
+			PrimaryKeyType:   primaryKeyType,
+			ReverseRelFields: reverseRelLoaderFields,
+			ManyToManyFields: m2mLoaderFields,
+		}
+
+		loadersRendered, err := templates.RenderCollectionLoaders(loaderData)
+		if err != nil {
+			return err
+		}
+
+		buf.WriteString(loadersRendered)
+		buf.WriteString("\n")
+	}
+
 	return nil
 }
 
 // generateFieldReferences generates type-safe field references
 func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *Table) error {
-	baseName := g.toPascalCase(table.Name)
+	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	fieldsTypeName := baseName + "Fields"
 	receiverName := strings.ToLower(fieldsTypeName[0:1])
 
 	// Prepare template data
 	data := templates.FieldReferencesData{
-		BaseName:       baseName,
-		StructName:     structName,
-		TableName:      table.Name,
-		FieldsTypeName: fieldsTypeName,
-		ReceiverName:   receiverName,
-		Fields:         make([]templates.FieldRefData, 0, len(table.Columns)),
+		BaseName:         baseName,
+		StructName:       structName,
+		TableName:        table.Name,
+		FieldsTypeName:   fieldsTypeName,
+		ReceiverName:     receiverName,
+		Fields:           make([]templates.FieldRefData, 0, len(table.Columns)),
+		ReverseRelations: g.reverseRelations(table),
+		ManyToManyRels:   g.manyToManyRelations(table),
 	}
 
 	for _, col := range table.Columns {
-		fieldName := g.toPascalCase(col.Name)
+		fieldName := templates.ToPascalCase(col.Name)
 		data.Fields = append(data.Fields, templates.FieldRefData{
 			FieldName:  fieldName,
 			ColumnName: col.Name,
@@ -321,7 +415,7 @@ func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *Table) err
 
 // generateTypeSafeQueryBuilder generates type-safe query builder
 func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table) error {
-	baseName := g.toPascalCase(table.Name)
+	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	builderName := baseName + "Query"
 
@@ -333,7 +427,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 	for _, col := range table.Columns {
 		if col.IsPrimary {
 			primaryKey = col.Name
-			primaryKeyField = g.toPascalCase(col.Name)
+			primaryKeyField = templates.ToPascalCase(col.Name)
 			primaryKeyType = col.GoType
 			break
 		}
@@ -357,7 +451,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 
 		tc := templates.Column{
 			Name:       col.Name,
-			FieldName:  g.toPascalCase(col.Name),
+			FieldName:  templates.ToPascalCase(col.Name),
 			GoType:     col.GoType,
 			IsNullable: col.IsNullable,
 			IsPointer:  isPointer,
@@ -375,14 +469,14 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 
 	// Add FK information for join handling
 	for _, fk := range table.ForeignKeys {
-		referencedTable, ok := g.parser.GetTable(fk.ReferencedTable)
+		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)
 		if !ok {
 			continue
 		}
 
-		referencedBaseName := g.toPascalCase(referencedTable.Name)
+		referencedBaseName := templates.ToPascalCase(referencedTable.Name)
 		referencedStructName := referencedBaseName + "Dto"
-		joinedFieldName := g.toPascalCase(fk.Prefix)
+		joinedFieldName := templates.ToPascalCase(fk.Prefix)
 
 		// Convert referenced table columns
 		var referencedColumns []templates.Column
@@ -390,7 +484,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
 			referencedColumns = append(referencedColumns, templates.Column{
 				Name:       col.Name,
-				FieldName:  g.toPascalCase(col.Name),
+				FieldName:  templates.ToPascalCase(col.Name),
 				GoType:     col.GoType,
 				IsNullable: col.IsNullable,
 				IsPointer:  isPointer,
@@ -399,9 +493,60 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 
 		data.ForeignKeys = append(data.ForeignKeys, templates.ForeignKeyData{
 			JoinedFieldName:      joinedFieldName,
-			ReferencedTable:      fk.ReferencedTable,
+			ReferencedTable:      fk.ReferencedTableName,
 			ReferencedStructName: referencedStructName,
 			ReferencedColumns:    referencedColumns,
+		})
+	}
+
+	// Add reverse relationship information for scanInto
+	for _, reverseRel := range table.ReverseRelationships {
+		fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
+		fromStructName := fromTableBaseName + "Dto"
+		fromTableMethod := fromTableBaseName
+		fkFieldName := templates.ToPascalCase(reverseRel.FKColumn)
+
+		data.ReverseRelations = append(data.ReverseRelations, templates.ReverseRelLoaderField{
+			FieldName:       reverseRel.FieldName,
+			FromTable:       reverseRel.FromTable.Name,
+			FromStructName:  fromStructName,
+			FromTableMethod: fromTableMethod,
+			FKFieldName:     fkFieldName,
+		})
+	}
+
+	// Add M2M relationship information for scanInto
+	for _, m2m := range table.ManyToManyRels {
+		refTable, ok := g.parser.GetTable(m2m.ReferencedTable.Name)
+		if !ok {
+			continue
+		}
+
+		// Find the primary key of the referenced table
+		var refPKField string
+		var refPKType string
+		for _, col := range refTable.Columns {
+			if col.IsPrimary {
+				refPKField = templates.ToPascalCase(col.Name)
+				refPKType = col.GoType
+				break
+			}
+		}
+
+		refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)
+		refStructName := refTableBaseName + "Dto"
+		refTableMethod := refTableBaseName
+
+		data.ManyToManyRels = append(data.ManyToManyRels, templates.ManyToManyLoaderField{
+			FieldName:             m2m.FieldName,
+			JunctionTable:         m2m.JunctionTable.Name,
+			LeftFKColumn:          m2m.LeftFKColumn,
+			RightFKColumn:         m2m.RightFKColumn,
+			ReferencedTable:       m2m.ReferencedTable.Name,
+			ReferencedStructName:  refStructName,
+			ReferencedTableMethod: refTableMethod,
+			ReferencedPKField:     refPKField,
+			ReferencedPKType:      refPKType,
 		})
 	}
 
@@ -417,7 +562,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 
 // generateJoinBuilders generates type-safe join builders
 func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error {
-	baseName := g.toPascalCase(table.Name)
+	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	builderName := baseName + "Query"
 
@@ -432,12 +577,12 @@ func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error 
 
 	// Generate join methods for foreign keys
 	for _, fk := range table.ForeignKeys {
-		referencedTable, ok := g.parser.GetTable(fk.ReferencedTable)
+		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)
 		if !ok {
 			continue
 		}
 
-		referencedBaseName := g.toPascalCase(referencedTable.Name)
+		referencedBaseName := templates.ToPascalCase(referencedTable.Name)
 		referencedStructName := referencedBaseName + "Dto"
 		joinMethodName := "Join" + referencedBaseName
 		leftJoinMethodName := "LeftJoin" + referencedBaseName
@@ -450,8 +595,8 @@ func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error 
 			ReferencedTableName:  referencedTable.Name,
 			ReferencedBaseName:   referencedBaseName,
 			ReferencedStructName: referencedStructName,
-			LeftFieldName:        g.toPascalCase(fk.Column),
-			RightFieldName:       g.toPascalCase(fk.ReferencedColumn),
+			LeftFieldName:        templates.ToPascalCase(fk.Column),
+			RightFieldName:       templates.ToPascalCase(fk.ReferencedColumn),
 		})
 	}
 
@@ -475,7 +620,7 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 
 	// Generate methods for each table
 	for _, table := range g.parser.GetTables() {
-		structName := g.toPascalCase(table.Name)
+		structName := templates.ToPascalCase(table.Name)
 		methodName := structName
 		builderName := structName + "Query"
 
@@ -524,16 +669,6 @@ func (g *Generator) buildStructTags(col Column) string {
 	return "`" + strings.Join(tags, " ") + "`"
 }
 
-func (g *Generator) toPascalCase(s string) string {
-	parts := strings.Split(s, "_")
-	for i, part := range parts {
-		if len(part) > 0 {
-			parts[i] = strings.ToUpper(part[0:1]) + strings.ToLower(part[1:])
-		}
-	}
-	return strings.Join(parts, "")
-}
-
 func (g *Generator) format(fileName string, in []byte) ([]byte, error) {
 	formatted, err := imports.Process(fileName, in, nil)
 	if err != nil {
@@ -547,4 +682,59 @@ func (g *Generator) format(fileName string, in []byte) ([]byte, error) {
 	}
 
 	return formatted, nil
+}
+
+// reverseRelations constructs the list of reverse relations on the table
+func (g *Generator) reverseRelations(table *Table) []templates.ReverseRelField {
+	ret := make([]templates.ReverseRelField, 0, len(table.ReverseRelationships))
+	for _, reverseRel := range table.ReverseRelationships {
+		fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
+		fromStructName := fromTableBaseName + "Dto"
+
+		var fromPKField string
+		for _, col := range reverseRel.FromTable.Columns {
+			if col.IsPrimary {
+				fromPKField = templates.ToPascalCase(col.Name)
+				break
+			}
+		}
+
+		ret = append(ret, templates.ReverseRelField{
+			FieldName:   reverseRel.FieldName,
+			GoType:      "[]*" + fromStructName,
+			FromTable:   reverseRel.FromTable.Name,
+			FKColumn:    reverseRel.FKColumn,
+			FromPKField: fromPKField,
+		})
+	}
+
+	return ret
+}
+
+func (g *Generator) manyToManyRelations(table *Table) []templates.ManyToManyField {
+	ret := make([]templates.ManyToManyField, 0, len(table.ManyToManyRels))
+	for _, m2m := range table.ManyToManyRels {
+		refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)
+		refStructName := refTableBaseName + "Dto"
+
+		var refPKField string
+		for _, col := range m2m.ReferencedTable.Columns {
+			if col.IsPrimary {
+				refPKField = templates.ToPascalCase(col.Name)
+				break
+			}
+		}
+
+		ret = append(ret, templates.ManyToManyField{
+			FieldName:         m2m.FieldName,
+			GoType:            "[]*" + refStructName,
+			JunctionTable:     m2m.JunctionTable.Name,
+			LeftFKColumn:      m2m.LeftFKColumn,
+			RightFKColumn:     m2m.RightFKColumn,
+			ReferencedTable:   m2m.ReferencedTable.Name,
+			ReferencedPKField: refPKField,
+		})
+	}
+
+	return ret
 }

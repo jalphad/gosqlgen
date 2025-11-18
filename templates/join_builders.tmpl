@@ -2,7 +2,7 @@
 // {{ .JoinMethodName }} performs a type-safe inner join with {{ .ReferencedTableName }}
 func (q *{{ $.BuilderName }}) {{ .JoinMethodName }}() *{{ $.BuilderName }} {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "INNER JOIN",
+		Type:       InnerJoin,
 		Table:      "{{ .ReferencedTableName }}",
 		LeftField:  {{ $.BaseName }}Table.{{ .LeftFieldName }}(),
 		RightField: {{ .ReferencedBaseName }}Table.{{ .RightFieldName }}(),
@@ -14,7 +14,7 @@ func (q *{{ $.BuilderName }}) {{ .JoinMethodName }}() *{{ $.BuilderName }} {
 // {{ .LeftJoinMethodName }} performs a type-safe left join with {{ .ReferencedTableName }}
 func (q *{{ $.BuilderName }}) {{ .LeftJoinMethodName }}() *{{ $.BuilderName }} {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "LEFT JOIN",
+		Type:       LeftJoin,
 		Table:      "{{ .ReferencedTableName }}",
 		LeftField:  {{ $.BaseName }}Table.{{ .LeftFieldName }}(),
 		RightField: {{ .ReferencedBaseName }}Table.{{ .RightFieldName }}(),
@@ -26,7 +26,7 @@ func (q *{{ $.BuilderName }}) {{ .LeftJoinMethodName }}() *{{ $.BuilderName }} {
 {{- end }}
 
 // JoinOn performs a custom join with type-safe field references
-func (q *{{ .BuilderName }}) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *{{ .BuilderName }} {
+func (q *{{ .BuilderName }}) JoinOn(joinType JoinType, table string, leftField, rightField *FieldRef) *{{ .BuilderName }} {
 	q.joins = append(q.joins, JoinClause{
 		Type:       joinType,
 		Table:      table,

@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -19,15 +20,41 @@ type CommentsDto struct {
 	Content    string     `db:"content" json:"content"`
 	IsApproved *bool      `db:"is_approved" json:"is_approved"`
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
+	TestDate   *time.Time `db:"test_date" json:"test_date"`
+	TestTime   *time.Time `db:"test_time" json:"test_time"`
 
 	// Joined relationships (populated when corresponding Join method is called)
 	Post *PostsDto `joined:"posts" fk:"post_id"`
 	User *UsersDto `joined:"users" fk:"user_id"`
+
+	// FromExpressions stores custom aggregations and expressions not mapped to fields
+	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for CommentsDto
 func (c *CommentsDto) TableName() string {
 	return "comments"
+}
+
+func (c *CommentsDto) UnmarshalJSON(b []byte) error {
+	type CommentsDto_ CommentsDto
+	type DtoWrapper struct {
+		CommentsDto_
+		TestDate DateWrapper       `db:"test_date" json:"test_date"`
+		TestTime TimeWithTZWrapper `db:"test_time" json:"test_time"`
+	}
+
+	var wrapper DtoWrapper
+	err := json.Unmarshal(b, &wrapper)
+	if err != nil {
+		return err
+	}
+
+	*c = CommentsDto(wrapper.CommentsDto_)
+	c.TestDate = &wrapper.TestDate.Time
+	c.TestTime = &wrapper.TestTime.Time
+
+	return nil
 }
 
 // CommentsFields provides type-safe field references for CommentsDto
@@ -39,54 +66,78 @@ var CommentsTable = CommentsFields{}
 // Id returns a field reference for CommentsDto.Id
 func (c CommentsFields) Id() *FieldRef {
 	return &FieldRef{
-		Table:  "comments",
-		Column: "id",
-		GoType: "int64",
+		Table:      "comments",
+		Expression: "id",
 	}
 }
 
 // PostId returns a field reference for CommentsDto.PostId
 func (c CommentsFields) PostId() *FieldRef {
 	return &FieldRef{
-		Table:  "comments",
-		Column: "post_id",
-		GoType: "int64",
+		Table:      "comments",
+		Expression: "post_id",
 	}
 }
 
 // UserId returns a field reference for CommentsDto.UserId
 func (c CommentsFields) UserId() *FieldRef {
 	return &FieldRef{
-		Table:  "comments",
-		Column: "user_id",
-		GoType: "string",
+		Table:      "comments",
+		Expression: "user_id",
 	}
 }
 
 // Content returns a field reference for CommentsDto.Content
 func (c CommentsFields) Content() *FieldRef {
 	return &FieldRef{
-		Table:  "comments",
-		Column: "content",
-		GoType: "string",
+		Table:      "comments",
+		Expression: "content",
 	}
 }
 
 // IsApproved returns a field reference for CommentsDto.IsApproved
 func (c CommentsFields) IsApproved() *FieldRef {
 	return &FieldRef{
-		Table:  "comments",
-		Column: "is_approved",
-		GoType: "bool",
+		Table:      "comments",
+		Expression: "is_approved",
 	}
 }
 
 // CreatedAt returns a field reference for CommentsDto.CreatedAt
 func (c CommentsFields) CreatedAt() *FieldRef {
 	return &FieldRef{
-		Table:  "comments",
-		Column: "created_at",
-		GoType: "time.Time",
+		Table:      "comments",
+		Expression: "created_at",
+	}
+}
+
+// TestDate returns a field reference for CommentsDto.TestDate
+func (c CommentsFields) TestDate() *FieldRef {
+	return &FieldRef{
+		Table:      "comments",
+		Expression: "test_date",
+	}
+}
+
+// TestTime returns a field reference for CommentsDto.TestTime
+func (c CommentsFields) TestTime() *FieldRef {
+	return &FieldRef{
+		Table:      "comments",
+		Expression: "test_time",
+	}
+}
+
+// AllFields returns all field references for CommentsDto
+func (c CommentsFields) AllFields() []*FieldRef {
+	return []*FieldRef{
+		c.Id(),
+		c.PostId(),
+		c.UserId(),
+		c.Content(),
+		c.IsApproved(),
+		c.CreatedAt(),
+		c.TestDate(),
+		c.TestTime(),
 	}
 }
 
@@ -124,19 +175,6 @@ func (q *CommentsQuery) WithTx(tx pgx.Tx) *CommentsQuery {
 // Select specifies fields to select using type-safe field references
 func (q *CommentsQuery) Select(fields ...*FieldRef) *CommentsQuery {
 	q.selectFields = fields
-	return q
-}
-
-// SelectAll selects all fields
-func (q *CommentsQuery) SelectAll() *CommentsQuery {
-	q.selectFields = []*FieldRef{
-		CommentsTable.Id(),
-		CommentsTable.PostId(),
-		CommentsTable.UserId(),
-		CommentsTable.Content(),
-		CommentsTable.IsApproved(),
-		CommentsTable.CreatedAt(),
-	}
 	return q
 }
 
@@ -500,6 +538,172 @@ func (q *CommentsQuery) OrderByCreatedAt(dir OrderDirection) *CommentsQuery {
 	return q
 }
 
+// WhereTestDate adds a condition for TestDate
+func (q *CommentsQuery) WhereTestDate(op ComparisonOp, value time.Time) *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestDate(),
+		Op:      op,
+		Value:   value,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// WhereTestDateEq adds an equality condition for TestDate
+func (q *CommentsQuery) WhereTestDateEq(value time.Time) *CommentsQuery {
+	return q.WhereTestDate(EQ, value)
+}
+
+// WhereTestDateNotEq adds a not-equal condition for TestDate
+func (q *CommentsQuery) WhereTestDateNotEq(value time.Time) *CommentsQuery {
+	return q.WhereTestDate(NEQ, value)
+}
+
+// WhereTestDateGt adds a greater-than condition for TestDate
+func (q *CommentsQuery) WhereTestDateGt(value time.Time) *CommentsQuery {
+	return q.WhereTestDate(GT, value)
+}
+
+// WhereTestDateGte adds a greater-than-or-equal condition for TestDate
+func (q *CommentsQuery) WhereTestDateGte(value time.Time) *CommentsQuery {
+	return q.WhereTestDate(GTE, value)
+}
+
+// WhereTestDateLt adds a less-than condition for TestDate
+func (q *CommentsQuery) WhereTestDateLt(value time.Time) *CommentsQuery {
+	return q.WhereTestDate(LT, value)
+}
+
+// WhereTestDateLte adds a less-than-or-equal condition for TestDate
+func (q *CommentsQuery) WhereTestDateLte(value time.Time) *CommentsQuery {
+	return q.WhereTestDate(LTE, value)
+}
+
+// WhereTestDateIn adds an IN condition for TestDate
+func (q *CommentsQuery) WhereTestDateIn(values ...time.Time) *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestDate(),
+		Op:      IN,
+		Value:   values,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// WhereTestDateIsNull adds an IS NULL condition for TestDate
+func (q *CommentsQuery) WhereTestDateIsNull() *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestDate(),
+		Op:      EQ,
+		Value:   nil,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// WhereTestDateIsNotNull adds an IS NOT NULL condition for TestDate
+func (q *CommentsQuery) WhereTestDateIsNotNull() *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestDate(),
+		Op:      NEQ,
+		Value:   nil,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// OrderByTestDate adds ORDER BY for TestDate
+func (q *CommentsQuery) OrderByTestDate(dir OrderDirection) *CommentsQuery {
+	q.orderBy = append(q.orderBy, OrderClause{
+		Field:     CommentsTable.TestDate(),
+		Direction: dir,
+	})
+	return q
+}
+
+// WhereTestTime adds a condition for TestTime
+func (q *CommentsQuery) WhereTestTime(op ComparisonOp, value time.Time) *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestTime(),
+		Op:      op,
+		Value:   value,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// WhereTestTimeEq adds an equality condition for TestTime
+func (q *CommentsQuery) WhereTestTimeEq(value time.Time) *CommentsQuery {
+	return q.WhereTestTime(EQ, value)
+}
+
+// WhereTestTimeNotEq adds a not-equal condition for TestTime
+func (q *CommentsQuery) WhereTestTimeNotEq(value time.Time) *CommentsQuery {
+	return q.WhereTestTime(NEQ, value)
+}
+
+// WhereTestTimeGt adds a greater-than condition for TestTime
+func (q *CommentsQuery) WhereTestTimeGt(value time.Time) *CommentsQuery {
+	return q.WhereTestTime(GT, value)
+}
+
+// WhereTestTimeGte adds a greater-than-or-equal condition for TestTime
+func (q *CommentsQuery) WhereTestTimeGte(value time.Time) *CommentsQuery {
+	return q.WhereTestTime(GTE, value)
+}
+
+// WhereTestTimeLt adds a less-than condition for TestTime
+func (q *CommentsQuery) WhereTestTimeLt(value time.Time) *CommentsQuery {
+	return q.WhereTestTime(LT, value)
+}
+
+// WhereTestTimeLte adds a less-than-or-equal condition for TestTime
+func (q *CommentsQuery) WhereTestTimeLte(value time.Time) *CommentsQuery {
+	return q.WhereTestTime(LTE, value)
+}
+
+// WhereTestTimeIn adds an IN condition for TestTime
+func (q *CommentsQuery) WhereTestTimeIn(values ...time.Time) *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestTime(),
+		Op:      IN,
+		Value:   values,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// WhereTestTimeIsNull adds an IS NULL condition for TestTime
+func (q *CommentsQuery) WhereTestTimeIsNull() *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestTime(),
+		Op:      EQ,
+		Value:   nil,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// WhereTestTimeIsNotNull adds an IS NOT NULL condition for TestTime
+func (q *CommentsQuery) WhereTestTimeIsNotNull() *CommentsQuery {
+	q.conditions = append(q.conditions, Condition{
+		Field:   CommentsTable.TestTime(),
+		Op:      NEQ,
+		Value:   nil,
+		Logical: q.logical,
+	})
+	return q
+}
+
+// OrderByTestTime adds ORDER BY for TestTime
+func (q *CommentsQuery) OrderByTestTime(dir OrderDirection) *CommentsQuery {
+	q.orderBy = append(q.orderBy, OrderClause{
+		Field:     CommentsTable.TestTime(),
+		Direction: dir,
+	})
+	return q
+}
+
 // And sets the logical operator to AND for subsequent conditions
 func (q *CommentsQuery) And() *CommentsQuery {
 	q.logical = AND
@@ -583,7 +787,7 @@ func (q *CommentsQuery) buildQuery() (string, []interface{}) {
 	// JOIN clauses
 	for _, join := range q.joins {
 		query.WriteString(" ")
-		query.WriteString(join.Type)
+		query.WriteString(string(join.Type))
 		query.WriteString(" ")
 		query.WriteString(join.Table)
 		query.WriteString(" ON ")
@@ -767,7 +971,7 @@ func (q *CommentsQuery) FindOne(ctx context.Context) (*CommentsDto, error) {
 func (q *CommentsQuery) Count(ctx context.Context) (int64, error) {
 	// Save and restore select fields
 	originalSelect := q.selectFields
-	countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
+	countField := &FieldRef{Table: "", Expression: "COUNT(*)", Alias: ""}
 	q.selectFields = []*FieldRef{countField}
 	defer func() { q.selectFields = originalSelect }()
 
@@ -784,44 +988,210 @@ func (q *CommentsQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *CommentsQuery) scanInto(rows pgx.Rows, dest *CommentsDto) error {
-	// Build scan destinations dynamically based on active joins
 	var scanDest []interface{}
+	var jsonUnmarshalFuncs []func() error
 
-	// Add main table columns
-	scanDest = append(scanDest, &dest.Id)
-	scanDest = append(scanDest, &dest.PostId)
-	scanDest = append(scanDest, &dest.UserId)
-	scanDest = append(scanDest, &dest.Content)
-	scanDest = append(scanDest, &dest.IsApproved)
-	scanDest = append(scanDest, &dest.CreatedAt)
+	if len(q.selectFields) > 0 {
+		// Use selectFields - scan in exact order
+		for _, field := range q.selectFields {
+			destPtr, unmarshalFunc := q.getScanDestForField(field, dest)
+			scanDest = append(scanDest, destPtr)
+			if unmarshalFunc != nil {
+				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+			}
+		}
+	} else {
+		// Default behavior - scan all table columns + joined tables
+		scanDest = append(scanDest, &dest.Id)
+		scanDest = append(scanDest, &dest.PostId)
+		scanDest = append(scanDest, &dest.UserId)
+		scanDest = append(scanDest, &dest.Content)
+		scanDest = append(scanDest, &dest.IsApproved)
+		scanDest = append(scanDest, &dest.CreatedAt)
+		scanDest = append(scanDest, &dest.TestDate)
+		scanDest = append(scanDest, &dest.TestTime)
 
-	// Add joined table columns if active
-	if q.activeJoins["posts"] {
-		joinedPost := &PostsDto{}
-		scanDest = append(scanDest, &joinedPost.Id)
-		scanDest = append(scanDest, &joinedPost.UserId)
-		scanDest = append(scanDest, &joinedPost.Title)
-		scanDest = append(scanDest, &joinedPost.Content)
-		scanDest = append(scanDest, &joinedPost.Status)
-		scanDest = append(scanDest, &joinedPost.PublishedAt)
-		scanDest = append(scanDest, &joinedPost.ViewCount)
-		scanDest = append(scanDest, &joinedPost.CreatedAt)
-		scanDest = append(scanDest, &joinedPost.UpdatedAt)
-		dest.Post = joinedPost
+		// Add joined table columns if active
+		if q.activeJoins["posts"] {
+			joinedPost := &PostsDto{}
+			scanDest = append(scanDest, &joinedPost.Id)
+			scanDest = append(scanDest, &joinedPost.UserId)
+			scanDest = append(scanDest, &joinedPost.Title)
+			scanDest = append(scanDest, &joinedPost.Content)
+			scanDest = append(scanDest, &joinedPost.Status)
+			scanDest = append(scanDest, &joinedPost.PublishedAt)
+			scanDest = append(scanDest, &joinedPost.ViewCount)
+			scanDest = append(scanDest, &joinedPost.CreatedAt)
+			scanDest = append(scanDest, &joinedPost.UpdatedAt)
+			dest.Post = joinedPost
+		}
+		if q.activeJoins["users"] {
+			joinedUser := &UsersDto{}
+			scanDest = append(scanDest, &joinedUser.Id)
+			scanDest = append(scanDest, &joinedUser.Username)
+			scanDest = append(scanDest, &joinedUser.Email)
+			scanDest = append(scanDest, &joinedUser.FullName)
+			scanDest = append(scanDest, &joinedUser.CreatedAt)
+			scanDest = append(scanDest, &joinedUser.UpdatedAt)
+			scanDest = append(scanDest, &joinedUser.IsActive)
+			dest.User = joinedUser
+		}
 	}
-	if q.activeJoins["users"] {
-		joinedUser := &UsersDto{}
-		scanDest = append(scanDest, &joinedUser.Id)
-		scanDest = append(scanDest, &joinedUser.Username)
-		scanDest = append(scanDest, &joinedUser.Email)
-		scanDest = append(scanDest, &joinedUser.FullName)
-		scanDest = append(scanDest, &joinedUser.CreatedAt)
-		scanDest = append(scanDest, &joinedUser.UpdatedAt)
-		scanDest = append(scanDest, &joinedUser.IsActive)
-		dest.User = joinedUser
+
+	// Perform scan
+	if err := rows.Scan(scanDest...); err != nil {
+		return err
 	}
 
-	return rows.Scan(scanDest...)
+	// Execute JSON unmarshal functions and collect errors
+	var unmarshalErrors []error
+	for _, fn := range jsonUnmarshalFuncs {
+		if err := fn(); err != nil {
+			unmarshalErrors = append(unmarshalErrors, err)
+		}
+	}
+
+	if len(unmarshalErrors) > 0 {
+		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+	}
+
+	return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (q *CommentsQuery) getScanDestForField(field *FieldRef, dest *CommentsDto) (interface{}, func() error) {
+	alias := field.Alias
+	if alias == "" {
+		// Use expression as alias if no explicit alias
+		alias = field.Expression
+	}
+
+	// Normalize alias for matching (lowercase)
+	aliasLower := strings.ToLower(alias)
+
+	// Check if alias matches a regular table column
+	if field.Table == "comments" {
+
+		if aliasLower == "id" {
+			return &dest.Id, nil
+		}
+
+		if aliasLower == "post_id" || aliasLower == "postid" {
+			return &dest.PostId, nil
+		}
+
+		if aliasLower == "user_id" || aliasLower == "userid" {
+			return &dest.UserId, nil
+		}
+
+		if aliasLower == "content" {
+			return &dest.Content, nil
+		}
+
+		if aliasLower == "is_approved" || aliasLower == "isapproved" {
+			return &dest.IsApproved, nil
+		}
+
+		if aliasLower == "created_at" || aliasLower == "createdat" {
+			return &dest.CreatedAt, nil
+		}
+
+		if aliasLower == "test_date" || aliasLower == "testdate" {
+			return &dest.TestDate, nil
+		}
+
+		if aliasLower == "test_time" || aliasLower == "testtime" {
+			return &dest.TestTime, nil
+		}
+	}
+	// Check if it matches a joined table column
+	if field.Table == "posts" && q.activeJoins["posts"] {
+		if dest.Post == nil {
+			dest.Post = &PostsDto{}
+		}
+
+		if aliasLower == "id" {
+			return &dest.Post.Id, nil
+		}
+
+		if aliasLower == "user_id" || aliasLower == "userid" {
+			return &dest.Post.UserId, nil
+		}
+
+		if aliasLower == "title" {
+			return &dest.Post.Title, nil
+		}
+
+		if aliasLower == "content" {
+			return &dest.Post.Content, nil
+		}
+
+		if aliasLower == "status" {
+			return &dest.Post.Status, nil
+		}
+
+		if aliasLower == "published_at" || aliasLower == "publishedat" {
+			return &dest.Post.PublishedAt, nil
+		}
+
+		if aliasLower == "view_count" || aliasLower == "viewcount" {
+			return &dest.Post.ViewCount, nil
+		}
+
+		if aliasLower == "created_at" || aliasLower == "createdat" {
+			return &dest.Post.CreatedAt, nil
+		}
+
+		if aliasLower == "updated_at" || aliasLower == "updatedat" {
+			return &dest.Post.UpdatedAt, nil
+		}
+	}
+	if field.Table == "users" && q.activeJoins["users"] {
+		if dest.User == nil {
+			dest.User = &UsersDto{}
+		}
+
+		if aliasLower == "id" {
+			return &dest.User.Id, nil
+		}
+
+		if aliasLower == "username" {
+			return &dest.User.Username, nil
+		}
+
+		if aliasLower == "email" {
+			return &dest.User.Email, nil
+		}
+
+		if aliasLower == "full_name" || aliasLower == "fullname" {
+			return &dest.User.FullName, nil
+		}
+
+		if aliasLower == "created_at" || aliasLower == "createdat" {
+			return &dest.User.CreatedAt, nil
+		}
+
+		if aliasLower == "updated_at" || aliasLower == "updatedat" {
+			return &dest.User.UpdatedAt, nil
+		}
+
+		if aliasLower == "is_active" || aliasLower == "isactive" {
+			return &dest.User.IsActive, nil
+		}
+	}
+
+	// No match - store in FromExpressions as interface{}
+	if dest.FromExpressions == nil {
+		dest.FromExpressions = make(map[string]interface{})
+	}
+	var value interface{}
+	// Store a pointer to value that we'll populate after scan
+	unmarshalFunc := func() error {
+		dest.FromExpressions[alias] = value
+		return nil
+	}
+	return &value, unmarshalFunc
 }
 
 // Insert inserts a new record
@@ -863,6 +1233,20 @@ func (q *CommentsQuery) Insert(ctx context.Context, record *CommentsDto) error {
 		columns = append(columns, "created_at")
 		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
 		args = append(args, record.CreatedAt)
+		argIdx++
+	}
+
+	if record.TestDate != nil {
+		columns = append(columns, "test_date")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+		args = append(args, record.TestDate)
+		argIdx++
+	}
+
+	if record.TestTime != nil {
+		columns = append(columns, "test_time")
+		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+		args = append(args, record.TestTime)
 		argIdx++
 	}
 
@@ -931,6 +1315,20 @@ func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*CommentsDto)
 			argIdx++
 		}
 
+		if record.TestDate != nil {
+			columns = append(columns, "test_date")
+			placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+			args = append(args, record.TestDate)
+			argIdx++
+		}
+
+		if record.TestTime != nil {
+			columns = append(columns, "test_time")
+			placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
+			args = append(args, record.TestTime)
+			argIdx++
+		}
+
 		if len(columns) > 0 {
 			query := fmt.Sprintf("INSERT INTO comments (%s) VALUES (%s) RETURNING id",
 				strings.Join(columns, ", "),
@@ -961,7 +1359,7 @@ func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*CommentsDto)
 // Update updates a record using its primary key
 func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 	query := "UPDATE comments SET " +
-		"post_id = $2, user_id = $3, content = $4, is_approved = $5, created_at = $6" +
+		"post_id = $2, user_id = $3, content = $4, is_approved = $5, created_at = $6, test_date = $7, test_time = $8" +
 		" WHERE id = $1"
 
 	var tag pgconn.CommandTag
@@ -975,6 +1373,8 @@ func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 			record.Content,
 			record.IsApproved,
 			record.CreatedAt,
+			record.TestDate,
+			record.TestTime,
 		)
 	} else {
 		tag, err = q.pool.Exec(ctx, query,
@@ -984,6 +1384,8 @@ func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 			record.Content,
 			record.IsApproved,
 			record.CreatedAt,
+			record.TestDate,
+			record.TestTime,
 		)
 	}
 
@@ -1012,7 +1414,7 @@ func (q *CommentsQuery) UpdateFields(ctx context.Context, updates map[*FieldRef]
 
 	setClauses := make([]string, 0, len(updates))
 	for field, value := range updates {
-		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Column, argIndex))
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Expression, argIndex))
 		args = append(args, value)
 		argIndex++
 	}
@@ -1077,7 +1479,7 @@ func (q *CommentsQuery) Delete(ctx context.Context) (int64, error) {
 // JoinPosts performs a type-safe inner join with posts
 func (q *CommentsQuery) JoinPosts() *CommentsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "INNER JOIN",
+		Type:       InnerJoin,
 		Table:      "posts",
 		LeftField:  CommentsTable.PostId(),
 		RightField: PostsTable.Id(),
@@ -1089,7 +1491,7 @@ func (q *CommentsQuery) JoinPosts() *CommentsQuery {
 // LeftJoinPosts performs a type-safe left join with posts
 func (q *CommentsQuery) LeftJoinPosts() *CommentsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "LEFT JOIN",
+		Type:       LeftJoin,
 		Table:      "posts",
 		LeftField:  CommentsTable.PostId(),
 		RightField: PostsTable.Id(),
@@ -1101,7 +1503,7 @@ func (q *CommentsQuery) LeftJoinPosts() *CommentsQuery {
 // JoinUsers performs a type-safe inner join with users
 func (q *CommentsQuery) JoinUsers() *CommentsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "INNER JOIN",
+		Type:       InnerJoin,
 		Table:      "users",
 		LeftField:  CommentsTable.UserId(),
 		RightField: UsersTable.Id(),
@@ -1113,7 +1515,7 @@ func (q *CommentsQuery) JoinUsers() *CommentsQuery {
 // LeftJoinUsers performs a type-safe left join with users
 func (q *CommentsQuery) LeftJoinUsers() *CommentsQuery {
 	q.joins = append(q.joins, JoinClause{
-		Type:       "LEFT JOIN",
+		Type:       LeftJoin,
 		Table:      "users",
 		LeftField:  CommentsTable.UserId(),
 		RightField: UsersTable.Id(),
@@ -1123,7 +1525,7 @@ func (q *CommentsQuery) LeftJoinUsers() *CommentsQuery {
 }
 
 // JoinOn performs a custom join with type-safe field references
-func (q *CommentsQuery) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *CommentsQuery {
+func (q *CommentsQuery) JoinOn(joinType JoinType, table string, leftField, rightField *FieldRef) *CommentsQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       joinType,
 		Table:      table,

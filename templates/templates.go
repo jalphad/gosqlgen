@@ -3,6 +3,8 @@ package templates
 import (
 	"bytes"
 	_ "embed"
+	"slices"
+	"strings"
 	"text/template"
 )
 
@@ -24,6 +26,9 @@ var joinBuildersTemplate string
 //go:embed db_wrapper.tmpl
 var dbWrapperTemplate string
 
+//go:embed collection_loaders.tmpl
+var collectionLoadersTemplate string
+
 // QueryBuilderData contains the data for rendering the query builder template
 type QueryBuilderData struct {
 	BaseName           string
@@ -36,7 +41,9 @@ type QueryBuilderData struct {
 	PrimaryKey         string
 	PrimaryKeyField    string
 	PrimaryKeyType     string
-	ForeignKeys        []ForeignKeyData // FK information for join handling
+	ForeignKeys        []ForeignKeyData        // FK information for join handling
+	ReverseRelations   []ReverseRelLoaderField // 1-to-many relationships
+	ManyToManyRels     []ManyToManyLoaderField // Many-to-many relationships
 }
 
 // Column represents template column data
@@ -58,37 +65,71 @@ type ForeignKeyData struct {
 
 // TableStructData contains the data for rendering the table struct template
 type TableStructData struct {
-	StructName   string
-	TableName    string
-	ReceiverName string
-	Fields       []StructField
-	JoinedFields []JoinedField
+	StructName       string
+	TableName        string
+	ReceiverName     string
+	Fields           []StructField
+	JoinedFields     []JoinedField
+	ReverseRelFields []ReverseRelField
+	ManyToManyFields []ManyToManyField
 }
 
 // StructField represents a field in the generated struct
 type StructField struct {
 	FieldName  string
 	GoType     string
+	SQLType    string
 	StructTags string
 }
 
 // JoinedField represents a joined relationship field
 type JoinedField struct {
 	FieldName        string // e.g., "User", "Author", "Sender"
-	StructType       string // e.g., "*UsersDto"
+	GoType           string // e.g., "*UsersDto"
 	ReferencedTable  string // e.g., "users"
 	FKColumn         string // e.g., "user_id"
 	ReferencedColumn string // e.g., "id"
 }
 
+// ReverseRelLoaderField contains data for reverse relationship loader
+type ReverseRelLoaderField struct {
+	FieldName       string // "Posts"
+	FromTable       string // "posts"
+	FromStructName  string // "PostsDto"
+	FromTableMethod string // "Posts" (DB wrapper method name)
+	FKFieldName     string // "UserId"
+}
+
+// ReverseRelField represents a reverse one-to-many relationship field
+type ReverseRelField struct {
+	FieldName   string // e.g., "Posts"
+	GoType      string // e.g., "[]*PostsDto"
+	FromTable   string // e.g., "posts"
+	FKColumn    string // e.g., "user_id"
+	FromPKField string // e.g., "Id"
+}
+
+// ManyToManyField represents a many-to-many relationship field
+type ManyToManyField struct {
+	FieldName         string // e.g., "Tags"
+	GoType            string // e.g., "[]*TagsDto"
+	JunctionTable     string // e.g., "post_tags"
+	LeftFKColumn      string // e.g., "post_id"
+	RightFKColumn     string // e.g., "tag_id"
+	ReferencedTable   string // e.g., "tags"
+	ReferencedPKField string // e.g., "Id"
+}
+
 // FieldReferencesData contains the data for rendering field references template
 type FieldReferencesData struct {
-	BaseName       string
-	StructName     string
-	TableName      string
-	FieldsTypeName string
-	ReceiverName   string
-	Fields         []FieldRefData
+	BaseName         string
+	StructName       string
+	TableName        string
+	FieldsTypeName   string
+	ReceiverName     string
+	Fields           []FieldRefData
+	ReverseRelations []ReverseRelField
+	ManyToManyRels   []ManyToManyField
 }
 
 // FieldRefData represents a field reference
@@ -131,11 +172,37 @@ type TableMethod struct {
 	TableName   string
 }
 
+// CollectionLoaderData contains data for rendering collection loader methods
+type CollectionLoaderData struct {
+	StructName       string
+	TableName        string
+	ReceiverName     string
+	HasPrimaryKey    bool
+	PrimaryKeyField  string
+	PrimaryKeyType   string
+	ReverseRelFields []ReverseRelLoaderField
+	ManyToManyFields []ManyToManyLoaderField
+}
+
+// ManyToManyLoaderField contains data for M2M loader
+type ManyToManyLoaderField struct {
+	FieldName             string // "Tags"
+	JunctionTable         string // "post_tags"
+	LeftFKColumn          string // "post_id"
+	RightFKColumn         string // "tag_id"
+	ReferencedTable       string // "tags"
+	ReferencedStructName  string // "TagsDto"
+	ReferencedTableMethod string // "Tags" (DB wrapper method name)
+	ReferencedPKField     string // "Id"
+	ReferencedPKType      string // "string"
+}
+
 // RenderQueryBuilder renders the query builder template with the given data
 func RenderQueryBuilder(data QueryBuilderData) (string, error) {
 	// Create template with custom functions
 	funcMap := template.FuncMap{
-		"add": func(a, b int) int { return a + b },
+		"add":     func(a, b int) int { return a + b },
+		"toLower": strings.ToLower,
 	}
 
 	t, err := template.New("queryBuilder").Funcs(funcMap).Parse(queryBuilderTemplate)
@@ -168,7 +235,25 @@ func RenderCommonTypes() (string, error) {
 
 // RenderTableStruct renders the table struct template with the given data
 func RenderTableStruct(data TableStructData) (string, error) {
-	t, err := template.New("tableStruct").Parse(tableStructTemplate)
+	// Create template with custom functions
+	funcMap := template.FuncMap{
+		"isPtr": func(goType string) bool {
+			return strings.HasPrefix(goType, "*")
+		},
+		"hasSuffix": strings.HasSuffix,
+		"needsCustomUnmarshal": func(fields []StructField) bool {
+			for _, field := range fields {
+				if strings.HasSuffix(field.GoType, "time.Time") &&
+					slices.Contains([]string{"DATE", "TIME", "TIMESTAMP"}, field.SQLType) {
+					return true
+				}
+			}
+
+			return false
+		},
+	}
+
+	t, err := template.New("tableStruct").Funcs(funcMap).Parse(tableStructTemplate)
 	if err != nil {
 		return "", err
 	}
@@ -183,7 +268,13 @@ func RenderTableStruct(data TableStructData) (string, error) {
 
 // RenderFieldReferences renders the field references template with the given data
 func RenderFieldReferences(data FieldReferencesData) (string, error) {
-	t, err := template.New("fieldReferences").Parse(fieldReferencesTemplate)
+	// Create template with custom functions
+	funcMap := template.FuncMap{
+		"toLower":      strings.ToLower,
+		"toPascalCase": ToPascalCase,
+	}
+
+	t, err := template.New("fieldReferences").Funcs(funcMap).Parse(fieldReferencesTemplate)
 	if err != nil {
 		return "", err
 	}
@@ -224,4 +315,29 @@ func RenderDBWrapper(data DBWrapperData) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// RenderCollectionLoaders renders the collection loaders template with the given data
+func RenderCollectionLoaders(data CollectionLoaderData) (string, error) {
+	t, err := template.New("collectionLoaders").Parse(collectionLoadersTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+func ToPascalCase(s string) string {
+	parts := strings.Split(s, "_")
+	for i, part := range parts {
+		if len(part) > 0 {
+			parts[i] = strings.ToUpper(part[0:1]) + strings.ToLower(part[1:])
+		}
+	}
+	return strings.Join(parts, "")
 }

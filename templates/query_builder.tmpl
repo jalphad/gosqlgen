@@ -1,3 +1,4 @@
+{{- /*gotype: github.com/jalphad/gosqlgen/templates.QueryBuilderData*/ -}}
 // {{ .BuilderName }} is a type-safe query builder for {{ .StructName }}
 type {{ .BuilderName }} struct {
     pool         *pgxpool.Pool
@@ -32,16 +33,6 @@ func (q *{{ .BuilderName }}) WithTx(tx pgx.Tx) *{{ .BuilderName }} {
 // Select specifies fields to select using type-safe field references
 func (q *{{ .BuilderName }}) Select(fields ...*FieldRef) *{{ .BuilderName }} {
     q.selectFields = fields
-    return q
-}
-
-// SelectAll selects all fields
-func (q *{{ .BuilderName }}) SelectAll() *{{ .BuilderName }} {
-    q.selectFields = []*FieldRef{
-        {{- range .Columns }}
-        {{ $.BaseName }}Table.{{ .FieldName }}(),
-        {{- end }}
-    }
     return q
 }
 
@@ -229,7 +220,7 @@ func (q *{{ .BuilderName }}) buildQuery() (string, []interface{}) {
     // JOIN clauses
     for _, join := range q.joins {
         query.WriteString(" ")
-        query.WriteString(join.Type)
+        query.WriteString(string(join.Type))
         query.WriteString(" ")
         query.WriteString(join.Table)
         query.WriteString(" ON ")
@@ -413,7 +404,7 @@ func (q *{{ .BuilderName }}) FindOne(ctx context.Context) (*{{ .StructName }}, e
 func (q *{{ .BuilderName }}) Count(ctx context.Context) (int64, error) {
     // Save and restore select fields
     originalSelect := q.selectFields
-    countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
+    countField := &FieldRef{Table: "", Expression: "COUNT(*)", Alias: ""}
     q.selectFields = []*FieldRef{countField}
     defer func() { q.selectFields = originalSelect }()
 
@@ -430,26 +421,148 @@ func (q *{{ .BuilderName }}) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *{{ .BuilderName }}) scanInto(rows pgx.Rows, dest *{{ .StructName }}) error {
-    // Build scan destinations dynamically based on active joins
     var scanDest []interface{}
+    var jsonUnmarshalFuncs []func() error
 
-    // Add main table columns
-    {{- range .Columns }}
-    scanDest = append(scanDest, &dest.{{ .FieldName }})
-    {{- end }}
-
-    // Add joined table columns if active
-    {{- range $fk := .ForeignKeys }}
-    if q.activeJoins["{{ $fk.ReferencedTable }}"] {
-        joined{{ $fk.JoinedFieldName }} := &{{ $fk.ReferencedStructName }}{}
-        {{- range $fk.ReferencedColumns }}
-        scanDest = append(scanDest, &joined{{ $fk.JoinedFieldName }}.{{ .FieldName }})
+    if len(q.selectFields) > 0 {
+        // Use selectFields - scan in exact order
+        for _, field := range q.selectFields {
+            destPtr, unmarshalFunc := q.getScanDestForField(field, dest)
+            scanDest = append(scanDest, destPtr)
+            if unmarshalFunc != nil {
+                jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+            }
+        }
+    } else {
+        // Default behavior - scan all table columns + joined tables
+        {{- range .Columns }}
+        scanDest = append(scanDest, &dest.{{ .FieldName }})
         {{- end }}
-        dest.{{ $fk.JoinedFieldName }} = joined{{ $fk.JoinedFieldName }}
+
+        // Add joined table columns if active
+        {{- range $fk := .ForeignKeys }}
+        if q.activeJoins["{{ $fk.ReferencedTable }}"] {
+            joined{{ $fk.JoinedFieldName }} := &{{ $fk.ReferencedStructName }}{}
+            {{- range $fk.ReferencedColumns }}
+            scanDest = append(scanDest, &joined{{ $fk.JoinedFieldName }}.{{ .FieldName }})
+            {{- end }}
+            dest.{{ $fk.JoinedFieldName }} = joined{{ $fk.JoinedFieldName }}
+        }
+        {{- end }}
+    }
+
+    // Perform scan
+    if err := rows.Scan(scanDest...); err != nil {
+        return err
+    }
+
+    // Execute JSON unmarshal functions and collect errors
+    var unmarshalErrors []error
+    for _, fn := range jsonUnmarshalFuncs {
+        if err := fn(); err != nil {
+            unmarshalErrors = append(unmarshalErrors, err)
+        }
+    }
+
+    if len(unmarshalErrors) > 0 {
+        return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+    }
+
+    return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (q *{{ .BuilderName }}) getScanDestForField(field *FieldRef, dest *{{ .StructName }}) (interface{}, func() error) {
+    alias := field.Alias
+    if alias == "" {
+        // Use expression as alias if no explicit alias
+        alias = field.Expression
+    }
+
+    // Normalize alias for matching (lowercase)
+    aliasLower := strings.ToLower(alias)
+
+    {{- if .ReverseRelations }}
+    // Check if alias matches a reverse relationship collection field
+    {{- range .ReverseRelations }}
+    if aliasLower == "{{ .FieldName | toLower }}" {
+        var jsonData []byte
+        unmarshalFunc := func() error {
+            if len(jsonData) > 0 && string(jsonData) != "null" {
+                var items []*{{ .FromStructName }}
+                if err := json.Unmarshal(jsonData, &items); err != nil {
+                    return fmt.Errorf("field {{ .FieldName }}: %w", err)
+                }
+                dest.{{ .FieldName }} = items
+            } else {
+                dest.{{ .FieldName }} = []*{{ .FromStructName }}{}
+            }
+            return nil
+        }
+        return &jsonData, unmarshalFunc
     }
     {{- end }}
+    {{- end }}
 
-    return rows.Scan(scanDest...)
+    {{- if .ManyToManyRels }}
+    // Check if alias matches a many-to-many collection field
+    {{- range .ManyToManyRels }}
+    if aliasLower == "{{ .FieldName | toLower }}" {
+        var jsonData []byte
+        unmarshalFunc := func() error {
+            if len(jsonData) > 0 && string(jsonData) != "null" {
+                var items []*{{ .ReferencedStructName }}
+                if err := json.Unmarshal(jsonData, &items); err != nil {
+                    return fmt.Errorf("field {{ .FieldName }}: %w", err)
+                }
+                dest.{{ .FieldName }} = items
+            } else {
+                dest.{{ .FieldName }} = []*{{ .ReferencedStructName }}{}
+            }
+            return nil
+        }
+        return &jsonData, unmarshalFunc
+    }
+    {{- end }}
+    {{- end }}
+
+    // Check if alias matches a regular table column
+    if field.Table == "{{ .TableName }}" {
+        {{- range .Columns }}
+        {{ template "ifAliasLower" . }}
+            return &dest.{{ .FieldName }}, nil
+        }
+        {{- end }}
+    }
+
+    {{- if .ForeignKeys }}
+    // Check if it matches a joined table column
+    {{- range $fk := .ForeignKeys }}
+    if field.Table == "{{ $fk.ReferencedTable }}" && q.activeJoins["{{ $fk.ReferencedTable }}"] {
+        if dest.{{ $fk.JoinedFieldName }} == nil {
+            dest.{{ $fk.JoinedFieldName }} = &{{ $fk.ReferencedStructName }}{}
+        }
+        {{- range $fk.ReferencedColumns }}
+        {{ template "ifAliasLower" . }}
+            return &dest.{{ $fk.JoinedFieldName }}.{{ .FieldName }}, nil
+        }
+        {{- end }}
+    }
+    {{- end }}
+    {{- end }}
+
+    // No match - store in FromExpressions as interface{}
+    if dest.FromExpressions == nil {
+        dest.FromExpressions = make(map[string]interface{})
+    }
+    var value interface{}
+    // Store a pointer to value that we'll populate after scan
+    unmarshalFunc := func() error {
+        dest.FromExpressions[alias] = value
+        return nil
+    }
+    return &value, unmarshalFunc
 }
 
 // Insert inserts a new record
@@ -627,7 +740,7 @@ func (q *{{ .BuilderName }}) UpdateFields(ctx context.Context, updates map[*Fiel
 
     setClauses := make([]string, 0, len(updates))
     for field, value := range updates {
-        setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Column, argIndex))
+        setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Expression, argIndex))
         args = append(args, value)
         argIndex++
     }
@@ -688,3 +801,11 @@ func (q *{{ .BuilderName }}) Delete(ctx context.Context) (int64, error) {
 
     return tag.RowsAffected(), nil
 }
+
+{{- define "ifAliasLower" }}
+{{- if eq .Name (.FieldName | toLower) }}
+if aliasLower == "{{ .Name }}" {
+{{- else }}
+if aliasLower == "{{ .Name }}" || aliasLower == "{{ .FieldName | toLower }}" {
+{{- end }}
+{{- end }}

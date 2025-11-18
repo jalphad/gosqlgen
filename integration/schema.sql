@@ -32,8 +32,10 @@ CREATE TABLE comments
     post_id     INTEGER NOT NULL,
     user_id     uuid    NOT NULL,
     content     TEXT    NOT NULL,
-    is_approved BOOLEAN   DEFAULT false,
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_approved BOOLEAN                  DEFAULT false,
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    test_date   DATE                     DEFAULT CURRENT_DATE,
+    test_time   TIME WITH TIME ZONE      DEFAULT CURRENT_TIME,
     FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );

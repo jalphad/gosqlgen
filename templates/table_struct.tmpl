@@ -7,12 +7,68 @@ type {{ .StructName }} struct {
 
 	// Joined relationships (populated when corresponding Join method is called)
 {{- range .JoinedFields }}
-	{{ .FieldName }} {{ .StructType }} `joined:"{{ .ReferencedTable }}" fk:"{{ .FKColumn }}"`
+	{{ .FieldName }} {{ .GoType }} `joined:"{{ .ReferencedTable }}" fk:"{{ .FKColumn }}"`
 {{- end }}
 {{- end }}
+{{- if .ReverseRelFields }}
+
+	// One-to-many reverse relationships (populated via LoadXxx methods)
+{{- range .ReverseRelFields }}
+	{{ .FieldName }} {{ .GoType }} `reverse:"{{ .FromTable }}" fk:"{{ .FKColumn }}"`
+{{- end }}
+{{- end }}
+{{- if .ManyToManyFields }}
+
+	// Many-to-many relationships (populated via LoadXxx methods)
+{{- range .ManyToManyFields }}
+	{{ .FieldName }} {{ .GoType }} `manytomany:"{{ .JunctionTable }}"`
+{{- end }}
+{{- end }}
+
+	// FromExpressions stores custom aggregations and expressions not mapped to fields
+	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for {{ .StructName }}
 func ({{ .ReceiverName }} *{{ .StructName }}) TableName() string {
 	return "{{ .TableName }}"
 }
+
+{{- if needsCustomUnmarshal .Fields }}
+func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
+	type {{ .StructName }}_ {{ .StructName }}
+	type DtoWrapper struct {
+		{{ .StructName }}_
+		{{- range .Fields }}
+		{{- if (hasSuffix .GoType "time.Time") }}
+		{{- if eq .SQLType "DATE" }}
+		{{ .FieldName }} DateWrapper {{ .StructTags }}
+		{{- else if eq .SQLType "TIME" }}
+		{{ .FieldName }} TimeWrapper {{ .StructTags }}
+        {{- else if eq .SQLType "TIME WITH TIME ZONE" }}
+        {{ .FieldName }} TimeWithTZWrapper {{ .StructTags }}
+		{{- else if eq .SQLType "TIMESTAMP" }}
+		{{ .FieldName }} NoTimezoneWrapper {{ .StructTags }}
+		{{- end }}
+		{{- end }}
+		{{- end }}
+	}
+
+	var wrapper DtoWrapper
+	err := json.Unmarshal(b, &wrapper)
+	if err != nil {
+		return err
+	}
+
+	*{{ $.ReceiverName }} = {{ .StructName }}(wrapper.{{ .StructName }}_)
+    {{- range .Fields }}
+    {{- if (hasSuffix .GoType "time.Time") }}
+    {{- if or (eq .SQLType "DATE") (eq .SQLType "TIME") (eq .SQLType "TIMESTAMP") (eq .SQLType "TIME WITH TIME ZONE") }}
+    {{ $.ReceiverName }}.{{ .FieldName }} = {{ if isPtr .GoType }}&{{ end }}wrapper.{{ .FieldName }}.Time
+    {{- end }}
+    {{- end }}
+    {{- end }}
+
+	return nil
+}
+{{- end }}

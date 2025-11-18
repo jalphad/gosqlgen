@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -20,11 +21,65 @@ type UsersDto struct {
 	CreatedAt *time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
 	IsActive  *bool      `db:"is_active" json:"is_active"`
+
+	// One-to-many reverse relationships (populated via LoadXxx methods)
+	Comments []*CommentsDto `reverse:"comments" fk:"user_id"`
+	Posts    []*PostsDto    `reverse:"posts" fk:"user_id"`
+
+	// FromExpressions stores custom aggregations and expressions not mapped to fields
+	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for UsersDto
 func (u *UsersDto) TableName() string {
 	return "users"
+}
+
+func (u *UsersDto) UnmarshalJSON(b []byte) error {
+	type UsersDto_ UsersDto
+	type DtoWrapper struct {
+		UsersDto_
+		CreatedAt NoTimezoneWrapper `db:"created_at" json:"created_at"`
+		UpdatedAt NoTimezoneWrapper `db:"updated_at" json:"updated_at"`
+	}
+
+	var wrapper DtoWrapper
+	err := json.Unmarshal(b, &wrapper)
+	if err != nil {
+		return err
+	}
+
+	*u = UsersDto(wrapper.UsersDto_)
+	u.CreatedAt = &wrapper.CreatedAt.Time
+	u.UpdatedAt = &wrapper.UpdatedAt.Time
+
+	return nil
+}
+
+// LoadComments loads associated comments for this users
+func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
+	if u.Id == nil {
+		return nil
+	}
+	results, err := db.Comments().WhereUserIdEq(*u.Id).Find(ctx)
+	if err != nil {
+		return err
+	}
+	u.Comments = results
+	return nil
+}
+
+// LoadPosts loads associated posts for this users
+func (u *UsersDto) LoadPosts(ctx context.Context, db *DB) error {
+	if u.Id == nil {
+		return nil
+	}
+	results, err := db.Posts().WhereUserIdEq(*u.Id).Find(ctx)
+	if err != nil {
+		return err
+	}
+	u.Posts = results
+	return nil
 }
 
 // UsersFields provides type-safe field references for UsersDto
@@ -36,64 +91,98 @@ var UsersTable = UsersFields{}
 // Id returns a field reference for UsersDto.Id
 func (u UsersFields) Id() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "id",
-		GoType: "string",
+		Table:      "users",
+		Expression: "id",
 	}
 }
 
 // Username returns a field reference for UsersDto.Username
 func (u UsersFields) Username() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "username",
-		GoType: "string",
+		Table:      "users",
+		Expression: "username",
 	}
 }
 
 // Email returns a field reference for UsersDto.Email
 func (u UsersFields) Email() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "email",
-		GoType: "string",
+		Table:      "users",
+		Expression: "email",
 	}
 }
 
 // FullName returns a field reference for UsersDto.FullName
 func (u UsersFields) FullName() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "full_name",
-		GoType: "string",
+		Table:      "users",
+		Expression: "full_name",
 	}
 }
 
 // CreatedAt returns a field reference for UsersDto.CreatedAt
 func (u UsersFields) CreatedAt() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "created_at",
-		GoType: "time.Time",
+		Table:      "users",
+		Expression: "created_at",
 	}
 }
 
 // UpdatedAt returns a field reference for UsersDto.UpdatedAt
 func (u UsersFields) UpdatedAt() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "updated_at",
-		GoType: "time.Time",
+		Table:      "users",
+		Expression: "updated_at",
 	}
 }
 
 // IsActive returns a field reference for UsersDto.IsActive
 func (u UsersFields) IsActive() *FieldRef {
 	return &FieldRef{
-		Table:  "users",
-		Column: "is_active",
-		GoType: "bool",
+		Table:      "users",
+		Expression: "is_active",
 	}
+}
+
+// AllFields returns all field references for UsersDto
+func (u UsersFields) AllFields() []*FieldRef {
+	return []*FieldRef{
+		u.Id(),
+		u.Username(),
+		u.Email(),
+		u.FullName(),
+		u.CreatedAt(),
+		u.UpdatedAt(),
+		u.IsActive(),
+	}
+}
+
+// AggregateComments returns a JSON aggregation for Comments
+// Usage: Select(PostsTable.AggregateComments())
+func (u UsersFields) AggregateComments(fields ...*FieldRef) *FieldRef {
+	if len(fields) == 0 {
+		// Use all fields from the related table
+		fields = CommentsTable.AllFields()
+	}
+
+	// First field is used for FILTER (typically the PK)
+	filterField := CommentsTable.Id()
+
+	return JsonAgg("comments", true, filterField, fields...)
+}
+
+// AggregatePosts returns a JSON aggregation for Posts
+// Usage: Select(PostsTable.AggregatePosts())
+func (u UsersFields) AggregatePosts(fields ...*FieldRef) *FieldRef {
+	if len(fields) == 0 {
+		// Use all fields from the related table
+		fields = PostsTable.AllFields()
+	}
+
+	// First field is used for FILTER (typically the PK)
+	filterField := PostsTable.Id()
+
+	return JsonAgg("posts", true, filterField, fields...)
 }
 
 // UsersQuery is a type-safe query builder for UsersDto
@@ -130,20 +219,6 @@ func (q *UsersQuery) WithTx(tx pgx.Tx) *UsersQuery {
 // Select specifies fields to select using type-safe field references
 func (q *UsersQuery) Select(fields ...*FieldRef) *UsersQuery {
 	q.selectFields = fields
-	return q
-}
-
-// SelectAll selects all fields
-func (q *UsersQuery) SelectAll() *UsersQuery {
-	q.selectFields = []*FieldRef{
-		UsersTable.Id(),
-		UsersTable.Username(),
-		UsersTable.Email(),
-		UsersTable.FullName(),
-		UsersTable.CreatedAt(),
-		UsersTable.UpdatedAt(),
-		UsersTable.IsActive(),
-	}
 	return q
 }
 
@@ -665,7 +740,7 @@ func (q *UsersQuery) buildQuery() (string, []interface{}) {
 	// JOIN clauses
 	for _, join := range q.joins {
 		query.WriteString(" ")
-		query.WriteString(join.Type)
+		query.WriteString(string(join.Type))
 		query.WriteString(" ")
 		query.WriteString(join.Table)
 		query.WriteString(" ON ")
@@ -849,7 +924,7 @@ func (q *UsersQuery) FindOne(ctx context.Context) (*UsersDto, error) {
 func (q *UsersQuery) Count(ctx context.Context) (int64, error) {
 	// Save and restore select fields
 	originalSelect := q.selectFields
-	countField := &FieldRef{Table: "", Column: "COUNT(*)", GoType: "int64"}
+	countField := &FieldRef{Table: "", Expression: "COUNT(*)", Alias: ""}
 	q.selectFields = []*FieldRef{countField}
 	defer func() { q.selectFields = originalSelect }()
 
@@ -866,21 +941,139 @@ func (q *UsersQuery) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *UsersQuery) scanInto(rows pgx.Rows, dest *UsersDto) error {
-	// Build scan destinations dynamically based on active joins
 	var scanDest []interface{}
+	var jsonUnmarshalFuncs []func() error
 
-	// Add main table columns
-	scanDest = append(scanDest, &dest.Id)
-	scanDest = append(scanDest, &dest.Username)
-	scanDest = append(scanDest, &dest.Email)
-	scanDest = append(scanDest, &dest.FullName)
-	scanDest = append(scanDest, &dest.CreatedAt)
-	scanDest = append(scanDest, &dest.UpdatedAt)
-	scanDest = append(scanDest, &dest.IsActive)
+	if len(q.selectFields) > 0 {
+		// Use selectFields - scan in exact order
+		for _, field := range q.selectFields {
+			destPtr, unmarshalFunc := q.getScanDestForField(field, dest)
+			scanDest = append(scanDest, destPtr)
+			if unmarshalFunc != nil {
+				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+			}
+		}
+	} else {
+		// Default behavior - scan all table columns + joined tables
+		scanDest = append(scanDest, &dest.Id)
+		scanDest = append(scanDest, &dest.Username)
+		scanDest = append(scanDest, &dest.Email)
+		scanDest = append(scanDest, &dest.FullName)
+		scanDest = append(scanDest, &dest.CreatedAt)
+		scanDest = append(scanDest, &dest.UpdatedAt)
+		scanDest = append(scanDest, &dest.IsActive)
 
-	// Add joined table columns if active
+		// Add joined table columns if active
+	}
 
-	return rows.Scan(scanDest...)
+	// Perform scan
+	if err := rows.Scan(scanDest...); err != nil {
+		return err
+	}
+
+	// Execute JSON unmarshal functions and collect errors
+	var unmarshalErrors []error
+	for _, fn := range jsonUnmarshalFuncs {
+		if err := fn(); err != nil {
+			unmarshalErrors = append(unmarshalErrors, err)
+		}
+	}
+
+	if len(unmarshalErrors) > 0 {
+		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+	}
+
+	return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (q *UsersQuery) getScanDestForField(field *FieldRef, dest *UsersDto) (interface{}, func() error) {
+	alias := field.Alias
+	if alias == "" {
+		// Use expression as alias if no explicit alias
+		alias = field.Expression
+	}
+
+	// Normalize alias for matching (lowercase)
+	aliasLower := strings.ToLower(alias)
+	// Check if alias matches a reverse relationship collection field
+	if aliasLower == "comments" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*CommentsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Comments: %w", err)
+				}
+				dest.Comments = items
+			} else {
+				dest.Comments = []*CommentsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+	if aliasLower == "posts" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*PostsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Posts: %w", err)
+				}
+				dest.Posts = items
+			} else {
+				dest.Posts = []*PostsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+
+	// Check if alias matches a regular table column
+	if field.Table == "users" {
+
+		if aliasLower == "id" {
+			return &dest.Id, nil
+		}
+
+		if aliasLower == "username" {
+			return &dest.Username, nil
+		}
+
+		if aliasLower == "email" {
+			return &dest.Email, nil
+		}
+
+		if aliasLower == "full_name" || aliasLower == "fullname" {
+			return &dest.FullName, nil
+		}
+
+		if aliasLower == "created_at" || aliasLower == "createdat" {
+			return &dest.CreatedAt, nil
+		}
+
+		if aliasLower == "updated_at" || aliasLower == "updatedat" {
+			return &dest.UpdatedAt, nil
+		}
+
+		if aliasLower == "is_active" || aliasLower == "isactive" {
+			return &dest.IsActive, nil
+		}
+	}
+
+	// No match - store in FromExpressions as interface{}
+	if dest.FromExpressions == nil {
+		dest.FromExpressions = make(map[string]interface{})
+	}
+	var value interface{}
+	// Store a pointer to value that we'll populate after scan
+	unmarshalFunc := func() error {
+		dest.FromExpressions[alias] = value
+		return nil
+	}
+	return &value, unmarshalFunc
 }
 
 // Insert inserts a new record
@@ -1103,7 +1296,7 @@ func (q *UsersQuery) UpdateFields(ctx context.Context, updates map[*FieldRef]int
 
 	setClauses := make([]string, 0, len(updates))
 	for field, value := range updates {
-		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Column, argIndex))
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", field.Expression, argIndex))
 		args = append(args, value)
 		argIndex++
 	}
@@ -1166,7 +1359,7 @@ func (q *UsersQuery) Delete(ctx context.Context) (int64, error) {
 }
 
 // JoinOn performs a custom join with type-safe field references
-func (q *UsersQuery) JoinOn(joinType string, table string, leftField, rightField *FieldRef) *UsersQuery {
+func (q *UsersQuery) JoinOn(joinType JoinType, table string, leftField, rightField *FieldRef) *UsersQuery {
 	q.joins = append(q.joins, JoinClause{
 		Type:       joinType,
 		Table:      table,

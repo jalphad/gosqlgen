@@ -1,0 +1,62 @@
+{{- range .ReverseRelFields }}
+// Load{{ .FieldName }} loads associated {{ .FromTable }} for this {{ $.TableName }}
+func ({{ $.ReceiverName }} *{{ $.StructName }}) Load{{ .FieldName }}(ctx context.Context, db *DB) error {
+	{{- if $.HasPrimaryKey }}
+	if {{ $.ReceiverName }}.{{ $.PrimaryKeyField }} == nil {
+		return nil
+	}
+	results, err := db.{{ .FromTableMethod }}().Where{{ .FKFieldName }}Eq(*{{ $.ReceiverName }}.{{ $.PrimaryKeyField }}).Find(ctx)
+	if err != nil {
+		return err
+	}
+	{{ $.ReceiverName }}.{{ .FieldName }} = results
+	return nil
+	{{- else }}
+	return fmt.Errorf("cannot load {{ .FieldName }}: {{ $.StructName }} has no primary key")
+	{{- end }}
+}
+
+{{- end }}
+{{- range .ManyToManyFields }}
+// Load{{ .FieldName }} loads associated {{ .ReferencedTable }} through {{ .JunctionTable }}
+func ({{ $.ReceiverName }} *{{ $.StructName }}) Load{{ .FieldName }}(ctx context.Context, db *DB) error {
+	{{- if $.HasPrimaryKey }}
+	if {{ $.ReceiverName }}.{{ $.PrimaryKeyField }} == nil {
+		return nil
+	}
+
+	// Query junction table to get referenced IDs
+	query := "SELECT {{ .RightFKColumn }} FROM {{ .JunctionTable }} WHERE {{ .LeftFKColumn }} = $1"
+
+	rows, err := db.pool.Query(ctx, query, *{{ $.ReceiverName }}.{{ $.PrimaryKeyField }})
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var ids []{{ .ReferencedPKType }}
+	for rows.Next() {
+		var id {{ .ReferencedPKType }}
+		if err := rows.Scan(&id); err != nil {
+			return err
+		}
+		ids = append(ids, id)
+	}
+
+	if len(ids) == 0 {
+		{{ $.ReceiverName }}.{{ .FieldName }} = []*{{ .ReferencedStructName }}{}
+		return nil
+	}
+
+	results, err := db.{{ .ReferencedTableMethod }}().Where{{ .ReferencedPKField }}In(ids...).Find(ctx)
+	if err != nil {
+		return err
+	}
+	{{ $.ReceiverName }}.{{ .FieldName }} = results
+	return nil
+	{{- else }}
+	return fmt.Errorf("cannot load {{ .FieldName }}: {{ $.StructName }} has no primary key")
+	{{- end }}
+}
+
+{{- end }}

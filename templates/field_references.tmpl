@@ -9,9 +9,49 @@ var {{ .BaseName }}Table = {{ .FieldsTypeName }}{}
 // {{ .FieldName }} returns a field reference for {{ $.StructName }}.{{ .FieldName }}
 func ({{ $.ReceiverName }} {{ $.FieldsTypeName }}) {{ .FieldName }}() *FieldRef {
 	return &FieldRef{
-		Table:  "{{ $.TableName }}",
-		Column: "{{ .ColumnName }}",
-		GoType: "{{ .GoType }}",
+		Table:      "{{ $.TableName }}",
+		Expression: "{{ .ColumnName }}",
 	}
+}
+{{- end }}
+
+// AllFields returns all field references for {{ .StructName }}
+func ({{ .ReceiverName }} {{ .FieldsTypeName }}) AllFields() []*FieldRef {
+	return []*FieldRef{
+		{{- range .Fields }}
+		{{ $.ReceiverName }}.{{ .FieldName }}(),
+		{{- end }}
+	}
+}
+
+{{- range $.ReverseRelations }}
+
+// Aggregate{{ .FieldName }} returns a JSON aggregation for {{ .FieldName }}
+// Usage: Select(PostsTable.Aggregate{{ .FieldName }}())
+func ({{ $.ReceiverName }} {{ $.FieldsTypeName }}) Aggregate{{ .FieldName }}(fields ...*FieldRef) *FieldRef {
+    if len(fields) == 0 {
+        // Use all fields from the related table
+        fields = {{ .FromTable | toPascalCase }}Table.AllFields()
+    }
+
+    // First field is used for FILTER (typically the PK)
+    filterField := {{ .FromTable | toPascalCase }}Table.{{ .FromPKField }}()
+
+    return JsonAgg("{{ .FieldName | toLower }}", true, filterField, fields...)
+}
+{{- end }}
+
+{{- range $.ManyToManyRels }}
+
+// Aggregate{{ .FieldName }} returns a JSON aggregation for {{ .FieldName }} (many-to-many)
+// Note: Requires manual joins through {{ .JunctionTable }}
+func ({{ $.ReceiverName }} {{ $.FieldsTypeName }}) Aggregate{{ .FieldName }}(fields ...*FieldRef) *FieldRef {
+    if len(fields) == 0 {
+        fields = {{ .ReferencedTable | toPascalCase }}Table.AllFields()
+    }
+
+    filterField := {{ .ReferencedTable | toPascalCase }}Table.{{ .ReferencedPKField }}()
+
+    return JsonAgg("{{ .FieldName | toLower }}", true, filterField, fields...)
 }
 {{- end }}
