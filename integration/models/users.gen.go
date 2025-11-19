@@ -23,8 +23,8 @@ type UsersDto struct {
 	IsActive  *bool      `db:"is_active" json:"is_active"`
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
-	Comments []*CommentsDto `reverse:"comments" fk:"user_id"`
 	Posts    []*PostsDto    `reverse:"posts" fk:"user_id"`
+	Comments []*CommentsDto `reverse:"comments" fk:"user_id"`
 
 	// FromExpressions stores custom aggregations and expressions not mapped to fields
 	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
@@ -56,19 +56,6 @@ func (u *UsersDto) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// LoadComments loads associated comments for this users
-func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
-	if u.Id == nil {
-		return nil
-	}
-	results, err := db.Comments().WhereUserIdEq(*u.Id).Find(ctx)
-	if err != nil {
-		return err
-	}
-	u.Comments = results
-	return nil
-}
-
 // LoadPosts loads associated posts for this users
 func (u *UsersDto) LoadPosts(ctx context.Context, db *DB) error {
 	if u.Id == nil {
@@ -79,6 +66,19 @@ func (u *UsersDto) LoadPosts(ctx context.Context, db *DB) error {
 		return err
 	}
 	u.Posts = results
+	return nil
+}
+
+// LoadComments loads associated comments for this users
+func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
+	if u.Id == nil {
+		return nil
+	}
+	results, err := db.Comments().WhereUserIdEq(*u.Id).Find(ctx)
+	if err != nil {
+		return err
+	}
+	u.Comments = results
 	return nil
 }
 
@@ -157,20 +157,6 @@ func (u UsersFields) AllFields() []*FieldRef {
 	}
 }
 
-// AggregateComments returns a JSON aggregation for Comments
-// Usage: Select(PostsTable.AggregateComments())
-func (u UsersFields) AggregateComments(fields ...*FieldRef) *FieldRef {
-	if len(fields) == 0 {
-		// Use all fields from the related table
-		fields = CommentsTable.AllFields()
-	}
-
-	// First field is used for FILTER (typically the PK)
-	filterField := CommentsTable.Id()
-
-	return JsonAgg("comments", true, filterField, fields...)
-}
-
 // AggregatePosts returns a JSON aggregation for Posts
 // Usage: Select(PostsTable.AggregatePosts())
 func (u UsersFields) AggregatePosts(fields ...*FieldRef) *FieldRef {
@@ -183,6 +169,20 @@ func (u UsersFields) AggregatePosts(fields ...*FieldRef) *FieldRef {
 	filterField := PostsTable.Id()
 
 	return JsonAgg("posts", true, filterField, fields...)
+}
+
+// AggregateComments returns a JSON aggregation for Comments
+// Usage: Select(PostsTable.AggregateComments())
+func (u UsersFields) AggregateComments(fields ...*FieldRef) *FieldRef {
+	if len(fields) == 0 {
+		// Use all fields from the related table
+		fields = CommentsTable.AllFields()
+	}
+
+	// First field is used for FILTER (typically the PK)
+	filterField := CommentsTable.Id()
+
+	return JsonAgg("comments", true, filterField, fields...)
 }
 
 // UsersQuery is a type-safe query builder for UsersDto
@@ -998,22 +998,6 @@ func (q *UsersQuery) getScanDestForField(field *FieldRef, dest *UsersDto) (inter
 	// Normalize alias for matching (lowercase)
 	aliasLower := strings.ToLower(alias)
 	// Check if alias matches a reverse relationship collection field
-	if aliasLower == "comments" {
-		var jsonData []byte
-		unmarshalFunc := func() error {
-			if len(jsonData) > 0 && string(jsonData) != "null" {
-				var items []*CommentsDto
-				if err := json.Unmarshal(jsonData, &items); err != nil {
-					return fmt.Errorf("field Comments: %w", err)
-				}
-				dest.Comments = items
-			} else {
-				dest.Comments = []*CommentsDto{}
-			}
-			return nil
-		}
-		return &jsonData, unmarshalFunc
-	}
 	if aliasLower == "posts" {
 		var jsonData []byte
 		unmarshalFunc := func() error {
@@ -1025,6 +1009,22 @@ func (q *UsersQuery) getScanDestForField(field *FieldRef, dest *UsersDto) (inter
 				dest.Posts = items
 			} else {
 				dest.Posts = []*PostsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+	if aliasLower == "comments" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*CommentsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Comments: %w", err)
+				}
+				dest.Comments = items
+			} else {
+				dest.Comments = []*CommentsDto{}
 			}
 			return nil
 		}

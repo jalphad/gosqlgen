@@ -17,7 +17,7 @@ func generateModels() {
 	// Define your SQL schema
 	bts, err := os.ReadFile("schema.sql")
 	if err != nil {
-		log.Fatal("Could not read schema.sql")
+		log.Fatalf("Could not read schema.sql: %s", err.Error())
 	}
 	schema := string(bts)
 

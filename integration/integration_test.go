@@ -126,21 +126,8 @@ func cleanupTables(t *testing.T) {
 func TestIntegration_UserCRUD(t *testing.T) {
 	cleanupTables(t)
 
-	t.Run("foo", func(t *testing.T) {
-		var id int64 = 1
-		ctx := context.Background()
-
-		_, err := testDB.Posts().Select(models.PostsTable.Id(), models.PostsTable.AggregateComments(), models.PostsTable.AggregateTags()).WhereIdEq(id).
-			JoinOn(models.LeftJoin, (&models.CommentsDto{}).TableName(), models.CommentsFields{}.PostId(), models.PostsFields{}.Id()).
-			JoinOn(models.LeftJoin, (&models.PostTagsDto{}).TableName(), models.PostTagsFields{}.PostId(), models.PostsFields{}.Id()).
-			JoinOn(models.LeftJoin, (&models.TagsDto{}).TableName(), models.TagsFields{}.Id(), models.PostTagsFields{}.TagId()).
-			GroupBy(models.PostsFields{}.Id()).FindOne(ctx)
-		if err != nil {
-			return
-		}
-	})
-
 	t.Run("Create User", func(t *testing.T) {
+		// Arrange
 		user := &models.UsersDto{
 			Username:  "johndoe",
 			Email:     "john@example.com",
@@ -150,103 +137,75 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			UpdatedAt: timePtr(time.Now()),
 		}
 
+		// Act
 		err := testDB.Users().Insert(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to insert user: %v", err)
-		}
 
-		if user.Id == nil || *user.Id == "" {
-			t.Error("Expected user ID to be set after insert")
-		}
-
-		t.Logf("Created user with ID: %s", *user.Id)
+		// Assert
+		require.NoError(t, err)
+		require.NotNil(t, user.Id, "expected user ID to be set after insert")
+		assert.NotEmpty(t, *user.Id, "expected user ID to be set after insert")
 	})
 
 	t.Run("Find User by ID", func(t *testing.T) {
-		// Insert a user first
+		// Arrange
 		user := &models.UsersDto{
 			Username: "janedoe",
 			Email:    "jane@example.com",
 		}
 		err := testDB.Users().Insert(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to insert user: %v", err)
-		}
+		require.NoError(t, err)
 
-		// Find the user
+		// Act
 		found, err := testDB.Users().WhereIdEq(*user.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find user: %v", err)
-		}
 
-		if found.Username != "janedoe" {
-			t.Errorf("Expected username 'janedoe', got '%s'", found.Username)
-		}
-		if found.Email != "jane@example.com" {
-			t.Errorf("Expected email 'jane@example.com', got '%s'", found.Email)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, user.Username, found.Username)
+		assert.Equal(t, user.Email, found.Email)
 	})
 
 	t.Run("Update User", func(t *testing.T) {
-		// Insert a user
+		// Arrange
 		user := &models.UsersDto{
 			Username: "updateme",
 			Email:    "update@example.com",
 		}
 		err := testDB.Users().Insert(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to insert user: %v", err)
-		}
+		require.NoError(t, err)
 
-		// Update the user
 		user.Email = "updated@example.com"
 		user.FullName = strPtr("Updated Name")
 
+		// Act
 		err = testDB.Users().Update(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to update user: %v", err)
-		}
-
-		// Verify the update
+		require.NoError(t, err)
 		found, err := testDB.Users().WhereIdEq(*user.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find updated user: %v", err)
-		}
 
-		if found.Email != "updated@example.com" {
-			t.Errorf("Expected email 'updated@example.com', got '%s'", found.Email)
-		}
-		if found.FullName == nil || *found.FullName != "Updated Name" {
-			t.Error("Expected full name to be 'Updated Name'")
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, user.Email, found.Email)
+		assert.Equal(t, user.FullName, found.FullName)
 	})
 
 	t.Run("Delete User", func(t *testing.T) {
-		// Insert a user
+		// Arrange
 		user := &models.UsersDto{
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
 		err := testDB.Users().Insert(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to insert user: %v", err)
-		}
+		require.NoError(t, err)
 
-		// Delete the user
+		// Act
 		deleted, err := testDB.Users().WhereIdEq(*user.Id).Delete(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to delete user: %v", err)
-		}
 
-		if deleted != 1 {
-			t.Errorf("Expected 1 row deleted, got %d", deleted)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.EqualValues(t, 1, deleted)
 
-		// Verify deletion
 		_, err = testDB.Users().WhereIdEq(*user.Id).FindOne(context.Background())
-		if err != pgx.ErrNoRows {
-			t.Error("Expected ErrNoRows after deletion")
-		}
+		require.Error(t, err)
+		assert.ErrorIs(t, err, pgx.ErrNoRows)
 	})
 }
 
@@ -269,105 +228,81 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	}
 
 	t.Run("Where Equals", func(t *testing.T) {
+		// Act
 		results, err := testDB.Users().WhereUsernameEq("alice").Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find users: %v", err)
-		}
 
-		if len(results) != 1 {
-			t.Errorf("Expected 1 user, got %d", len(results))
-		}
-		if results[0].Username != "alice" {
-			t.Errorf("Expected username 'alice', got '%s'", results[0].Username)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 1)
+		assert.Equal(t, "alice", results[0].Username)
 	})
 
 	t.Run("Where LIKE", func(t *testing.T) {
+		// Act
 		results, err := testDB.Users().WhereUsernameLike("a%").Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find users: %v", err)
-		}
 
-		if len(results) != 1 {
-			t.Errorf("Expected 1 user with username starting with 'a', got %d", len(results))
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 1)
 	})
 
 	t.Run("Where IN", func(t *testing.T) {
+		// Act
 		results, err := testDB.Users().WhereUsernameIn("alice", "bob").Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find users: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 users, got %d", len(results))
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
 	})
 
 	t.Run("Where Boolean", func(t *testing.T) {
+		// Act
 		results, err := testDB.Users().WhereIsActiveEq(true).Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find active users: %v", err)
-		}
 
-		if len(results) != 3 {
-			t.Errorf("Expected 3 active users, got %d", len(results))
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 3)
 	})
 
 	t.Run("Order By", func(t *testing.T) {
+		// Arrange
+		expected := []string{"alice", "bob", "charlie", "david"}
+
+		// Act
 		results, err := testDB.Users().
 			OrderByUsername(models.ASC).
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find users: %v", err)
-		}
 
-		if len(results) != 4 {
-			t.Fatalf("Expected 4 users, got %d", len(results))
-		}
-
-		// Verify ordering
-		expected := []string{"alice", "bob", "charlie", "david"}
-		for i, username := range expected {
-			if results[i].Username != username {
-				t.Errorf("Expected user %d to be '%s', got '%s'", i, username, results[i].Username)
-			}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 4)
+		for i, result := range results {
+			assert.Equal(t, expected[i], result.Username)
 		}
 	})
 
 	t.Run("Limit and Offset", func(t *testing.T) {
+		// Act
 		results, err := testDB.Users().
 			OrderByUsername(models.ASC).
 			Limit(2).
 			Offset(1).
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find users: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 users, got %d", len(results))
-		}
-
-		// Should get bob and charlie (offset 1, limit 2)
-		if results[0].Username != "bob" {
-			t.Errorf("Expected first user to be 'bob', got '%s'", results[0].Username)
-		}
-		if results[1].Username != "charlie" {
-			t.Errorf("Expected second user to be 'charlie', got '%s'", results[1].Username)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
+		assert.Equal(t, "bob", results[0].Username)
+		assert.Equal(t, "charlie", results[1].Username)
 	})
 
 	t.Run("Count", func(t *testing.T) {
+		// Act
 		count, err := testDB.Users().WhereIsActiveEq(true).Count(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to count users: %v", err)
-		}
 
-		if count != 3 {
-			t.Errorf("Expected count of 3, got %d", count)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.EqualValues(t, 3, count)
 	})
 }
 
@@ -396,101 +331,64 @@ func TestIntegration_Joins(t *testing.T) {
 	}
 
 	t.Run("Join Users", func(t *testing.T) {
-		// Find posts with join to users
+		// Act
 		results, err := testDB.Posts().
 			JoinUsers().
 			WhereUserIdEq(*user.Id).
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find posts: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 posts, got %d", len(results))
-		}
-
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
 		for _, post := range results {
-			if post.UserId != *user.Id {
-				t.Errorf("Expected user_id %s, got %s", *user.Id, post.UserId)
-			}
+			assert.Equal(t, *user.Id, post.UserId)
 		}
 	})
 
 	t.Run("Filter by Related Table", func(t *testing.T) {
+		// Act
 		results, err := testDB.Posts().
 			WhereStatusEq("published").
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find published posts: %v", err)
-		}
 
-		if len(results) != 1 {
-			t.Errorf("Expected 1 published post, got %d", len(results))
-		}
-
-		if results[0].Title != "First Post" {
-			t.Errorf("Expected 'First Post', got '%s'", results[0].Title)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 1)
+		assert.Equal(t, posts[0].Title, results[0].Title)
 	})
 
 	t.Run("Join Returns User Data", func(t *testing.T) {
-		// Find posts with join to users - should populate User field
+		// Act
 		results, err := testDB.Posts().
 			JoinUsers().
 			WhereUserIdEq(*user.Id).
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find posts with join: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 posts, got %d", len(results))
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
 
 		// Verify User field is populated
-		for i, post := range results {
-			if post.User == nil {
-				t.Errorf("Post %d: Expected User field to be populated, got nil", i)
-				continue
-			}
-
-			if post.User.Id == nil {
-				t.Errorf("Post %d: Expected User.Id to be set", i)
-				continue
-			}
-
-			if *post.User.Id != *user.Id {
-				t.Errorf("Post %d: Expected User.Id to be %s, got %s", i, *user.Id, *post.User.Id)
-			}
-
-			if post.User.Username != "blogger" {
-				t.Errorf("Post %d: Expected User.Username to be 'blogger', got '%s'", i, post.User.Username)
-			}
-
-			if post.User.Email != "blogger@example.com" {
-				t.Errorf("Post %d: Expected User.Email to be 'blogger@example.com', got '%s'", i, post.User.Email)
-			}
+		for _, post := range results {
+			require.NotNil(t, post.User)
+			require.NotNil(t, post.User.Id)
+			assert.Equal(t, *user.Id, *post.User.Id)
+			assert.Equal(t, user.Username, post.User.Username)
+			assert.Equal(t, user.Email, post.User.Email)
 		}
 	})
 
 	t.Run("No Join Means No User Data", func(t *testing.T) {
-		// Find posts WITHOUT join - User field should be nil
+		// Act
 		results, err := testDB.Posts().
 			WhereUserIdEq(*user.Id).
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find posts: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 posts, got %d", len(results))
-		}
-
-		// Verify User field is NOT populated when no join is used
-		for i, post := range results {
-			if post.User != nil {
-				t.Errorf("Post %d: Expected User field to be nil (no join), got %+v", i, post.User)
-			}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
+		for _, post := range results {
+			assert.Nil(t, post.User)
 		}
 	})
 }
@@ -500,9 +398,14 @@ func TestIntegration_Transactions(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Successful Transaction", func(t *testing.T) {
+		// Arrange
+		var user *models.UsersDto
+		var post *models.PostsDto
+
+		// Act
 		err := testDB.Transaction(context.Background(), func(tx *models.Tx) error {
 			// Insert user
-			user := &models.UsersDto{
+			user = &models.UsersDto{
 				Username: "txuser",
 				Email:    "tx@example.com",
 			}
@@ -511,7 +414,7 @@ func TestIntegration_Transactions(t *testing.T) {
 			}
 
 			// Insert post
-			post := &models.PostsDto{
+			post = &models.PostsDto{
 				UserId: *user.Id,
 				Title:  "Transaction Post",
 			}
@@ -522,29 +425,21 @@ func TestIntegration_Transactions(t *testing.T) {
 			return nil
 		})
 
-		if err != nil {
-			t.Fatalf("Transaction failed: %v", err)
-		}
+		// Assert
+		require.NoError(t, err)
 
-		// Verify data was committed
 		users, err := testDB.Users().WhereUsernameEq("txuser").Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find user: %v", err)
-		}
-		if len(users) != 1 {
-			t.Error("Expected user to be committed")
-		}
+		require.NoError(t, err)
+		assert.Len(t, users, 1)
 
 		posts, err := testDB.Posts().WhereTitleEq("Transaction Post").Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find post: %v", err)
-		}
-		if len(posts) != 1 {
-			t.Error("Expected post to be committed")
-		}
+		require.NoError(t, err)
+		assert.Len(t, posts, 1)
+		assert.Equal(t, post.UserId, posts[0].UserId)
 	})
 
 	t.Run("Failed Transaction Rollback", func(t *testing.T) {
+		// Act
 		err := testDB.Transaction(context.Background(), func(tx *models.Tx) error {
 			// Insert user
 			user := &models.UsersDto{
@@ -556,21 +451,15 @@ func TestIntegration_Transactions(t *testing.T) {
 			}
 
 			// Intentionally return error to trigger rollback
-			return fmt.Errorf("intentional error")
+			return assert.AnError
 		})
 
-		if err == nil {
-			t.Fatal("Expected transaction to fail")
-		}
+		// Assert
+		require.Error(t, err)
 
-		// Verify data was rolled back
 		users, err := testDB.Users().WhereUsernameEq("rollbackuser").Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to query users: %v", err)
-		}
-		if len(users) != 0 {
-			t.Error("Expected user to be rolled back")
-		}
+		require.NoError(t, err)
+		assert.Len(t, users, 0)
 	})
 }
 
@@ -579,56 +468,47 @@ func TestIntegration_NullableFields(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Insert with NULL values", func(t *testing.T) {
+		// Arrange
 		user := &models.UsersDto{
 			Username: "nulltest",
 			Email:    "null@example.com",
 			FullName: nil, // NULL value
 		}
 
+		// Act
 		err := testDB.Users().Insert(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to insert user with NULL: %v", err)
-		}
 
-		// Verify NULL was stored
+		// Assert
+		require.NoError(t, err)
+
 		found, err := testDB.Users().WhereIdEq(*user.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find user: %v", err)
-		}
-
-		if found.FullName != nil {
-			t.Error("Expected FullName to be NULL")
-		}
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		assert.Nil(t, found.FullName)
 	})
 
 	t.Run("Update to NULL", func(t *testing.T) {
+		// Arrange
 		user := &models.UsersDto{
 			Username: "nullupdate",
 			Email:    "nullupdate@example.com",
 			FullName: strPtr("Initial Name"),
 		}
-
 		err := testDB.Users().Insert(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to insert user: %v", err)
-		}
+		require.NoError(t, err)
 
-		// Update to NULL
 		user.FullName = nil
+
+		// Act
 		err = testDB.Users().Update(context.Background(), user)
-		if err != nil {
-			t.Fatalf("Failed to update user: %v", err)
-		}
 
-		// Verify NULL was stored
+		// Assert
+		require.NoError(t, err)
+
 		found, err := testDB.Users().WhereIdEq(*user.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find user: %v", err)
-		}
-
-		if found.FullName != nil {
-			t.Error("Expected FullName to be NULL after update")
-		}
+		require.NoError(t, err)
+		require.NotNil(t, found)
+		assert.Nil(t, found.FullName)
 	})
 }
 
@@ -655,57 +535,44 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 	}
 
 	t.Run("Greater Than Query", func(t *testing.T) {
+		// Act
 		results, err := testDB.Posts().WhereViewCountGt(75).Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to query posts: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 posts with view_count > 75, got %d", len(results))
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
 	})
 
 	t.Run("Multiple Conditions", func(t *testing.T) {
+		// Act
 		results, err := testDB.Posts().
 			WhereUserIdEq(*user1.Id).
 			And().
 			WhereViewCountGte(100).
 			Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to query posts: %v", err)
-		}
 
-		if len(results) != 2 {
-			t.Errorf("Expected 2 posts, got %d", len(results))
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
 	})
 
 	t.Run("UpdateFields", func(t *testing.T) {
-		// Update view_count for all user1's posts
+		// Act
 		affected, err := testDB.Posts().
 			WhereUserIdEq(*user1.Id).
 			UpdateFields(context.Background(), map[*models.FieldRef]interface{}{
 				models.PostsTable.ViewCount(): int64(999),
 			})
 
-		if err != nil {
-			t.Fatalf("Failed to update posts: %v", err)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.EqualValues(t, 2, affected)
 
-		if affected != 2 {
-			t.Errorf("Expected 2 rows affected, got %d", affected)
-		}
-
-		// Verify updates
 		results, err := testDB.Posts().WhereUserIdEq(*user1.Id).Find(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to query posts: %v", err)
-		}
-
+		require.NoError(t, err)
 		for _, post := range results {
-			if post.ViewCount == nil || *post.ViewCount != 999 {
-				t.Error("Expected view_count to be updated to 999")
-			}
+			require.NotNil(t, post.ViewCount)
+			assert.EqualValues(t, 999, *post.ViewCount)
 		}
 	})
 }
@@ -735,90 +602,70 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	testDB.Comments().Insert(context.Background(), comment2)
 
 	t.Run("Load Posts for User", func(t *testing.T) {
+		// Arrange
 		user, err := testDB.Users().WhereIdEq(*user1.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find user: %v", err)
-		}
+		require.NoError(t, err)
+		expectedTitles := []string{post1.Title, post2.Title}
 
+		// Act
 		err = user.LoadPosts(context.Background(), testDB)
-		if err != nil {
-			t.Fatalf("Failed to load posts: %v", err)
-		}
 
-		if len(user.Posts) != 2 {
-			t.Errorf("Expected 2 posts for user1, got %d", len(user.Posts))
-		}
-
-		// Verify post titles
-		postTitles := make(map[string]bool)
-		for _, post := range user.Posts {
-			postTitles[post.Title] = true
-		}
-
-		if !postTitles["Post 1"] {
-			t.Error("Expected 'Post 1'")
-		}
-		if !postTitles["Post 2"] {
-			t.Error("Expected 'Post 2'")
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, user.Posts, 2)
+		assert.ElementsMatch(t, expectedTitles, func() []string {
+			ret := make([]string, 0, len(user.Posts))
+			for _, post := range user.Posts {
+				ret = append(ret, post.Title)
+			}
+			return ret
+		}())
 	})
 
 	t.Run("Load Comments for Post", func(t *testing.T) {
+		// Arrange
 		post, err := testDB.Posts().WhereIdEq(*post1.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find post: %v", err)
-		}
+		require.NoError(t, err)
+		expectedComments := []string{comment1.Content, comment2.Content}
 
+		// Act
 		err = post.LoadComments(context.Background(), testDB)
-		if err != nil {
-			t.Fatalf("Failed to load comments: %v", err)
-		}
 
-		if len(post.Comments) != 2 {
-			t.Errorf("Expected 2 comments for post1, got %d", len(post.Comments))
-		}
-
-		// Verify comment content
-		commentContent := make(map[string]bool)
-		for _, comment := range post.Comments {
-			commentContent[comment.Content] = true
-		}
-
-		if !commentContent["Comment 1"] {
-			t.Error("Expected 'Comment 1'")
-		}
-		if !commentContent["Comment 2"] {
-			t.Error("Expected 'Comment 2'")
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, post.Comments, 2)
+		assert.ElementsMatch(t, expectedComments, func() []string {
+			ret := make([]string, 0, len(post.Comments))
+			for _, comment := range post.Comments {
+				ret = append(ret, comment.Content)
+			}
+			return ret
+		}())
 	})
 
 	t.Run("Load Comments for User", func(t *testing.T) {
+		// Arrange
 		user, err := testDB.Users().WhereIdEq(*user1.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find user: %v", err)
-		}
+		require.NoError(t, err)
 
+		// Act
 		err = user.LoadComments(context.Background(), testDB)
-		if err != nil {
-			t.Fatalf("Failed to load comments: %v", err)
-		}
 
-		if len(user.Comments) != 1 {
-			t.Errorf("Expected 1 comment for user1, got %d", len(user.Comments))
-		}
-
-		if user.Comments[0].Content != "Comment 1" {
-			t.Errorf("Expected 'Comment 1', got '%s'", user.Comments[0].Content)
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, user.Comments, 1)
+		assert.Equal(t, comment1.Content, user.Comments[0].Content)
 	})
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
+		// Act
 		user, err := testDB.Users().
 			Select(append(models.UsersTable.AllFields(), models.UsersTable.AggregateComments())...).
 			JoinOn(models.LeftJoin, (&models.CommentsDto{}).TableName(), models.CommentsTable.UserId(), models.UsersTable.Id()).
 			WhereIdEq(*user1.Id).
 			GroupBy(models.UsersTable.AllFields()...).FindOne(context.Background())
 
+		// Assert
 		require.NoError(t, err)
 		assert.Len(t, user.Comments, 1)
 		assert.NotNil(t, user.Comments[0].CreatedAt)
@@ -855,94 +702,64 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post2.Id, *tag2.Id)
 
 	t.Run("Load Tags for Post", func(t *testing.T) {
-		// Fetch post1
+		// Arrange
 		post, err := testDB.Posts().WhereIdEq(*post1.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find post: %v", err)
-		}
+		require.NoError(t, err)
 
-		// Load tags
+		// Act
 		err = post.LoadTags(context.Background(), testDB)
-		if err != nil {
-			t.Fatalf("Failed to load tags: %v", err)
-		}
 
-		// Verify tags are loaded
-		if len(post.Tags) != 2 {
-			t.Errorf("Expected 2 tags for post1, got %d", len(post.Tags))
-		}
-
-		// Verify tag names
-		tagNames := make(map[string]bool)
-		for _, tag := range post.Tags {
-			tagNames[tag.Name] = true
-		}
-
-		if !tagNames["programming"] {
-			t.Error("Expected 'programming' tag")
-		}
-		if !tagNames["golang"] {
-			t.Error("Expected 'golang' tag")
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, post.Tags, 2)
+		assert.ElementsMatch(t, []string{tag1.Name, tag3.Name}, func() []string {
+			ret := make([]string, 0, len(post.Tags))
+			for _, tag := range post.Tags {
+				ret = append(ret, tag.Name)
+			}
+			return ret
+		}())
 	})
 
 	t.Run("Load Posts for Tag", func(t *testing.T) {
-		// Fetch programming tag
+		// Arrange
 		tag, err := testDB.Tags().WhereNameEq("programming").FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find tag: %v", err)
-		}
+		require.NoError(t, err)
 
-		// Load posts
+		// Act
 		err = tag.LoadPosts(context.Background(), testDB)
-		if err != nil {
-			t.Fatalf("Failed to load posts: %v", err)
-		}
 
-		// Verify posts are loaded
-		if len(tag.Posts) != 2 {
-			t.Errorf("Expected 2 posts for 'programming' tag, got %d", len(tag.Posts))
-		}
-
-		// Verify post titles
-		postTitles := make(map[string]bool)
-		for _, post := range tag.Posts {
-			postTitles[post.Title] = true
-		}
-
-		if !postTitles["Go Programming"] {
-			t.Error("Expected 'Go Programming' post")
-		}
-		if !postTitles["SQL Optimization"] {
-			t.Error("Expected 'SQL Optimization' post")
-		}
+		// Assert
+		require.NoError(t, err)
+		assert.Len(t, tag.Posts, 2)
+		assert.ElementsMatch(t, []string{post1.Title, post2.Title}, func() []string {
+			ret := make([]string, 0, len(tag.Posts))
+			for _, post := range tag.Posts {
+				ret = append(ret, post.Title)
+			}
+			return ret
+		}())
 	})
 
 	t.Run("Load Empty Collection", func(t *testing.T) {
-		// Create a post with no tags
+		// Arrange
 		post3 := &models.PostsDto{UserId: *user.Id, Title: "Untagged Post"}
 		testDB.Posts().Insert(context.Background(), post3)
 
 		post, err := testDB.Posts().WhereIdEq(*post3.Id).FindOne(context.Background())
-		if err != nil {
-			t.Fatalf("Failed to find post: %v", err)
-		}
+		require.NoError(t, err)
 
+		// Act
 		err = post.LoadTags(context.Background(), testDB)
-		if err != nil {
-			t.Fatalf("Failed to load tags: %v", err)
-		}
 
-		// Verify empty slice (not nil)
-		if post.Tags == nil {
-			t.Error("Expected empty slice, got nil")
-		}
-		if len(post.Tags) != 0 {
-			t.Errorf("Expected 0 tags, got %d", len(post.Tags))
-		}
+		// Assert
+		require.NoError(t, err)
+		require.NotNil(t, post.Tags)
+		assert.Len(t, post.Tags, 0)
 	})
 
 	t.Run("Eager load tags for posts", func(t *testing.T) {
+		// Act
 		post, err := testDB.Posts().
 			Select(
 				models.PostsTable.Id(),
@@ -955,8 +772,16 @@ func TestIntegration_ManyToMany(t *testing.T) {
 			GroupBy(models.PostsTable.Id(), models.PostsTable.Title(), models.PostsTable.UserId()).
 			FindOne(context.Background())
 
+		// Assert
 		require.NoError(t, err)
 		assert.Len(t, post.Tags, 2)
+		assert.ElementsMatch(t, []string{tag1.Name, tag3.Name}, func() []string {
+			ret := make([]string, 0, len(post.Tags))
+			for _, tag := range post.Tags {
+				ret = append(ret, tag.Name)
+			}
+			return ret
+		}())
 	})
 }
 
@@ -976,61 +801,45 @@ func TestIntegration_ExpressionFromString(t *testing.T) {
 	testDB.Posts().Insert(context.Background(), post3)
 
 	t.Run("Custom COUNT expression", func(t *testing.T) {
-		// Use ExpressionFromString to create a custom COUNT expression
-		countExpr := models.ExpressionFromString("COUNT(*)", "total_count")
-
-		// Verify it constructs correctly
+		// Arrange
+		alias := "total_count"
+		expression := "COUNT(*)"
 		expectedSQL := "COUNT(*) AS total_count"
-		if countExpr.String() != expectedSQL {
-			t.Errorf("Expected SQL %q, got %q", expectedSQL, countExpr.String())
-		}
 
-		// Verify fields are set correctly
-		if countExpr.Table != "" {
-			t.Errorf("Expected empty Table, got %q", countExpr.Table)
-		}
-		if countExpr.Expression != "COUNT(*)" {
-			t.Errorf("Expected Expression %q, got %q", "COUNT(*)", countExpr.Expression)
-		}
-		if countExpr.Alias != "total_count" {
-			t.Errorf("Expected Alias %q, got %q", "total_count", countExpr.Alias)
-		}
+		// Act
+		countExpr := models.ExpressionFromString(expression, alias)
+
+		// Assert
+		assert.Equal(t, expression, countExpr.Expression)
+		assert.Equal(t, alias, countExpr.Alias)
+		assert.Empty(t, countExpr.Table)
+		assert.Equal(t, expectedSQL, countExpr.String())
 	})
 
 	t.Run("Custom AVG expression", func(t *testing.T) {
+		// Arrange
+		expectedSQL := "AVG(view_count) AS avg_views"
+
+		// Act
 		avgExpr := models.ExpressionFromString("AVG(view_count)", "avg_views")
 
-		expectedSQL := "AVG(view_count) AS avg_views"
-		if avgExpr.String() != expectedSQL {
-			t.Errorf("Expected SQL %q, got %q", expectedSQL, avgExpr.String())
-		}
+		// Assert
+		assert.Equal(t, expectedSQL, avgExpr.String())
 	})
 
 	t.Run("FromExpressions field exists", func(t *testing.T) {
-		// Create a post and verify FromExpressions field exists
-		post := &models.PostsDto{
-			UserId: *user.Id,
-			Title:  "Test Post",
-		}
+		// Act
+		post, err := testDB.Posts().Select(
+			models.ExpressionFromString("AVG(view_count)", "avg_views")).
+			FindOne(context.Background())
 
-		// Verify FromExpressions field exists and is nil initially
-		if post.FromExpressions != nil {
-			t.Error("Expected FromExpressions to be nil initially")
-		}
-
-		// Set a value in FromExpressions
-		post.FromExpressions = map[string]interface{}{
-			"custom_count": int64(42),
-			"custom_avg":   123.45,
-		}
-
-		// Verify values are stored correctly
-		if count, ok := post.FromExpressions["custom_count"].(int64); !ok || count != 42 {
-			t.Errorf("Expected custom_count=42, got %v", post.FromExpressions["custom_count"])
-		}
-		if avg, ok := post.FromExpressions["custom_avg"].(float64); !ok || avg != 123.45 {
-			t.Errorf("Expected custom_avg=123.45, got %v", post.FromExpressions["custom_avg"])
-		}
+		// Assert
+		require.NoError(t, err)
+		require.NotNil(t, post.FromExpressions)
+		assert.Len(t, post.FromExpressions, 1)
+		// TODO: currently returns a pgx Numeric type, prepopulate the FromExpressions map with the correct type
+		// so that pgx can scan into that value
+		assert.NotNil(t, post.FromExpressions["avg_views"])
 	})
 }
 

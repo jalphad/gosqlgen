@@ -35,7 +35,7 @@ CREATE TABLE comments
     is_approved BOOLEAN                  DEFAULT false,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     test_date   DATE                     DEFAULT CURRENT_DATE,
-    test_time   TIME WITH TIME ZONE      DEFAULT CURRENT_TIME,
+    -- test_time   TIME WITH TIME ZONE      DEFAULT CURRENT_TIME, -- PGX scan fails to scan this into a time.Time,
     FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );

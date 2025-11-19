@@ -21,7 +21,6 @@ type CommentsDto struct {
 	IsApproved *bool      `db:"is_approved" json:"is_approved"`
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
 	TestDate   *time.Time `db:"test_date" json:"test_date"`
-	TestTime   *time.Time `db:"test_time" json:"test_time"`
 
 	// Joined relationships (populated when corresponding Join method is called)
 	Post *PostsDto `joined:"posts" fk:"post_id"`
@@ -40,8 +39,7 @@ func (c *CommentsDto) UnmarshalJSON(b []byte) error {
 	type CommentsDto_ CommentsDto
 	type DtoWrapper struct {
 		CommentsDto_
-		TestDate DateWrapper       `db:"test_date" json:"test_date"`
-		TestTime TimeWithTZWrapper `db:"test_time" json:"test_time"`
+		TestDate DateWrapper `db:"test_date" json:"test_date"`
 	}
 
 	var wrapper DtoWrapper
@@ -52,7 +50,6 @@ func (c *CommentsDto) UnmarshalJSON(b []byte) error {
 
 	*c = CommentsDto(wrapper.CommentsDto_)
 	c.TestDate = &wrapper.TestDate.Time
-	c.TestTime = &wrapper.TestTime.Time
 
 	return nil
 }
@@ -119,14 +116,6 @@ func (c CommentsFields) TestDate() *FieldRef {
 	}
 }
 
-// TestTime returns a field reference for CommentsDto.TestTime
-func (c CommentsFields) TestTime() *FieldRef {
-	return &FieldRef{
-		Table:      "comments",
-		Expression: "test_time",
-	}
-}
-
 // AllFields returns all field references for CommentsDto
 func (c CommentsFields) AllFields() []*FieldRef {
 	return []*FieldRef{
@@ -137,7 +126,6 @@ func (c CommentsFields) AllFields() []*FieldRef {
 		c.IsApproved(),
 		c.CreatedAt(),
 		c.TestDate(),
-		c.TestTime(),
 	}
 }
 
@@ -621,89 +609,6 @@ func (q *CommentsQuery) OrderByTestDate(dir OrderDirection) *CommentsQuery {
 	return q
 }
 
-// WhereTestTime adds a condition for TestTime
-func (q *CommentsQuery) WhereTestTime(op ComparisonOp, value time.Time) *CommentsQuery {
-	q.conditions = append(q.conditions, Condition{
-		Field:   CommentsTable.TestTime(),
-		Op:      op,
-		Value:   value,
-		Logical: q.logical,
-	})
-	return q
-}
-
-// WhereTestTimeEq adds an equality condition for TestTime
-func (q *CommentsQuery) WhereTestTimeEq(value time.Time) *CommentsQuery {
-	return q.WhereTestTime(EQ, value)
-}
-
-// WhereTestTimeNotEq adds a not-equal condition for TestTime
-func (q *CommentsQuery) WhereTestTimeNotEq(value time.Time) *CommentsQuery {
-	return q.WhereTestTime(NEQ, value)
-}
-
-// WhereTestTimeGt adds a greater-than condition for TestTime
-func (q *CommentsQuery) WhereTestTimeGt(value time.Time) *CommentsQuery {
-	return q.WhereTestTime(GT, value)
-}
-
-// WhereTestTimeGte adds a greater-than-or-equal condition for TestTime
-func (q *CommentsQuery) WhereTestTimeGte(value time.Time) *CommentsQuery {
-	return q.WhereTestTime(GTE, value)
-}
-
-// WhereTestTimeLt adds a less-than condition for TestTime
-func (q *CommentsQuery) WhereTestTimeLt(value time.Time) *CommentsQuery {
-	return q.WhereTestTime(LT, value)
-}
-
-// WhereTestTimeLte adds a less-than-or-equal condition for TestTime
-func (q *CommentsQuery) WhereTestTimeLte(value time.Time) *CommentsQuery {
-	return q.WhereTestTime(LTE, value)
-}
-
-// WhereTestTimeIn adds an IN condition for TestTime
-func (q *CommentsQuery) WhereTestTimeIn(values ...time.Time) *CommentsQuery {
-	q.conditions = append(q.conditions, Condition{
-		Field:   CommentsTable.TestTime(),
-		Op:      IN,
-		Value:   values,
-		Logical: q.logical,
-	})
-	return q
-}
-
-// WhereTestTimeIsNull adds an IS NULL condition for TestTime
-func (q *CommentsQuery) WhereTestTimeIsNull() *CommentsQuery {
-	q.conditions = append(q.conditions, Condition{
-		Field:   CommentsTable.TestTime(),
-		Op:      EQ,
-		Value:   nil,
-		Logical: q.logical,
-	})
-	return q
-}
-
-// WhereTestTimeIsNotNull adds an IS NOT NULL condition for TestTime
-func (q *CommentsQuery) WhereTestTimeIsNotNull() *CommentsQuery {
-	q.conditions = append(q.conditions, Condition{
-		Field:   CommentsTable.TestTime(),
-		Op:      NEQ,
-		Value:   nil,
-		Logical: q.logical,
-	})
-	return q
-}
-
-// OrderByTestTime adds ORDER BY for TestTime
-func (q *CommentsQuery) OrderByTestTime(dir OrderDirection) *CommentsQuery {
-	q.orderBy = append(q.orderBy, OrderClause{
-		Field:     CommentsTable.TestTime(),
-		Direction: dir,
-	})
-	return q
-}
-
 // And sets the logical operator to AND for subsequent conditions
 func (q *CommentsQuery) And() *CommentsQuery {
 	q.logical = AND
@@ -1009,7 +914,6 @@ func (q *CommentsQuery) scanInto(rows pgx.Rows, dest *CommentsDto) error {
 		scanDest = append(scanDest, &dest.IsApproved)
 		scanDest = append(scanDest, &dest.CreatedAt)
 		scanDest = append(scanDest, &dest.TestDate)
-		scanDest = append(scanDest, &dest.TestTime)
 
 		// Add joined table columns if active
 		if q.activeJoins["posts"] {
@@ -1099,10 +1003,6 @@ func (q *CommentsQuery) getScanDestForField(field *FieldRef, dest *CommentsDto) 
 
 		if aliasLower == "test_date" || aliasLower == "testdate" {
 			return &dest.TestDate, nil
-		}
-
-		if aliasLower == "test_time" || aliasLower == "testtime" {
-			return &dest.TestTime, nil
 		}
 	}
 	// Check if it matches a joined table column
@@ -1243,13 +1143,6 @@ func (q *CommentsQuery) Insert(ctx context.Context, record *CommentsDto) error {
 		argIdx++
 	}
 
-	if record.TestTime != nil {
-		columns = append(columns, "test_time")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, record.TestTime)
-		argIdx++
-	}
-
 	if len(columns) == 0 {
 		return fmt.Errorf("no values provided for insert")
 	}
@@ -1322,13 +1215,6 @@ func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*CommentsDto)
 			argIdx++
 		}
 
-		if record.TestTime != nil {
-			columns = append(columns, "test_time")
-			placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-			args = append(args, record.TestTime)
-			argIdx++
-		}
-
 		if len(columns) > 0 {
 			query := fmt.Sprintf("INSERT INTO comments (%s) VALUES (%s) RETURNING id",
 				strings.Join(columns, ", "),
@@ -1359,7 +1245,7 @@ func (q *CommentsQuery) InsertBatch(ctx context.Context, records []*CommentsDto)
 // Update updates a record using its primary key
 func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 	query := "UPDATE comments SET " +
-		"post_id = $2, user_id = $3, content = $4, is_approved = $5, created_at = $6, test_date = $7, test_time = $8" +
+		"post_id = $2, user_id = $3, content = $4, is_approved = $5, created_at = $6, test_date = $7" +
 		" WHERE id = $1"
 
 	var tag pgconn.CommandTag
@@ -1374,7 +1260,6 @@ func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 			record.IsApproved,
 			record.CreatedAt,
 			record.TestDate,
-			record.TestTime,
 		)
 	} else {
 		tag, err = q.pool.Exec(ctx, query,
@@ -1385,7 +1270,6 @@ func (q *CommentsQuery) Update(ctx context.Context, record *CommentsDto) error {
 			record.IsApproved,
 			record.CreatedAt,
 			record.TestDate,
-			record.TestTime,
 		)
 	}
 

@@ -163,6 +163,9 @@ func (p *Parser) parseTableBody(table *Table, body string) error {
 			strings.HasPrefix(strings.ToUpper(line), "KEY") {
 			// Parse index
 			p.parseIndex(table, line)
+		} else if strings.HasPrefix(line, "--") {
+			// Line is a comment
+			continue
 		} else {
 			// Parse column definition
 			p.parseColumn(table, line)
