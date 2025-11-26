@@ -32,6 +32,7 @@
             godef
             golint
             nodejs_24
+            opencode
           ];
           packages = with pkgs; [
             protobuf_32
