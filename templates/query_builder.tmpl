@@ -190,9 +190,9 @@ func (q *{{ .BuilderName }}) Offset(offset int) *{{ .BuilderName }} {
 }
 
 // buildQuery builds the SQL query
-func (q *{{ .BuilderName }}) buildQuery() (string, []interface{}) {
+func (q *{{ .BuilderName }}) buildQuery() (string, []any) {
     var query strings.Builder
-    var args []interface{}
+    var args []any
     argIndex := 1
 
     // SELECT clause
@@ -279,9 +279,9 @@ func (q *{{ .BuilderName }}) buildQuery() (string, []interface{}) {
 }
 
 // buildConditions builds WHERE/HAVING conditions
-func (q *{{ .BuilderName }}) buildConditions(conditions []Condition, argIndex *int) (string, []interface{}) {
+func (q *{{ .BuilderName }}) buildConditions(conditions []Condition, argIndex *int) (string, []any) {
     var parts []string
-    var args []interface{}
+    var args []any
 
     for i, cond := range conditions {
         if len(cond.SubConds) > 0 {
@@ -421,7 +421,7 @@ func (q *{{ .BuilderName }}) Count(ctx context.Context) (int64, error) {
 
 // scanInto scans a row into a struct
 func (q *{{ .BuilderName }}) scanInto(rows pgx.Rows, dest *{{ .StructName }}) error {
-    var scanDest []interface{}
+    var scanDest []any
     var jsonUnmarshalFuncs []func() error
 
     if len(q.selectFields) > 0 {
@@ -570,7 +570,7 @@ func (q *{{ .BuilderName }}) getScanDestForField(field *FieldRef, dest *{{ .Stru
 func (q *{{ .BuilderName }}) Insert(ctx context.Context, record *{{ .StructName }}) error {
     var columns []string
     var placeholders []string
-    var args []interface{}
+    var args []any
     argIdx := 1
 
     // Dynamically build column list based on non-nil values
@@ -629,7 +629,7 @@ func (q *{{ .BuilderName }}) InsertBatch(ctx context.Context, records []*{{ .Str
     for _, record := range records {
         var columns []string
         var placeholders []string
-        var args []interface{}
+        var args []any
         argIdx := 1
 
         // Dynamically build column list based on non-nil values
@@ -733,7 +733,7 @@ func (q *{{ .BuilderName }}) UpdateFields(ctx context.Context, updates map[*Fiel
     }
 
     var query strings.Builder
-    var args []interface{}
+    var args []any
     argIndex := 1
 
     query.WriteString("UPDATE {{ .TableName }} SET ")
@@ -773,7 +773,7 @@ func (q *{{ .BuilderName }}) UpdateFields(ctx context.Context, updates map[*Fiel
 // Delete deletes matching records
 func (q *{{ .BuilderName }}) Delete(ctx context.Context) (int64, error) {
     var query strings.Builder
-    var args []interface{}
+    var args []any
     argIndex := 1
 
     query.WriteString("DELETE FROM {{ .TableName }}")
