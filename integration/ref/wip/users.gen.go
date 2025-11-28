@@ -1,4 +1,4 @@
-package models
+package wip
 
 import (
 	"context"
@@ -23,12 +23,8 @@ type UsersDto struct {
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
 	IsActive  *bool      `db:"is_active" json:"is_active"`
 
-	// One-to-many reverse relationships (populated via LoadXxx methods)
-	Posts    []*PostsDto    `reverse:"posts" fk:"user_id"`
-	Comments []*CommentsDto `reverse:"comments" fk:"user_id"`
-
 	// FromExpressions stores custom aggregations and expressions not mapped to fields
-	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
+	FromExpressions map[string]any `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for UsersDto
@@ -57,58 +53,44 @@ func (u *UsersDto) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// LoadPosts loads associated posts for this users
-func (u *UsersDto) LoadPosts(ctx context.Context, db *DB) error {
-	if u.Id == nil {
-		return nil
-	}
-	results, err := db.Posts().WhereUserIdEq(*u.Id).Find(ctx)
-	if err != nil {
-		return err
-	}
-	u.Posts = results
-	return nil
-}
-
-// LoadComments loads associated comments for this users
-func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
-	if u.Id == nil {
-		return nil
-	}
-	results, err := db.Comments().WhereUserIdEq(*u.Id).Find(ctx)
-	if err != nil {
-		return err
-	}
-	u.Comments = results
-	return nil
-}
-
 // UsersFields provides type-safe field references for UsersDto
 type UsersFields struct{}
 
 var UsersTable = UsersFields{}
 
 // Id returns a field reference for UsersDto.Id
-func (u UsersFields) Id() *FieldRef {
-	return &FieldRef{
-		Table:      "users",
-		Expression: "id",
+func (u UsersFields) Id() *ast.selectExpression {
+	return &ast.selectExpression{
+		Expression: ast.expression{
+			Field: &ast.FieldRef{
+				Table:  "users",
+				Column: "id",
+			},
+		},
 	}
 }
 
 // Username returns a field reference for UsersDto.Username
-func (u UsersFields) Username() *FieldRef {
-	return &FieldRef{
-		Table:      "users",
-		Expression: "username",
+func (u UsersFields) Username() *ast.selectExpression {
+	return &ast.selectExpression{
+		Expression: ast.expression{
+			Field: &ast.FieldRef{
+				Table:  "users",
+				Column: "username",
+			},
+		},
 	}
 }
 
 // Email returns a field reference for UsersDto.Email
-func (u UsersFields) Email() *FieldRef {
-	return &FieldRef{
-		Table:      "users",
-		Expression: "email",
+func (u UsersFields) Email() *ast.selectExpression {
+	return &ast.selectExpression{
+		Expression: ast.expression{
+			Field: &ast.FieldRef{
+				Table:  "users",
+				Column: "email",
+			},
+		},
 	}
 }
 
@@ -155,34 +137,6 @@ func (u UsersFields) AllFields() []*FieldRef {
 		u.UpdatedAt(),
 		u.IsActive(),
 	}
-}
-
-// AggregatePosts returns a JSON aggregation for Posts
-// Usage: Select(PostsTable.AggregatePosts())
-func (u UsersFields) AggregatePosts(fields ...*FieldRef) *FieldRef {
-	if len(fields) == 0 {
-		// Use all fields from the related table
-		fields = PostsTable.AllFields()
-	}
-
-	// First field is used for FILTER (typically the PK)
-	filterField := PostsTable.Id()
-
-	return JsonAgg("posts", true, filterField, fields...)
-}
-
-// AggregateComments returns a JSON aggregation for Comments
-// Usage: Select(PostsTable.AggregateComments())
-func (u UsersFields) AggregateComments(fields ...*FieldRef) *FieldRef {
-	if len(fields) == 0 {
-		// Use all fields from the related table
-		fields = CommentsTable.AllFields()
-	}
-
-	// First field is used for FILTER (typically the PK)
-	filterField := CommentsTable.Id()
-
-	return JsonAgg("comments", true, filterField, fields...)
 }
 
 // UsersQuery is a type-safe query builder for UsersDto

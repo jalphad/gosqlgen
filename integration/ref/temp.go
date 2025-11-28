@@ -6,7 +6,7 @@ import (
 
 // UsersClauses represents the users table columns
 type UsersClauses struct {
-	Id        *StringColumnClause[*UsersClauses]
+	Id        *UUIDColumnClause[*UsersClauses]
 	Username  *StringColumnClause[*UsersClauses]
 	Email     *StringColumnClause[*UsersClauses]
 	FullName  *StringColumnClause[*UsersClauses]
@@ -39,7 +39,7 @@ func (c *UsersClauses) GroupClause(expr Expression[*UsersClauses]) *ConditionBui
 func UsersClause() *UsersClauses {
 	builder := &ConditionBuilder[*UsersClauses]{}
 	clauses := &UsersClauses{
-		Id:        &StringColumnClause[*UsersClauses]{name: "id", builder: builder},
+		Id:        &UUIDColumnClause[*UsersClauses]{name: "id", builder: builder},
 		Username:  &StringColumnClause[*UsersClauses]{name: "username", builder: builder},
 		Email:     &StringColumnClause[*UsersClauses]{name: "email", builder: builder},
 		FullName:  &StringColumnClause[*UsersClauses]{name: "full_name", builder: builder},
