@@ -3,6 +3,8 @@ package gosqlgen
 import (
 	"strings"
 	"testing"
+
+	"github.com/jalphad/gosqlgen/parser"
 )
 
 // TestTypeSafeQueryBuilder tests the type-safe query builder
@@ -29,7 +31,7 @@ func TestTypeSafeQueryBuilder(t *testing.T) {
         );
     `
 
-	p := NewParser()
+	p := parser.NewParser()
 	if err := p.Parse(sql); err != nil {
 		t.Fatalf("Failed to parse SQL: %v", err)
 	}
@@ -141,7 +143,7 @@ func TestNullableFields(t *testing.T) {
         );
     `
 
-	p := NewParser()
+	p := parser.NewParser()
 	if err := p.Parse(sql); err != nil {
 		t.Fatalf("Failed to parse SQL: %v", err)
 	}
@@ -208,7 +210,7 @@ func TestForeignKeyJoins(t *testing.T) {
         );
     `
 
-	p := NewParser()
+	p := parser.NewParser()
 	if err := p.Parse(sql); err != nil {
 		t.Fatalf("Failed to parse SQL: %v", err)
 	}

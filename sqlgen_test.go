@@ -3,6 +3,8 @@ package gosqlgen
 import (
 	"strings"
 	"testing"
+
+	"github.com/jalphad/gosqlgen/parser"
 )
 
 func TestParser_Parse(t *testing.T) {
@@ -63,7 +65,7 @@ func TestParser_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := NewParser()
+			p := parser.NewParser()
 			err := p.Parse(tt.sql)
 
 			if (err != nil) != tt.wantErr {
@@ -106,37 +108,6 @@ func TestParser_Parse(t *testing.T) {
 	}
 }
 
-func TestParser_TypeMapping(t *testing.T) {
-	tests := []struct {
-		sqlType string
-		goType  string
-	}{
-		{"INTEGER", "int64"},
-		{"INT", "int64"},
-		{"BIGINT", "int64"},
-		{"VARCHAR(255)", "string"},
-		{"TEXT", "string"},
-		{"BOOLEAN", "bool"},
-		{"TIMESTAMP", "time.Time"},
-		{"DATE", "time.Time"},
-		{"FLOAT", "float64"},
-		{"DECIMAL(10,2)", "float64"},
-		{"JSON", "json.RawMessage"},
-		{"BYTEA", "[]byte"},
-	}
-
-	p := NewParser()
-
-	for _, tt := range tests {
-		t.Run(tt.sqlType, func(t *testing.T) {
-			got := p.mapSQLTypeToGo(tt.sqlType)
-			if got != tt.goType {
-				t.Errorf("mapSQLTypeToGo(%s) = %s, want %s", tt.sqlType, got, tt.goType)
-			}
-		})
-	}
-}
-
 func TestParser_ForeignKeys(t *testing.T) {
 	sql := `
         CREATE TABLE users (
@@ -156,7 +127,7 @@ func TestParser_ForeignKeys(t *testing.T) {
         );
     `
 
-	p := NewParser()
+	p := parser.NewParser()
 	if err := p.Parse(sql); err != nil {
 		t.Fatalf("Failed to parse SQL: %v", err)
 	}

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/jalphad/gosqlgen/parser"
 )
 
 // SQLGen is the main interface for the SQL DTO generator
 type SQLGen struct {
-	parser      *Parser
+	parser      *parser.Parser
 	generator   *Generator
 	packageName string
 	outputPath  string
@@ -16,11 +18,11 @@ type SQLGen struct {
 
 // New creates a new SQLGen instance
 func New() *SQLGen {
-	parser := NewParser()
-	generator := NewGenerator(parser)
+	p := parser.NewParser()
+	generator := NewGenerator(p)
 
 	return &SQLGen{
-		parser:      parser,
+		parser:      p,
 		generator:   generator,
 		packageName: "models",
 		outputPath:  "./models",
@@ -105,12 +107,12 @@ func (s *SQLGen) GenerateToFile(filename string) error {
 }
 
 // GetTables returns all parsed tables
-func (s *SQLGen) GetTables() map[string]*Table {
+func (s *SQLGen) GetTables() map[string]*parser.Table {
 	return s.parser.GetTables()
 }
 
 // GetTable returns a specific parsed table
-func (s *SQLGen) GetTable(name string) (*Table, bool) {
+func (s *SQLGen) GetTable(name string) (*parser.Table, bool) {
 	return s.parser.GetTable(name)
 }
 

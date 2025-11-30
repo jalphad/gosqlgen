@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	//parser "github.com/jalphad/gosqlgen/oldparser"
+	"github.com/jalphad/gosqlgen/parser"
 	"github.com/jalphad/gosqlgen/templates"
 	"golang.org/x/tools/imports"
 	"mvdan.cc/gofumpt/format"
@@ -13,13 +15,13 @@ import (
 
 // Generator handles code generation with type-safe queries
 type Generator struct {
-	parser      *Parser
+	parser      *parser.Parser
 	packageName string
 	imports     map[string]bool
 }
 
 // NewGenerator creates a new code generator
-func NewGenerator(parser *Parser) *Generator {
+func NewGenerator(parser *parser.Parser) *Generator {
 	return &Generator{
 		parser:      parser,
 		packageName: "models",
@@ -214,7 +216,7 @@ func (g *Generator) generateCommonTypes(buf *bytes.Buffer) error {
 }
 
 // generateTableStruct generates a struct for a table
-func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
+func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) error {
 	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	receiverName := strings.ToLower(baseName[0:1])
@@ -375,7 +377,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *Table) error {
 }
 
 // generateFieldReferences generates type-safe field references
-func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *Table) error {
+func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *parser.Table) error {
 	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	fieldsTypeName := baseName + "Fields"
@@ -414,7 +416,7 @@ func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *Table) err
 }
 
 // generateTypeSafeQueryBuilder generates type-safe query builder
-func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table) error {
+func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *parser.Table) error {
 	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	builderName := baseName + "Query"
@@ -561,7 +563,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *Table
 }
 
 // generateJoinBuilders generates type-safe join builders
-func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *Table) error {
+func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *parser.Table) error {
 	baseName := templates.ToPascalCase(table.Name)
 	structName := baseName + "Dto"
 	builderName := baseName + "Query"
@@ -648,7 +650,7 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 }
 
 // Helper methods remain the same
-func (g *Generator) buildStructTags(col Column) string {
+func (g *Generator) buildStructTags(col parser.Column) string {
 	if len(col.Tags) == 0 {
 		return ""
 	}
@@ -685,7 +687,7 @@ func (g *Generator) format(fileName string, in []byte) ([]byte, error) {
 }
 
 // reverseRelations constructs the list of reverse relations on the table
-func (g *Generator) reverseRelations(table *Table) []templates.ReverseRelField {
+func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRelField {
 	ret := make([]templates.ReverseRelField, 0, len(table.ReverseRelationships))
 	for _, reverseRel := range table.ReverseRelationships {
 		fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
@@ -711,7 +713,7 @@ func (g *Generator) reverseRelations(table *Table) []templates.ReverseRelField {
 	return ret
 }
 
-func (g *Generator) manyToManyRelations(table *Table) []templates.ManyToManyField {
+func (g *Generator) manyToManyRelations(table *parser.Table) []templates.ManyToManyField {
 	ret := make([]templates.ManyToManyField, 0, len(table.ManyToManyRels))
 	for _, m2m := range table.ManyToManyRels {
 		refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)

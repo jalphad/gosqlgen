@@ -12,7 +12,7 @@ type (
 	valueExpression ast.ValueExpression
 )
 
-func NewStringType[B ExpressionBuilder](ref *ast.FieldRef, builder B) *StringType[B] {
+func String[B ExpressionBuilder](ref *ast.FieldRef, builder B) *StringType[B] {
 	return &StringType[B]{
 		valueExpression: ast.NewValueExpression(ast.NewFieldExpresion(ref)),
 		b:               builder,
