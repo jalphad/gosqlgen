@@ -1,213 +1,268 @@
-package types
+package ast
 
 import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jalphad/gosqlgen/integration/ref/ast"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type (
-	expression      ast.Expression
-	valueExpression ast.ValueExpression
+	expression = Expression
 )
 
-func String[B ExpressionBuilder](ref *ast.FieldRef, builder B) *StringType[B] {
-	return &StringType[B]{
-		valueExpression: ast.NewValueExpression(ast.NewFieldExpresion(ref)),
-		b:               builder,
-	}
+type MappedTypes interface {
+	float64 | []float64 |
+		int | []int |
+		string | []string |
+		bool |
+		time.Time | []time.Time |
+		time.Duration |
+		uuid.UUID | []uuid.UUID |
+		pgtype.Numeric |
+		[]byte
+}
+
+type OfType[T MappedTypes] interface {
+	expression
+	isOfType(_ T)
+}
+
+func NewSQLType[T MappedTypes](t T) *SQLType[T] {
+	return &SQLType[T]{NewLiteralExpression(t)}
+}
+
+// SQLType is the underlying type for interacting with SQL types through queries
+//
+// 2025-12-1: [T any] necessary because Go cannot infer ArrayType[[]T]
+type SQLType[T any] struct {
+	expression
+}
+
+func (t *SQLType[T]) isOfType(_ T) {}
+
+type sqlType[T any] = SQLType[T]
+
+func String(e Expression) *StringType {
+	return &StringType{sqlType[string]{e}}
 }
 
 // StringType represents a VARCHAR column
-type StringType[B ExpressionBuilder] struct {
-	valueExpression
-	b B
+type StringType struct {
+	sqlType[string]
 }
 
-func (c *StringType[B]) Eq(val string) ast.BooleanExpression {
-	left := c.valueExpression
-	c.b.setExpression(ast.NewBinaryExpression(&ast.ExpressionNode{Op: "=", Args: []ast.Expression{left, Lit(val)}}))
-	return c.b
+func (t *StringType) Eq(expr OfType[string]) *BoolType {
+
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *StringType[B]) Like(pattern string) ast.BooleanExpression {
-	left := c.valueExpression
-	c.b.setExpression(ast.NewBinaryExpression(&ast.ExpressionNode{Op: "LIKE", Args: []ast.Expression{left, Lit(pattern)}}))
-	return c.b
+func (t *StringType) Like(pattern string) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "LIKE", Args: []Expression{t.expression, NewLiteralExpression(pattern)}}))
 }
 
-func (c *StringType[B]) In(vals ...string) ast.BooleanExpression {
-
-	return c.b
+func (t *StringType) In(expr OfType[[]string]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "IN", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *StringType[B]) IsNull() ast.BooleanExpression {
-	left := c.valueExpression
-	c.b.setExpression(ast.NewUnaryExpression(&ast.ExpressionNode{Op: "IS NULL", Args: []ast.Expression{left}}))
-	return c.b
+func (t *StringType) Between(start, end OfType[string]) *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			NewBinaryExpression(&ExpressionNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			}),
+		},
+	}))
 }
 
-func (c *StringType[B]) IsNotNull() ast.BooleanExpression {
-	left := c.valueExpression
-	c.b.setExpression(ast.NewUnaryExpression(&ast.ExpressionNode{Op: "IS NOT NULL", Args: []ast.Expression{left}}))
-	return c.b
+func (t *StringType) IsNull() *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{Op: "IS NULL", Args: []Expression{t.expression}}))
 }
 
-func NewIntType[B ExpressionBuilder](ref *ast.FieldRef, builder B) *IntType[B] {
-	return &IntType[B]{
-		valueExpression: ast.NewValueExpression(ast.NewFieldExpresion(ref)),
-		b:               builder,
-	}
+func (t *StringType) IsNotNull() *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{Op: "IS NOT NULL", Args: []Expression{t.expression}}))
 }
 
 // IntType represents an integer expression
-type IntType[B ExpressionBuilder] struct {
-	valueExpression
-	b B
+type IntType struct {
+	sqlType[int]
 }
 
-func (c *IntType[B]) Gt(val int) ast.BooleanExpression {
-	left := c.valueExpression
-	c.b.setExpression(ast.NewBinaryExpression(&ast.ExpressionNode{Op: ">", Args: []ast.Expression{left, Lit(val)}}))
-	return c.b
+func (t *IntType) Eq(expr OfType[int]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *IntType[B]) Lt(val int) ast.BooleanExpression {
-
-	return c.b
+func (t *IntType) Gt(expr OfType[int]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *IntType[B]) Gte(val int) ast.BooleanExpression {
-
-	return c.b
+func (t *IntType) Lt(expr OfType[int]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *IntType[B]) Lte(val int) ast.BooleanExpression {
-
-	return c.b
+func (t *IntType) Gte(expr OfType[int]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *IntType[B]) Eq(val int) ast.BooleanExpression {
-
-	return c.b
+func (t *IntType) Lte(expr OfType[int]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<=", Args: []Expression{t.expression, expr}}))
 }
 
-func NewBoolType[B ExpressionBuilder](ref *ast.FieldRef, builder B) *BoolType[B] {
-	return &BoolType[B]{
-		valueExpression: ast.NewValueExpression(ast.NewFieldExpresion(ref)),
-		b:               builder,
-	}
+func (t *IntType) Between(start, end OfType[int]) *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			NewBinaryExpression(&ExpressionNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			}),
+		},
+	}))
+}
+
+func Bool(e Expression) *BoolType {
+	return &BoolType{sqlType[bool]{e}}
 }
 
 // BoolType represents a BOOLEAN column
-type BoolType[B ExpressionBuilder] struct {
-	valueExpression
-	b B
+type BoolType struct {
+	sqlType[bool]
 }
 
-func (c *BoolType[B]) Eq(val bool) ast.BooleanExpression {
-
-	return c.b
+func (t *BoolType) And(expr *BoolType) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "AND", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *BoolType[B]) IsTrue() ast.BooleanExpression {
-	left := c.valueExpression
-	c.b.setExpression(ast.NewBinaryExpression(&ast.ExpressionNode{Op: "=", Args: []ast.Expression{left, Lit(true)}}))
-	return c.b
+func (t *BoolType) Or(expr *BoolType) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "OR", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *BoolType[B]) IsFalse() ast.BooleanExpression {
-
-	return c.b
+func (t *BoolType) Eq(expr *BoolType) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *BoolType[B]) IsNull() ast.BooleanExpression {
-
-	return c.b
+func (t *BoolType) IsTrue() *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, NewLiteralExpression(true)}}))
 }
 
-func NewTimeType[B ExpressionBuilder](ref *ast.FieldRef, builder B) *TimeType[B] {
-	return &TimeType[B]{
-		valueExpression: ast.NewValueExpression(ast.NewFieldExpresion(ref)),
-		b:               builder,
-	}
+func (t *BoolType) IsFalse() *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, NewLiteralExpression(false)}}))
+}
+
+func (t *BoolType) IsNull() *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{
+		Op:   "IS NULL",
+		Args: []Expression{t.expression},
+	}))
+}
+
+func Timestamp(e sqlType[time.Time]) *TimestampType {
+	return &TimestampType{e}
+}
+
+type TimestampType struct {
+	sqlType[time.Time]
+}
+
+func (t *TimestampType) isOfType(_ time.Time) {}
+
+func Date(e sqlType[time.Time]) *DateType {
+	return &DateType{e}
+}
+
+type DateType struct {
+	sqlType[time.Time]
+}
+
+func (d *DateType) isOfType(_ time.Time) {}
+
+func Time(e sqlType[time.Time]) *TimeType {
+	return &TimeType{e}
 }
 
 // TimeType represents a TIMESTAMP column
-type TimeType[B ExpressionBuilder] struct {
-	valueExpression
-	b B
+type TimeType struct {
+	sqlType[time.Time]
 }
 
-func (c *TimeType[B]) Eq(val time.Time) ast.BooleanExpression {
-
-	return c.b
+func (t *TimeType) Eq(expr OfType[time.Time]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *TimeType[B]) Gt(val time.Time) ast.BooleanExpression {
-
-	return c.b
+func (t *TimeType) Gt(expr OfType[time.Time]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *TimeType[B]) Lt(val time.Time) ast.BooleanExpression {
-
-	return c.b
+func (t *TimeType) Lt(expr OfType[time.Time]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *TimeType[B]) Gte(val time.Time) ast.BooleanExpression {
-
-	return c.b
+func (t *TimeType) Gte(expr OfType[time.Time]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *TimeType[B]) Lte(val time.Time) ast.BooleanExpression {
-
-	return c.b
+func (t *TimeType) Lte(expr OfType[time.Time]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *TimeType[B]) Between(start, end time.Time) ast.BooleanExpression {
-
-	return c.b
+func (t *TimeType) Between(start, end OfType[time.Time]) *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			NewBinaryExpression(&ExpressionNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			}),
+		},
+	}))
 }
 
-func Lit(val interface{}) ast.Expression {
-	return ast.NewLiteralExpression(&ast.ExpressionNode{Literal: val})
-}
-
-func NewUUIDType[B ExpressionBuilder](ref *ast.FieldRef, builder B) *UUIDType[B] {
-	return &UUIDType[B]{
-		valueExpression: ast.NewValueExpression(ast.NewFieldExpresion(ref)),
-		b:               builder,
-	}
+func UUID(e Expression) *UUIDType {
+	return &UUIDType{sqlType[uuid.UUID]{e}}
 }
 
 // UUIDType represents a UUID column
-type UUIDType[B ExpressionBuilder] struct {
-	valueExpression
-	b B
+type UUIDType struct {
+	sqlType[uuid.UUID]
 }
 
-func (c *UUIDType[B]) Eq(val uuid.UUID) ast.BooleanExpression {
-
-	return c.b
+func (t *UUIDType) Eq(expr OfType[uuid.UUID]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *UUIDType[B]) In(vals ...uuid.UUID) ast.BooleanExpression {
-
-	return c.b
+func (t *UUIDType) In(expr OfType[[]uuid.UUID]) *BoolType {
+	return Bool(NewBinaryExpression(&ExpressionNode{Op: "IN", Args: []Expression{t.expression, expr}}))
 }
 
-func (c *UUIDType[B]) IsNull() ast.BooleanExpression {
-
-	return c.b
+func (t *UUIDType) IsNull() *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{
+		Op:   "IS NULL",
+		Args: []Expression{t.expression},
+	}))
 }
 
-func (c *UUIDType[B]) IsNotNull() ast.BooleanExpression {
-
-	return c.b
+func (t *UUIDType) IsNotNull() *BoolType {
+	return Bool(NewUnaryExpression(&ExpressionNode{
+		Op:   "IS NOT NULL",
+		Args: []Expression{t.expression},
+	}))
 }
 
-type ExpressionBuilder interface {
-	ast.BooleanExpression
-	setExpression(ast.Expression)
+type ArrayType[T MappedTypes] struct {
+	sqlType[[]T]
+}
+
+type Bytes struct {
+	sqlType[[]byte]
 }

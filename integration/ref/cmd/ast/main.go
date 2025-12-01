@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
@@ -11,11 +12,11 @@ func main() {
 	qry := query.NewUsersQuery().
 		Select(
 			users.Id(),
-			users.FullName(),
+			users.FullName().Eq(Lit("foo")),
 			users.Email()).
 		Where(users.Email().Like("%@corp.com").
 			And(users.IsActive().IsTrue()).
-			And(users.Username().Eq("foo"))).
+			And(users.Username().Eq(Lit("foo")))).
 		GroupBy().
 		OrderBy(
 			query.Asc(users.Id()),
@@ -36,4 +37,8 @@ func main() {
 	//sql, params = query.ToSql()
 	//fmt.Println(sql)    // SELECT users.id, users.username FROM users AS users WHERE users.created_at > $1 AND (users.username IS NOT NULL OR users.email LIKE $2)
 	//fmt.Println(params) // params: [%@corp.com 2025-11-24 15:13:17 +0100 CET]
+}
+
+func Lit[T ast.MappedTypes](t T) ast.OfType[T] {
+	return ast.NewSQLType(t)
 }

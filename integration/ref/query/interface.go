@@ -7,26 +7,26 @@ import (
 )
 
 type SelectQuery[O any] interface {
-	Select(columns ...ast.ValueExpression) JoinQuery[O]
+	Select(columns ...ast.Expression) JoinQuery[O]
 }
 
 type JoinQuery[O any] interface {
-	Join(joinType ast.JoinType, table string, expr ast.BooleanExpression) WhereQuery[O]
+	Join(joinType ast.JoinType, table string, expr *ast.BoolType) WhereQuery[O]
 	WhereQuery[O]
 }
 
 type WhereQuery[O any] interface {
-	Where(expr ast.BooleanExpression) GroupByQuery[O]
+	Where(expr *ast.BoolType) GroupByQuery[O]
 	GroupByQuery[O]
 }
 
 type GroupByQuery[O any] interface {
-	GroupBy(columns ...ast.ValueExpression) HavingQuery[O]
+	GroupBy(columns ...ast.Expression) HavingQuery[O]
 	HavingQuery[O]
 }
 
 type HavingQuery[O any] interface {
-	Having(expr ast.BooleanExpression) OrderByQuery[O]
+	Having(expr *ast.BoolType) OrderByQuery[O]
 	OrderByQuery[O]
 }
 

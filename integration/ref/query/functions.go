@@ -11,7 +11,7 @@ func Coalesce(expressions ...ast.Expression) ast.Expression {
 	})
 }
 
-func JsonbBuildObject(expressions ...ast.ValueExpression) ast.Expression {
+func JsonbBuildObject(expressions ...ast.Expression) ast.Expression {
 	return ast.NewFunctionExpression(&ast.ExpressionNode{
 		Op: "jsonb_build_object",
 	})

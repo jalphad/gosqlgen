@@ -20,12 +20,12 @@ type Builder[O Tables] struct {
 	params []interface{}
 }
 
-func (qb *Builder[O]) Select(columns ...ast.ValueExpression) JoinQuery[O] {
+func (qb *Builder[O]) Select(columns ...ast.Expression) JoinQuery[O] {
 	qb.stmt.SelectList = append(qb.stmt.SelectList, columns...)
 	return qb
 }
 
-func (qb *Builder[O]) Join(joinType ast.JoinType, table string, expr ast.BooleanExpression) WhereQuery[O] {
+func (qb *Builder[O]) Join(joinType ast.JoinType, table string, expr *ast.BoolType) WhereQuery[O] {
 	qb.stmt.From = append(qb.stmt.From, &ast.TableSource{
 		Join: &ast.JoinExpr{
 			Type:      joinType,
@@ -36,17 +36,17 @@ func (qb *Builder[O]) Join(joinType ast.JoinType, table string, expr ast.Boolean
 	return qb
 }
 
-func (qb *Builder[O]) Where(expr ast.BooleanExpression) GroupByQuery[O] {
+func (qb *Builder[O]) Where(expr *ast.BoolType) GroupByQuery[O] {
 	qb.stmt.Where = expr
 	return qb
 }
 
-func (qb *Builder[O]) GroupBy(columns ...ast.ValueExpression) HavingQuery[O] {
+func (qb *Builder[O]) GroupBy(columns ...ast.Expression) HavingQuery[O] {
 	qb.stmt.GroupBy = columns
 	return qb
 }
 
-func (qb *Builder[O]) Having(expr ast.BooleanExpression) OrderByQuery[O] {
+func (qb *Builder[O]) Having(expr *ast.BoolType) OrderByQuery[O] {
 	//TODO implement me
 	panic("implement me")
 }
@@ -95,14 +95,14 @@ func NewUsersQuery() *Builder[*models.UsersDto] {
 	}
 }
 
-func Asc(column ast.ValueExpression) *ast.OrderByItem {
+func Asc(column ast.Expression) *ast.OrderByItem {
 	return &ast.OrderByItem{
 		Field:     column,
 		Direction: ast.Asc,
 	}
 }
 
-func Desc(column ast.ValueExpression) *ast.OrderByItem {
+func Desc(column ast.Expression) *ast.OrderByItem {
 	return &ast.OrderByItem{
 		Field:     column,
 		Direction: ast.Desc,
@@ -111,7 +111,7 @@ func Desc(column ast.ValueExpression) *ast.OrderByItem {
 
 // expression helpers
 func Field(table, col string) ast.Expression {
-	return ast.NewFieldExpresion(&ast.FieldRef{Table: table, Column: col})
+	return ast.NewColumnExpresion(&ast.ColumnRef{Table: table, Column: col})
 }
 
 // Rendering

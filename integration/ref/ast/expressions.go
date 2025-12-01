@@ -1,185 +1,83 @@
 package ast
 
-import (
-	"fmt"
-	"strings"
-)
-
 func Render(expression Expression, params *[]any) string {
 	return expression.toSQL(params)
 }
 
-type ValueExpression interface {
+// SelectExpr can be used in SELECT clause (almost any expression)
+type SelectExpr interface {
 	Expression
-	isValueExpression()
+	selectExprMarker()
 }
 
-type BooleanExpression interface {
+// WhereExpr can be used in WHERE clause (must return Bool)
+type WhereExpr interface {
 	Expression
-	And(next Expression) BooleanExpression
-	Or(next Expression) BooleanExpression
+	whereExprMarker()
 }
 
-// Expression represents any SQL Expression (binary, unary, function, literal).
-type Expression interface {
-	toSQL(*[]any) string
-	getAst() *ExpressionNode
-}
-
-func NewFieldExpresion(ref *FieldRef) *FieldExpression {
-	return &FieldExpression{
-		expr: &ExpressionNode{
-			Field: ref,
-		},
-	}
-}
-
-type FieldExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *FieldExpression) toSQL(_ *[]any) string {
-	return e.expr.Field.Table + "." + e.expr.Field.Column
-}
-
-func (e *FieldExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-func NewLiteralExpression(expr *ExpressionNode) *LiteralExpression {
-	return &LiteralExpression{
-		expr: expr,
-	}
-}
-
-type LiteralExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *LiteralExpression) toSQL(params *[]any) string {
-	*params = append(*params, e.expr.Literal)
-	return fmt.Sprintf("$%d", len(*params))
-}
-
-func (e *LiteralExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-func NewLogicalExpression(expr *ExpressionNode) *LogicalExpression {
-	return &LogicalExpression{
-		expr: expr,
-	}
-}
-
-type LogicalExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *LogicalExpression) toSQL(params *[]any) string {
-	left := e.expr.Args[0]
-	right := e.expr.Args[1]
-	if _, ok := right.(*LogicalExpression); ok {
-		right = NewGroupedExpression(&ExpressionNode{Args: []Expression{right}})
-	}
-	return fmt.Sprintf("%s %s %s", left.toSQL(params), e.expr.Op, right.toSQL(params))
-}
-
-func (e *LogicalExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-func NewUnaryExpression(expr *ExpressionNode) *UnaryExpression {
-	return &UnaryExpression{
-		expr: expr,
-	}
-}
-
-type UnaryExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *UnaryExpression) toSQL(params *[]any) string {
-	return e.expr.Op + " " + e.expr.Args[0].toSQL(params)
-}
-
-func (e *UnaryExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-func NewBinaryExpression(expr *ExpressionNode) *BinaryExpression {
-	return &BinaryExpression{
-		expr: expr,
-	}
-}
-
-type BinaryExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *BinaryExpression) toSQL(params *[]any) string {
-	return e.expr.Args[0].toSQL(params) + " " + e.expr.Op + " " + e.expr.Args[1].toSQL(params)
-}
-
-func (e *BinaryExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-func NewFunctionExpression(expr *ExpressionNode) *FunctionExpression {
-	return &FunctionExpression{
-		expr: expr,
-	}
-}
-
-type FunctionExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *FunctionExpression) toSQL(params *[]any) string {
-	parts := []string{}
-	for _, arg := range e.expr.Args {
-		parts = append(parts, arg.toSQL(params))
-	}
-	return e.expr.Op + "(" + strings.Join(parts, ", ") + ")"
-}
-
-func (e *FunctionExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-func NewGroupedExpression(expr *ExpressionNode) *GroupedExpression {
-	return &GroupedExpression{
-		expr: expr,
-	}
-}
-
-type GroupedExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *GroupedExpression) toSQL(params *[]any) string {
-	return "(" + e.expr.Args[0].toSQL(params) + ")"
-}
-
-func (e *GroupedExpression) getAst() *ExpressionNode {
-	return e.expr
-}
-
-// ExpressionNode represents a node in the SQL Expression AST
-type ExpressionNode struct {
-	Op      string       // Operator or function name
-	Args    []Expression // Arguments (for functions or nested ops)
-	Literal any          // Literal value (if leaf)
-	Field   *FieldRef    // Optional field reference
-}
-
-func NewValueExpression(expr Expression) ValueExpression {
-	return &valueExpressionWrapper{
-		Expression: expr,
-	}
-}
-
-type valueExpressionWrapper struct {
+// GroupByExpr can be used in GROUP BY clause (non-aggregate expressions)
+type GroupByExpr interface {
 	Expression
+	groupByExprMarker()
 }
 
-func (*valueExpressionWrapper) isValueExpression() {}
+// HavingExpr can be used in HAVING clause (must return Bool, can use aggregates)
+type HavingExpr interface {
+	Expression
+	havingExprMarker()
+}
+
+// OrderByExpr can be used in ORDER BY clause (any expression)
+type OrderByExpr interface {
+	Expression
+	orderByExprMarker()
+}
+
+type LogicalExpr struct {
+	BinaryExpression
+}
+
+func (e LogicalExpr) selectExprMarker()  {}
+func (e LogicalExpr) whereExprMarker()   {}
+func (e LogicalExpr) havingExprMarker()  {}
+func (e LogicalExpr) orderByExprMarker() {}
+
+func NewComparisonExpression(e *BinaryExpression) *ComparisonExpr {
+	return &ComparisonExpr{e}
+}
+
+type ComparisonExpr struct {
+	*BinaryExpression
+}
+
+func (e *ComparisonExpr) selectExprMarker()  {}
+func (e *ComparisonExpr) whereExprMarker()   {}
+func (e *ComparisonExpr) havingExprMarker()  {}
+func (e *ComparisonExpr) orderByExprMarker() {}
+
+func NewArithmeticExpr(e *BinaryExpression) *ArithmeticExpr {
+	return &ArithmeticExpr{e}
+}
+
+type ArithmeticExpr struct {
+	*BinaryExpression
+}
+
+func (e *ArithmeticExpr) selectExprMarker()  {}
+func (e *ArithmeticExpr) whereExprMarker()   {}
+func (e *ArithmeticExpr) groupByExprMarker() {}
+func (e *ArithmeticExpr) havingExprMarker()  {}
+func (e *ArithmeticExpr) orderByExprMarker() {}
+
+func NewAggregateExpr(e *FunctionExpression) *AggregateExpr {
+	return &AggregateExpr{e}
+}
+
+type AggregateExpr struct {
+	*FunctionExpression
+}
+
+func (e *AggregateExpr) selectExprMarker()  {}
+func (e *AggregateExpr) havingExprMarker()  {}
+func (e *AggregateExpr) orderByExprMarker() {}
