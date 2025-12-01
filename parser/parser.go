@@ -833,7 +833,9 @@ func (p *Parser) mapSQLTypeToGo(sqlType string) string {
 		return "int64"
 	case "SERIAL", "BIGSERIAL":
 		return "int64"
-	case "DECIMAL", "NUMERIC", "REAL", "DOUBLE", "FLOAT":
+	case "DECIMAL", "NUMERIC":
+		return "pgtype.Numeric"
+	case "REAL", "DOUBLE", "FLOAT":
 		return "float64"
 	case "BOOLEAN", "BOOL":
 		return "bool"
@@ -848,7 +850,7 @@ func (p *Parser) mapSQLTypeToGo(sqlType string) string {
 	case "UUID":
 		return "string"
 	default:
-		return "interface{}"
+		return "any"
 	}
 }
 
