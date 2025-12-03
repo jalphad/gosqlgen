@@ -84,7 +84,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 			return nil, err
 		}
 
-		// Field references
+		// Column references
 		if err := g.generateFieldReferences(&tableBuf, table); err != nil {
 			return nil, err
 		}

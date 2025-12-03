@@ -12,12 +12,13 @@ func main() {
 	qry := query.NewUsersQuery().
 		Select(
 			users.Id(),
-			users.FullName().Eq(Lit("foo")),
+			users.FullName(),
 			users.Email()).
 		Where(users.Email().Like("%@corp.com").
 			And(users.IsActive().IsTrue()).
 			And(users.Username().Eq(Lit("foo")))).
 		GroupBy().
+		Having(Lit(true)).
 		OrderBy(
 			query.Asc(users.Id()),
 			query.Desc(users.Username())).
@@ -28,9 +29,9 @@ func main() {
 	fmt.Println(params) // [%@corp.com true]
 
 	//query = query.NewUsersQuery().Where(
-	//	query.Field("users", "created_at").Gt(time.Now()).
-	//		And(query.Field("users", "username").IsNotNull().
-	//			Or(query.Field("users", "email").Like("%@corp.com")),
+	//	query.Column("users", "created_at").Gt(time.Now()).
+	//		And(query.Column("users", "username").IsNotNull().
+	//			Or(query.Column("users", "email").Like("%@corp.com")),
 	//		),
 	//)
 	//

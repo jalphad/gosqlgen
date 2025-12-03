@@ -2,19 +2,19 @@ package ast
 
 // SelectStatement represents a full SELECT query AST.
 type SelectStatement struct {
-	With       []*CTE         // Common Table Expressions
-	SelectList []Expression   // Columns or expressions in SELECT
-	From       []*TableSource // Tables and joins
-	Where      *BoolType      // WHERE clause
-	GroupBy    []Expression   // GROUP BY fields
-	Having     *BoolType      // HAVING clause
-	OrderBy    []*OrderByItem // ORDER BY items
-	Limit      *LimitClause   // LIMIT/OFFSET
+	With       []*CTE            // Common Table Expressions
+	SelectList []NamedExpression // Columns or expressions in SELECT
+	From       []*TableSource    // Tables and joins
+	Where      *BoolType         // WHERE clause
+	GroupBy    []Expression      // GROUP BY fields
+	Having     *BoolType         // HAVING clause
+	OrderBy    []*OrderByItem    // ORDER BY items
+	Limit      *LimitClause      // LIMIT/OFFSET
 }
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	TableName string    // Base table name
+	TableName string    // Base table Name
 	Alias     string    // Optional alias
 	Join      *JoinExpr // Optional join ExpressionNode
 }

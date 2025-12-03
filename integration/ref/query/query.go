@@ -20,7 +20,7 @@ type Builder[O Tables] struct {
 	params []interface{}
 }
 
-func (qb *Builder[O]) Select(columns ...ast.Expression) JoinQuery[O] {
+func (qb *Builder[O]) Select(columns ...ast.NamedExpression) JoinQuery[O] {
 	qb.stmt.SelectList = append(qb.stmt.SelectList, columns...)
 	return qb
 }
@@ -111,7 +111,7 @@ func Desc(column ast.Expression) *ast.OrderByItem {
 
 // expression helpers
 func Field(table, col string) ast.Expression {
-	return ast.NewColumnExpresion(&ast.ColumnRef{Table: table, Column: col})
+	return &ast.ColumnNode{Table: table, Column: col}
 }
 
 // Rendering

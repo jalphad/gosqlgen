@@ -44,7 +44,7 @@ func TestTypeSafeQueryBuilder(t *testing.T) {
 
 	// Verify that type-safe methods are generated
 	typeSafeElements := []string{
-		// Field reference types
+		// Column reference types
 		"type UsersFields struct",
 		"type PostsFields struct",
 		"var UsersTable = UsersFields{}",
@@ -78,7 +78,7 @@ func TestTypeSafeQueryBuilder(t *testing.T) {
 		"func (q *PostsQuery) JoinUsers()",
 		"func (q *PostsQuery) LeftJoinUsers()",
 
-		// Field reference methods
+		// Column reference methods
 		"func (u UsersFields) Id() *FieldRef",
 		"func (u UsersFields) Email() *FieldRef",
 		"func (p PostsFields) Title() *FieldRef",
@@ -295,7 +295,7 @@ func TestComplexQueryBuilding(t *testing.T) {
 			name:         "Correct field reference",
 			description:  "db.Users().Select(UsersTable.Email(), UsersTable.Age()).Find()",
 			wouldCompile: true,
-			reason:       "Field references are type-safe",
+			reason:       "Column references are type-safe",
 		},
 		{
 			name:         "Wrong table field reference",

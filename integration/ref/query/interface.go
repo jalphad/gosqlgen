@@ -11,12 +11,12 @@ type SelectQuery[O any] interface {
 }
 
 type JoinQuery[O any] interface {
-	Join(joinType ast.JoinType, table string, expr *ast.BoolType) WhereQuery[O]
+	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) WhereQuery[O]
 	WhereQuery[O]
 }
 
 type WhereQuery[O any] interface {
-	Where(expr *ast.BoolType) GroupByQuery[O]
+	Where(expr ast.OfType[bool]) GroupByQuery[O]
 	GroupByQuery[O]
 }
 
@@ -26,7 +26,7 @@ type GroupByQuery[O any] interface {
 }
 
 type HavingQuery[O any] interface {
-	Having(expr *ast.BoolType) OrderByQuery[O]
+	Having(expr ast.OfType[bool]) OrderByQuery[O]
 	OrderByQuery[O]
 }
 

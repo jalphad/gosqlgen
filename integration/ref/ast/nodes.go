@@ -5,129 +5,90 @@ import (
 	"strings"
 )
 
-// Expression represents any SQL Expression (binary, unary, function, literal).
-type Expression interface {
-	toSQL(*[]any) string
-}
-
-func NewColumnExpresion(ref *ColumnRef) *ColumnExpression {
-	return &ColumnExpression{
-		expr: &ExpressionNode{
-			Field: ref,
-		},
+func NewColumnExpresion(table, column string) *ColumnNode {
+	return &ColumnNode{
+		Table:  table,
+		Column: column,
 	}
 }
 
-type ColumnExpression struct {
-	expr *ExpressionNode
+type ColumnNode struct {
+	Table  string // Optional: table Name
+	Column string // Column Name
 }
 
-func (e *ColumnExpression) toSQL(_ *[]any) string {
-	return e.expr.Field.Table + "." + e.expr.Field.Column
+func (e *ColumnNode) toSQL(_ *[]any) string {
+	return e.Table + "." + e.Column
 }
-func (e *ColumnExpression) selectExprMarker()  {}
-func (e *ColumnExpression) whereExprMarker()   {}
-func (e *ColumnExpression) groupByExprMarker() {}
-func (e *ColumnExpression) havingExprMarker()  {}
-func (e *ColumnExpression) orderByExprMarker() {}
 
-func NewLiteralExpression(val any) *LiteralExpression {
-	return &LiteralExpression{
-		expr: &ExpressionNode{Literal: val},
+func (e *ColumnNode) Name() string {
+	return e.Column
+}
+
+func NewLiteralExpression(val any) *LiteralNode {
+	return &LiteralNode{
+		value: val,
 	}
 }
 
-type LiteralExpression struct {
-	expr *ExpressionNode
+// LiteralNode represents literal values passed as arguments to the SQL prepared statement
+type LiteralNode struct {
+	value any // Literal value
 }
 
-func (e *LiteralExpression) toSQL(params *[]any) string {
-	*params = append(*params, e.expr.Literal)
+func (e *LiteralNode) toSQL(params *[]any) string {
+	*params = append(*params, e.value)
 	return fmt.Sprintf("$%d", len(*params))
 }
-func (e *LiteralExpression) selectExprMarker()  {}
-func (e *LiteralExpression) whereExprMarker()   {}
-func (e *LiteralExpression) groupByExprMarker() {}
-func (e *LiteralExpression) havingExprMarker()  {}
-func (e *LiteralExpression) orderByExprMarker() {}
 
-func NewUnaryExpression(expr *ExpressionNode) *UnaryExpression {
-	return &UnaryExpression{
-		expr: expr,
-	}
+type UnaryNode ExpressionNode
+
+func (e *UnaryNode) toSQL(params *[]any) string {
+	return e.Op + " " + e.Args[0].toSQL(params)
 }
 
-type UnaryExpression struct {
-	expr *ExpressionNode
-}
+type BinaryNode ExpressionNode
 
-func (e *UnaryExpression) toSQL(params *[]any) string {
-	return e.expr.Op + " " + e.expr.Args[0].toSQL(params)
-}
-
-func NewBinaryExpression(expr *ExpressionNode) *BinaryExpression {
-	return &BinaryExpression{
-		expr: expr,
-	}
-}
-
-type BinaryExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *BinaryExpression) toSQL(params *[]any) string {
-	left := e.expr.Args[0]
-	right := e.expr.Args[1]
-	if _, ok := right.(*BinaryExpression); ok {
-		right = NewGroupedExpression(&ExpressionNode{Args: []Expression{right}})
+func (e *BinaryNode) toSQL(params *[]any) string {
+	left := e.Args[0]
+	right := e.Args[1]
+	if _, ok := right.(*BinaryNode); ok {
+		right = &GroupedExpression{Args: []Expression{right}}
 	}
 
-	return left.toSQL(params) + " " + e.expr.Op + " " + right.toSQL(params)
+	return left.toSQL(params) + " " + e.Op + " " + right.toSQL(params)
 }
 
-func NewFunctionExpression(expr *ExpressionNode) *FunctionExpression {
-	return &FunctionExpression{
-		expr: expr,
-	}
-}
+type FunctionNode ExpressionNode
 
-type FunctionExpression struct {
-	expr *ExpressionNode
-}
-
-func (e *FunctionExpression) toSQL(params *[]any) string {
-	parts := []string{}
-	for _, arg := range e.expr.Args {
+func (e *FunctionNode) toSQL(params *[]any) string {
+	parts := make([]string, 0, len(e.Args))
+	for _, arg := range e.Args {
 		parts = append(parts, arg.toSQL(params))
 	}
-	return e.expr.Op + "(" + strings.Join(parts, ", ") + ")"
+	return e.Op + "(" + strings.Join(parts, ", ") + ")"
 }
 
-func NewGroupedExpression(expr *ExpressionNode) *GroupedExpression {
-	return &GroupedExpression{
-		expr: expr,
-	}
-}
-
-type GroupedExpression struct {
-	expr *ExpressionNode
-}
+// GroupedExpression represents an expression surrounded by parentheses
+type GroupedExpression ExpressionNode
 
 func (e *GroupedExpression) toSQL(params *[]any) string {
-	return "(" + e.expr.Args[0].toSQL(params) + ")"
+	return "(" + e.Args[0].toSQL(params) + ")"
 }
 
-// ExpressionNode represents a node in the SQL Expression AST
+// KeywordExpression represents known SQL keywords in the SQL language (like DISTINCT)
+type KeywordExpression ExpressionNode
+
+func (e *KeywordExpression) toSQL(params *[]any) string {
+	parts := []string{}
+	for _, arg := range e.Args {
+		parts = append(parts, arg.toSQL(params))
+	}
+	return e.Op + strings.Join(parts, ", ")
+}
+
+// ExpressionNode represents a non-leaf node in the SQL Expression AST
 type ExpressionNode struct {
-	Op      string       // Operator or function name
-	Args    []Expression // Arguments (for functions or nested ops)
-	Literal any          // Literal value (if leaf)
-	Field   *ColumnRef   // Optional field reference
-}
-
-// ColumnRef represents a type-safe field reference.
-// Can be used in SELECT, WHERE, ORDER BY, etc.
-type ColumnRef struct {
-	Table  string // Optional: table name
-	Column string // Column name or SQL ExpressionNode
+	Op   string       // Operator or function Name
+	Args []Expression // Arguments (for functions or nested ops)
 }

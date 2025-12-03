@@ -28,6 +28,12 @@ type OfType[T MappedTypes] interface {
 	isOfType(_ T)
 }
 
+type BoolExpression interface {
+	OfType[bool]
+	And(ofType OfType[bool]) BoolExpression
+	Or(ofType OfType[bool]) BoolExpression
+}
+
 func NewSQLType[T MappedTypes](t T) *SQLType[T] {
 	return &SQLType[T]{NewLiteralExpression(t)}
 }
@@ -53,39 +59,38 @@ type StringType struct {
 }
 
 func (t *StringType) Eq(expr OfType[string]) *BoolType {
-
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *StringType) Like(pattern string) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "LIKE", Args: []Expression{t.expression, NewLiteralExpression(pattern)}}))
+	return Bool(&BinaryNode{Op: "LIKE", Args: []Expression{t.sqlType, NewLiteralExpression(pattern)}})
 }
 
 func (t *StringType) In(expr OfType[[]string]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "IN", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *StringType) Between(start, end OfType[string]) *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{
+	return Bool(&UnaryNode{
 		Op: "BETWEEN",
 		Args: []Expression{
-			NewBinaryExpression(&ExpressionNode{
+			&BinaryNode{
 				Op: "AND",
 				Args: []Expression{
 					start,
 					end,
 				},
-			}),
+			},
 		},
-	}))
+	})
 }
 
 func (t *StringType) IsNull() *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{Op: "IS NULL", Args: []Expression{t.expression}}))
+	return Bool(&UnaryNode{Op: "IS NULL", Args: []Expression{t.sqlType}})
 }
 
 func (t *StringType) IsNotNull() *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{Op: "IS NOT NULL", Args: []Expression{t.expression}}))
+	return Bool(&UnaryNode{Op: "IS NOT NULL", Args: []Expression{t.sqlType}})
 }
 
 // IntType represents an integer expression
@@ -94,38 +99,38 @@ type IntType struct {
 }
 
 func (t *IntType) Eq(expr OfType[int]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *IntType) Gt(expr OfType[int]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: ">", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *IntType) Lt(expr OfType[int]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "<", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *IntType) Gte(expr OfType[int]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *IntType) Lte(expr OfType[int]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *IntType) Between(start, end OfType[int]) *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{
+	return Bool(&UnaryNode{
 		Op: "BETWEEN",
 		Args: []Expression{
-			NewBinaryExpression(&ExpressionNode{
+			&BinaryNode{
 				Op: "AND",
 				Args: []Expression{
 					start,
 					end,
 				},
-			}),
+			},
 		},
-	}))
+	})
 }
 
 func Bool(e Expression) *BoolType {
@@ -138,30 +143,30 @@ type BoolType struct {
 }
 
 func (t *BoolType) And(expr *BoolType) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "AND", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "AND", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *BoolType) Or(expr *BoolType) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "OR", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "OR", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *BoolType) Eq(expr *BoolType) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *BoolType) IsTrue() *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, NewLiteralExpression(true)}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, NewLiteralExpression(true)}})
 }
 
 func (t *BoolType) IsFalse() *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, NewLiteralExpression(false)}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, NewLiteralExpression(false)}})
 }
 
 func (t *BoolType) IsNull() *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{
+	return Bool(&UnaryNode{
 		Op:   "IS NULL",
-		Args: []Expression{t.expression},
-	}))
+		Args: []Expression{t.sqlType},
+	})
 }
 
 func Timestamp(e sqlType[time.Time]) *TimestampType {
@@ -194,38 +199,38 @@ type TimeType struct {
 }
 
 func (t *TimeType) Eq(expr OfType[time.Time]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *TimeType) Gt(expr OfType[time.Time]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: ">", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *TimeType) Lt(expr OfType[time.Time]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "<", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *TimeType) Gte(expr OfType[time.Time]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: ">=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *TimeType) Lte(expr OfType[time.Time]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "<=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *TimeType) Between(start, end OfType[time.Time]) *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{
+	return Bool(&UnaryNode{
 		Op: "BETWEEN",
 		Args: []Expression{
-			NewBinaryExpression(&ExpressionNode{
+			&BinaryNode{
 				Op: "AND",
 				Args: []Expression{
 					start,
 					end,
 				},
-			}),
+			},
 		},
-	}))
+	})
 }
 
 func UUID(e Expression) *UUIDType {
@@ -238,25 +243,25 @@ type UUIDType struct {
 }
 
 func (t *UUIDType) Eq(expr OfType[uuid.UUID]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "=", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *UUIDType) In(expr OfType[[]uuid.UUID]) *BoolType {
-	return Bool(NewBinaryExpression(&ExpressionNode{Op: "IN", Args: []Expression{t.expression, expr}}))
+	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t.sqlType, expr}})
 }
 
 func (t *UUIDType) IsNull() *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{
+	return Bool(&UnaryNode{
 		Op:   "IS NULL",
-		Args: []Expression{t.expression},
-	}))
+		Args: []Expression{t.sqlType},
+	})
 }
 
 func (t *UUIDType) IsNotNull() *BoolType {
-	return Bool(NewUnaryExpression(&ExpressionNode{
+	return Bool(&UnaryNode{
 		Op:   "IS NOT NULL",
-		Args: []Expression{t.expression},
-	}))
+		Args: []Expression{t.sqlType},
+	})
 }
 
 type ArrayType[T MappedTypes] struct {
