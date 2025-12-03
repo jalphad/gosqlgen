@@ -24,8 +24,8 @@ func IsActive() *ast.BoolColumnExpression {
 	return ast.NewBoolColumnExpression("users", "is_active")
 }
 
-func AllColumns() []ast.Expression {
-	return []ast.Expression{
+func AllColumns() []ast.NamedExpression {
+	return []ast.NamedExpression{
 		Id(),
 		Username(),
 		Email(),

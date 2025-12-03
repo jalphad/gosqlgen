@@ -91,6 +91,10 @@ func (t *StringType) IsNotNull() *BoolType {
 	return Bool(&UnaryNode{Op: "IS NOT NULL", Args: []Expression{t}})
 }
 
+func Int(e Expression) *IntType {
+	return &IntType{SQLType[int]{e}}
+}
+
 // IntType represents an integer expression
 type IntType struct {
 	sqlType[int]
@@ -268,6 +272,10 @@ type ArrayType[T ArrayTypes] struct {
 
 type BytesType struct {
 	sqlType[[]byte]
+}
+
+func Json(e Expression) *JsonType {
+	return &JsonType{sqlType[json.RawMessage]{e}}
 }
 
 type JsonType struct {

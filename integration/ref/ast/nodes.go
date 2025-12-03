@@ -68,18 +68,30 @@ func (n *BinaryNode) toSQL(params *[]any) string {
 	return left.toSQL(params) + " " + n.Op + " " + right.toSQL(params)
 }
 
-type FunctionNode ExpressionNode
+type FunctionNode struct {
+	node     ExpressionNode
+	renderFn renderFunc
+}
+
+func NewFunctionNode(op string, args []Expression, fn renderFunc) *FunctionNode {
+	return &FunctionNode{
+		node: ExpressionNode{
+			Op:   op,
+			Args: args,
+		},
+		renderFn: fn,
+	}
+}
 
 func (n *FunctionNode) getNode() ExpressionNode {
-	return ExpressionNode(*n)
+	return n.node
 }
 
 func (n *FunctionNode) toSQL(params *[]any) string {
-	parts := make([]string, 0, len(n.Args))
-	for _, arg := range n.Args {
-		parts = append(parts, arg.toSQL(params))
+	if n.renderFn == nil {
+		n.renderFn = FunctionDefaultRender
 	}
-	return n.Op + "(" + strings.Join(parts, ", ") + ")"
+	return n.renderFn(n.node, params)
 }
 
 // ExpressionNode represents a non-leaf node in the SQL Expression AST
@@ -102,3 +114,13 @@ type (
 	binaryNode   = BinaryNode
 	functionNode = FunctionNode
 )
+
+type renderFunc func(ExpressionNode, *[]any) string
+
+func FunctionDefaultRender(node ExpressionNode, params *[]any) string {
+	parts := make([]string, 0, len(node.Args))
+	for _, arg := range node.Args {
+		parts = append(parts, arg.toSQL(params))
+	}
+	return node.Op + "(" + strings.Join(parts, ", ") + ")"
+}

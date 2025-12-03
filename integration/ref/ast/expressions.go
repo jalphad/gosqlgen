@@ -22,6 +22,11 @@ type NamedExpression interface {
 	Name() string
 }
 
+type AsExpression[T MappedTypes] struct {
+	ofType[T]
+	alias string
+}
+
 func NewAsExpression[T MappedTypes](expression OfType[T], alias string) *AsExpression[T] {
 	return &AsExpression[T]{
 		ofType: expression,
@@ -29,16 +34,15 @@ func NewAsExpression[T MappedTypes](expression OfType[T], alias string) *AsExpre
 	}
 }
 
-type AsExpression[T MappedTypes] struct {
-	ofType[T]
-	alias string
-}
-
 func (a *AsExpression[T]) Name() string {
 	return a.alias
 }
 
 func (a *AsExpression[T]) hasAlias() {}
+
+func (a *AsExpression[T]) toSQL(params *[]any) string {
+	return a.ofType.toSQL(params) + " AS " + a.alias
+}
 
 func NewNamedExpression[T MappedTypes](name string, expression OfType[T]) *NamedExpressionWrapper[T] {
 	return &NamedExpressionWrapper[T]{
@@ -74,6 +78,10 @@ type KeywordExpression struct {
 	node ExpressionNode
 }
 
+func (e *KeywordExpression) getNode() ExpressionNode {
+	return e.node
+}
+
 func NewKeywordExpression(op string, expressions ...Expression) *KeywordExpression {
 	return &KeywordExpression{ExpressionNode{
 		Op:   op,
@@ -86,7 +94,7 @@ func (e *KeywordExpression) toSQL(params *[]any) string {
 	for _, arg := range e.node.Args {
 		parts = append(parts, arg.toSQL(params))
 	}
-	return e.node.Op + strings.Join(parts, ", ")
+	return e.node.Op + " " + strings.Join(parts, ", ")
 }
 
 type ColumnExpression struct {
@@ -120,6 +128,12 @@ func (e *StringColumnExpression) Name() string {
 
 type IntColumnExpression struct {
 	*intType
+}
+
+func NewIntColumnExpression(table, column string) *IntColumnExpression {
+	return &IntColumnExpression{
+		Int(NewColumnNode(table, column)),
+	}
 }
 
 func (e *IntColumnExpression) Name() string {

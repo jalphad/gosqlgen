@@ -1,60 +1,35 @@
 package query
 
-import "github.com/jalphad/gosqlgen/integration/ref/ast"
+import (
+	"encoding/json"
+	"strings"
 
-func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) ast.Expression {
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
+)
+
+func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) *ast.Function[T] {
 	args := make([]ast.Expression, 0, len(expressions))
 	for _, expression := range expressions {
 		args = append(args, expression)
 	}
-	return &ast.FunctionNode{
-		Op:   "COALESCE",
-		Args: args,
-	}
+	return ast.NewFunction[T](ast.NewFunctionNode("COALESCE", args, nil))
 }
 
-func JsonAgg(expression ast.Expression) *AggregationFunction {
-	return &AggregationFunction{
-		function: ast.FunctionNode{
-			Op:   "json_agg",
-			Args: []ast.Expression{expression},
-		},
-	}
+func JsonAgg(expression ast.Expression) *ast.AggregationFunction[json.RawMessage] {
+	return ast.NewAggregationFunction[json.RawMessage](
+		ast.NewFunctionNode("json_agg", []ast.Expression{expression}, nil))
 }
 
 func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Expression {
-	args := make([]ast.Expression, 0, len(expressions))
-	for _, expression := range expressions {
-		args = append(args, expression)
-	}
-	return &ast.FunctionNode{
-		Op:   "jsonb_build_object",
-		Args: args,
-	}
-}
-
-func Pair[T ast.MappedTypes](name string, expression ast.OfType[T]) ast.NamedExpression {
-	return ast.NewNamedExpression(name, expression)
-}
-
-type function = ast.FunctionNode
-type AggregationFunction struct {
-	function
-}
-
-func (f *AggregationFunction) Filter(filter ast.OfType[bool]) ast.Expression {
-	return &ast.BinaryNode{
-		Op: "FILTER",
-		Args: []ast.Expression{
-			f,
-			ast.NewGroupedExpression(
-				&ast.UnaryNode{
-					Op: "WHERE",
-					Args: []ast.Expression{
-						filter,
-					},
-				},
-			),
+	return ast.NewFunctionNode(
+		"jsonb_build_object",
+		nil,
+		func(node ast.ExpressionNode, params *[]any) string {
+			parts := make([]string, 0, len(expressions))
+			for _, expression := range expressions {
+				parts = append(parts, "'"+expression.Name()+"', "+ast.Render(expression, params))
+			}
+			return node.Op + "(" + strings.Join(parts, ", ") + ")"
 		},
-	}
+	)
 }

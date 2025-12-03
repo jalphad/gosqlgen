@@ -24,20 +24,36 @@ func (s *SelectStatement) getNode() ExpressionNode {
 func (s *SelectStatement) toSQL(params *[]any) string {
 	var sb strings.Builder
 	sb.WriteString("SELECT ")
-	for i, expr := range s.SelectList {
-		if i > 0 {
-			sb.WriteString(", ")
+	if len(s.SelectList) > 0 {
+		for i, expr := range s.SelectList {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(Render(expr, params))
 		}
-		sb.WriteString(Render(expr, params))
+	} else {
+		sb.WriteString("*")
 	}
 	sb.WriteString(" FROM " + s.From.Name)
+	for _, join := range s.From.joins {
+		sb.WriteString(join.toSQL(params))
+	}
 	if s.Where != nil {
 		sb.WriteString(" WHERE " + Render(s.Where, params))
 	}
-	if s.GroupBy != nil {
-
+	if len(s.GroupBy) > 0 {
+		sb.WriteString(" GROUP BY ")
+		for i, expr := range s.GroupBy {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(Render(expr, params))
+		}
 	}
-	if s.OrderBy != nil {
+	if s.Having != nil {
+		sb.WriteString(" HAVING " + Render(s.Having, params))
+	}
+	if len(s.OrderBy) > 0 {
 		sb.WriteString(" ORDER BY ")
 		for i, expr := range s.OrderBy {
 			if i > 0 {
@@ -45,9 +61,6 @@ func (s *SelectStatement) toSQL(params *[]any) string {
 			}
 			sb.WriteString(Render(expr.Field, params) + " " + string(expr.Direction))
 		}
-	}
-	if s.Having != nil {
-
 	}
 	if s.Limit != nil {
 		if s.Limit.Limit > 0 {
@@ -62,12 +75,12 @@ func (s *SelectStatement) toSQL(params *[]any) string {
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	Name string      // Base table Name
-	join []*JoinExpr // Optional join ExpressionNode
+	Name  string      // Base table Name
+	joins []*JoinExpr // Optional joins
 }
 
 func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *TableSource {
-	s.join = append(s.join, &JoinExpr{
+	s.joins = append(s.joins, &JoinExpr{
 		Type:      jointype,
 		Right:     &TableSource{Name: table},
 		Condition: on,
@@ -82,14 +95,23 @@ type JoinExpr struct {
 	Condition OfType[bool] // ON condition
 }
 
+func (j *JoinExpr) toSQL(i *[]any) string {
+	return string(j.Type) + " JOIN " + j.Right.Name + " ON " + j.Condition.toSQL(i)
+}
+
+func (j *JoinExpr) getNode() ExpressionNode {
+	//TODO implement me
+	panic("implement me")
+}
+
 // JoinType enumerates join types.
 type JoinType string
 
 const (
-	JoinInner JoinType = "INNER"
-	JoinLeft  JoinType = "LEFT"
-	JoinRight JoinType = "RIGHT"
-	JoinFull  JoinType = "FULL"
+	JoinInner JoinType = " INNER"
+	JoinLeft  JoinType = " LEFT"
+	JoinRight JoinType = " RIGHT"
+	JoinFull  JoinType = " FULL"
 )
 
 // OrderByItem represents an ORDER BY element.

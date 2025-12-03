@@ -8,8 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query"
+	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
+	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
@@ -155,9 +160,15 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
-		).FindOne(context.Background())
+		//found, err := testDB.Users().Where(
+		//	UsersClause().Id.Eq(*user.Id),
+		//).FindOne(context.Background())
+
+		found, err := query.NewUsersQuery(testDB.pool).
+			Select(users.AllColumns()...).
+			Where(
+				users.Id().Eq(query.Lit(uuid.MustParse(*user.Id)))).
+			FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
@@ -181,7 +192,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		err = testDB.Users().Update(context.Background(), user)
 		require.NoError(t, err)
 		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
 		).FindOne(context.Background())
 
 		// Assert
@@ -201,7 +212,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 		// Act
 		deleted, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
 		).Delete(context.Background())
 
 		// Assert
@@ -209,7 +220,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.EqualValues(t, 1, deleted)
 
 		_, err = testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
 		).FindOne(context.Background())
 		require.Error(t, err)
 		assert.ErrorIs(t, err, pgx.ErrNoRows)
@@ -503,7 +514,7 @@ func TestIntegration_NullableFields(t *testing.T) {
 		require.NoError(t, err)
 
 		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
 		).FindOne(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, found)
@@ -529,7 +540,7 @@ func TestIntegration_NullableFields(t *testing.T) {
 		require.NoError(t, err)
 
 		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
 		).FindOne(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, found)
@@ -629,7 +640,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Posts for User", func(t *testing.T) {
 		// Arrange
 		user, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user1.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user1.Id)),
 		).FindOne(context.Background())
 		require.NoError(t, err)
 		expectedTitles := []string{post1.Title, post2.Title}
@@ -673,7 +684,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Comments for User", func(t *testing.T) {
 		// Arrange
 		user, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user1.Id),
+			UsersClause().Id.Eq(uuid.MustParse(*user1.Id)),
 		).FindOne(context.Background())
 		require.NoError(t, err)
 
@@ -688,13 +699,29 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
-		user, err := testDB.Users().
+		user, err := query.NewUsersQuery(testDB.pool).
 			Select(
-				append(UsersTable.AllFields(), UsersTable.AggregateComments())...,
-			).JoinOn(LeftJoin, (&CommentsDto{}).TableName(), CommentsTable.UserId(), UsersTable.Id()).
-			Where(
-				UsersClause().Id.Eq(*user1.Id),
-			).GroupBy(UsersTable.AllFields()...).FindOne(context.Background())
+				users.Id(),
+				query.As(query.Coalesce(
+					query.JsonAgg(
+						query.Distinct(query.JsonbBuildObject(
+							comments.Id(),
+							comments.UserId(),
+							comments.Content(),
+						)),
+					),
+				), "comments"),
+			).Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
+			Where(users.Id().Eq(query.Lit(uuid.MustParse(*user1.Id)))).
+			GroupBy(users.Id()).FindOne(context.Background())
+
+		//user, err := testDB.Users().
+		//Select(
+		//	append(UsersTable.AllFields(), UsersTable.AggregateComments())...,
+		//).JoinOn(LeftJoin, (&CommentsDto{}).TableName(), CommentsTable.UserId(), UsersTable.Id()).
+		//Where(
+		//	UsersClause().Id.Eq(uuid.MustParse(*user1.Id)),
+		//).GroupBy(UsersTable.AllFields()...).FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
