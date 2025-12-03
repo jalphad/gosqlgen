@@ -1,53 +1,27 @@
 package users
 
 import (
-	"github.com/google/uuid"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
-func Id() *ast.ColumnExpression[uuid.UUID] {
-	return &ast.ColumnExpression[uuid.UUID]{
-		ColumnNode: ast.ColumnNode{
-			Table:  "users",
-			Column: "id",
-		},
-	}
+func Id() *ast.UUIDColumnExpression {
+	return ast.NewUUIDColumnExpression("users", "id")
 }
 
-func Username() *ast.ColumnExpression[string] {
-	return &ast.ColumnExpression[string]{
-		ColumnNode: ast.ColumnNode{
-			Table:  "users",
-			Column: "username",
-		},
-	}
+func Username() *ast.StringColumnExpression {
+	return ast.NewStringColumnExpression("users", "username")
 }
 
-func Email() *ast.ColumnExpression[string] {
-	return &ast.ColumnExpression[string]{
-		ColumnNode: ast.ColumnNode{
-			Table:  "users",
-			Column: "email",
-		},
-	}
+func Email() *ast.StringColumnExpression {
+	return ast.NewStringColumnExpression("users", "email")
 }
 
-func FullName() *ast.ColumnExpression[string] {
-	return &ast.ColumnExpression[string]{
-		ColumnNode: ast.ColumnNode{
-			Table:  "users",
-			Column: "full_name",
-		},
-	}
+func FullName() *ast.StringColumnExpression {
+	return ast.NewStringColumnExpression("users", "full_name")
 }
 
-func IsActive() *ast.ColumnExpression[bool] {
-	return &ast.ColumnExpression[bool]{
-		ColumnNode: ast.ColumnNode{
-			Table:  "users",
-			Column: "is_active",
-		},
-	}
+func IsActive() *ast.BoolColumnExpression {
+	return ast.NewBoolColumnExpression("users", "is_active")
 }
 
 func AllColumns() []ast.Expression {

@@ -7,11 +7,20 @@ import (
 )
 
 type SelectQuery[O any] interface {
-	Select(columns ...ast.Expression) JoinQuery[O]
+	Select(columns ...ast.NamedExpression) FromQuery[O]
+}
+
+type KnownTableSelectQuery[O any] interface {
+	Select(columns ...ast.NamedExpression) JoinQuery[O]
+}
+
+type FromQuery[O any] interface {
+	From(table *ast.TableSource) WhereQuery[O]
+	WhereQuery[O]
 }
 
 type JoinQuery[O any] interface {
-	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) WhereQuery[O]
+	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) JoinQuery[O]
 	WhereQuery[O]
 }
 

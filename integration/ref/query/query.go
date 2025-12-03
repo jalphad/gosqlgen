@@ -2,8 +2,6 @@ package query
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/jalphad/gosqlgen/integration/models"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
@@ -13,30 +11,42 @@ type Tables interface {
 	*models.UsersDto
 }
 
-// Builder
-type Builder[O Tables] struct {
-	o      O
+// KnownTableBuilder is the builder for known tables
+type KnownTableBuilder[O any] struct {
+	builder[O]
+}
+
+func (qb *KnownTableBuilder[O]) Select(columns ...ast.NamedExpression) JoinQuery[O] {
+	qb.builder.stmt.SelectList = append(qb.builder.stmt.SelectList, columns...)
+	return qb
+}
+
+func (qb *KnownTableBuilder[O]) Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) JoinQuery[O] {
+	_ = qb.builder.stmt.From.Join(joinType, table, expr)
+	return qb
+}
+
+func (qb *KnownTableBuilder[O]) Where(expr ast.OfType[bool]) GroupByQuery[O] {
+	qb.builder.stmt.Where = expr
+	return &qb.builder
+}
+
+type Builder[O any] struct {
 	stmt   *ast.SelectStatement
 	params []interface{}
 }
 
-func (qb *Builder[O]) Select(columns ...ast.NamedExpression) JoinQuery[O] {
+func (qb *Builder[O]) Select(columns ...ast.NamedExpression) FromQuery[O] {
 	qb.stmt.SelectList = append(qb.stmt.SelectList, columns...)
 	return qb
 }
 
-func (qb *Builder[O]) Join(joinType ast.JoinType, table string, expr *ast.BoolType) WhereQuery[O] {
-	qb.stmt.From = append(qb.stmt.From, &ast.TableSource{
-		Join: &ast.JoinExpr{
-			Type:      joinType,
-			Right:     &ast.TableSource{TableName: table},
-			Condition: expr,
-		},
-	})
+func (qb *Builder[O]) From(table *ast.TableSource) WhereQuery[O] {
+	qb.stmt.From = table
 	return qb
 }
 
-func (qb *Builder[O]) Where(expr *ast.BoolType) GroupByQuery[O] {
+func (qb *Builder[O]) Where(expr ast.OfType[bool]) GroupByQuery[O] {
 	qb.stmt.Where = expr
 	return qb
 }
@@ -46,9 +56,9 @@ func (qb *Builder[O]) GroupBy(columns ...ast.Expression) HavingQuery[O] {
 	return qb
 }
 
-func (qb *Builder[O]) Having(expr *ast.BoolType) OrderByQuery[O] {
-	//TODO implement me
-	panic("implement me")
+func (qb *Builder[O]) Having(expr ast.OfType[bool]) OrderByQuery[O] {
+	qb.stmt.Having = expr
+	return qb
 }
 
 func (qb *Builder[O]) OrderBy(orderBy ...*ast.OrderByItem) PagingQuery[O] {
@@ -73,7 +83,7 @@ func (qb *Builder[O]) Offset(offset int) PagingQuery[O] {
 }
 
 func (qb *Builder[O]) ToSql() (string, []interface{}) {
-	sql := renderSelect(qb.stmt, &qb.params)
+	sql := ast.Render(qb.stmt, &qb.params)
 	return sql, qb.params
 }
 
@@ -87,10 +97,12 @@ func (qb *Builder[O]) FindOne(ctx context.Context) (O, error) {
 	panic("implement me")
 }
 
-func NewUsersQuery() *Builder[*models.UsersDto] {
-	return &Builder[*models.UsersDto]{
-		stmt: &ast.SelectStatement{
-			From: []*ast.TableSource{{TableName: "users", Alias: "u"}},
+func NewUsersQuery() *KnownTableBuilder[*models.UsersDto] {
+	return &KnownTableBuilder[*models.UsersDto]{
+		builder: Builder[*models.UsersDto]{
+			stmt: &ast.SelectStatement{
+				From: &ast.TableSource{Name: "users"},
+			},
 		},
 	}
 }
@@ -110,46 +122,13 @@ func Desc(column ast.Expression) *ast.OrderByItem {
 }
 
 // expression helpers
-func Field(table, col string) ast.Expression {
-	return &ast.ColumnNode{Table: table, Column: col}
+func Column(table, col string) ast.Expression {
+	return &ast.ColumnNode{
+		Column: &ast.ColumnRef{
+			Table:  table,
+			Column: col,
+		},
+	}
 }
 
-// Rendering
-func renderSelect(stmt *ast.SelectStatement, params *[]interface{}) string {
-	var sb strings.Builder
-	sb.WriteString("SELECT ")
-	for i, expr := range stmt.SelectList {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(ast.Render(expr, params))
-	}
-	sb.WriteString(" FROM " + stmt.From[0].TableName)
-	if stmt.Where != nil {
-		sb.WriteString(" WHERE " + ast.Render(stmt.Where, params))
-	}
-	if stmt.GroupBy != nil {
-
-	}
-	if stmt.OrderBy != nil {
-		sb.WriteString(" ORDER BY ")
-		for i, expr := range stmt.OrderBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(ast.Render(expr.Field, params) + " " + string(expr.Direction))
-		}
-	}
-	if stmt.Having != nil {
-
-	}
-	if stmt.Limit != nil {
-		if stmt.Limit.Limit > 0 {
-			sb.WriteString(fmt.Sprintf(" LIMIT %d", stmt.Limit.Limit))
-		}
-		if stmt.Limit.Offset > 0 {
-			sb.WriteString(fmt.Sprintf(" OFFSET %d", stmt.Limit.Offset))
-		}
-	}
-	return sb.String()
-}
+type builder[O any] = Builder[O]

@@ -33,7 +33,7 @@ func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Expression {
 	}
 }
 
-func Pair(name string, expression ast.Expression) ast.NamedExpression {
+func Pair[T ast.MappedTypes](name string, expression ast.OfType[T]) ast.NamedExpression {
 	return ast.NewNamedExpression(name, expression)
 }
 
@@ -47,16 +47,14 @@ func (f *AggregationFunction) Filter(filter ast.OfType[bool]) ast.Expression {
 		Op: "FILTER",
 		Args: []ast.Expression{
 			f,
-			&ast.GroupedExpression{
-				Args: []ast.Expression{
-					&ast.UnaryNode{
-						Op: "WHERE",
-						Args: []ast.Expression{
-							filter,
-						},
+			ast.NewGroupedExpression(
+				&ast.UnaryNode{
+					Op: "WHERE",
+					Args: []ast.Expression{
+						filter,
 					},
 				},
-			},
+			),
 		},
 	}
 }
