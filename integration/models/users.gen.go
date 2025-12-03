@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
 // UsersDto represents the users table
@@ -22,12 +23,139 @@ type UsersDto struct {
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
 	IsActive  *bool      `db:"is_active" json:"is_active"`
 
-	// One-to-many reverse relationships (populated via LoadXxx methods)
+	// One-to-many reverse relationships
 	Posts    []*PostsDto    `reverse:"posts" fk:"user_id"`
 	Comments []*CommentsDto `reverse:"comments" fk:"user_id"`
 
 	// FromExpressions stores custom aggregations and expressions not mapped to fields
 	FromExpressions map[string]interface{} `json:"from_expressions,omitempty"`
+}
+
+func (u *UsersDto) NewDTO() UsersDto {
+	return UsersDto{}
+}
+
+func (u *UsersDto) ScanInto(rows pgx.Rows, stmt *ast.SelectStatement) error {
+	var scanDest []interface{}
+	var jsonUnmarshalFuncs []func() error
+
+	if len(stmt.SelectList) > 0 {
+		// Use selectFields - scan in exact order
+		for _, field := range stmt.SelectList {
+			destPtr, unmarshalFunc := u.getScanDestForField(field)
+			scanDest = append(scanDest, destPtr)
+			if unmarshalFunc != nil {
+				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+			}
+		}
+	} else {
+		// Default behavior - scan all table columns + joined tables
+		scanDest = append(scanDest, &u.Id)
+		scanDest = append(scanDest, &u.Username)
+		scanDest = append(scanDest, &u.Email)
+		scanDest = append(scanDest, &u.FullName)
+		scanDest = append(scanDest, &u.CreatedAt)
+		scanDest = append(scanDest, &u.UpdatedAt)
+		scanDest = append(scanDest, &u.IsActive)
+
+		// Add joined table columns if active
+	}
+
+	// Perform scan
+	if err := rows.Scan(scanDest...); err != nil {
+		return err
+	}
+
+	// Execute JSON unmarshal functions and collect errors
+	var unmarshalErrors []error
+	for _, fn := range jsonUnmarshalFuncs {
+		if err := fn(); err != nil {
+			unmarshalErrors = append(unmarshalErrors, err)
+		}
+	}
+
+	if len(unmarshalErrors) > 0 {
+		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+	}
+
+	return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (u *UsersDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
+	// Normalize fieldName for matching (lowercase)
+	lower := strings.ToLower(ref.Name())
+	// Check if fieldName matches a reverse relationship collection field
+	if lower == "posts" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*PostsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Posts: %w", err)
+				}
+				u.Posts = items
+			} else {
+				u.Posts = []*PostsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+	if lower == "comments" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*CommentsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Comments: %w", err)
+				}
+				u.Comments = items
+			} else {
+				u.Comments = []*CommentsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+
+	// Check if alias matches a regular table column
+	if strings.HasPrefix(ast.Render(ref, &[]any{}), "users.") {
+		if lower == "id" {
+			return &u.Id, nil
+		}
+		if lower == "username" {
+			return &u.Username, nil
+		}
+		if lower == "email" {
+			return &u.Email, nil
+		}
+		if lower == "full_name" || lower == "fullname" {
+			return &u.FullName, nil
+		}
+		if lower == "created_at" || lower == "createdat" {
+			return &u.CreatedAt, nil
+		}
+		if lower == "updated_at" || lower == "updatedat" {
+			return &u.UpdatedAt, nil
+		}
+		if lower == "is_active" || lower == "isactive" {
+			return &u.IsActive, nil
+		}
+	}
+
+	// No match - store in FromExpressions as interface{}
+	if u.FromExpressions == nil {
+		u.FromExpressions = make(map[string]interface{})
+	}
+	var value interface{}
+	// Store a pointer to value that we'll populate after scan
+	unmarshalFunc := func() error {
+		u.FromExpressions[ref.Name()] = value
+		return nil
+	}
+	return &value, unmarshalFunc
 }
 
 // TableName returns the table name for UsersDto
