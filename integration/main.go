@@ -14,17 +14,19 @@ func main() {
 }
 
 func generateModels() {
+	inputPath := "./dump.sql"
+	outputPath := "./models.new"
 	// Define your SQL schema
-	bts, err := os.ReadFile("schema.sql")
+	bts, err := os.ReadFile(inputPath)
 	if err != nil {
-		log.Fatalf("Could not read schema.sql: %s", err.Error())
+		log.Fatalf("Could not read file: %s", err.Error())
 	}
 	schema := string(bts)
 
 	// Create generator
 	gen := gosqlgen.New().
 		WithPackageName("models").
-		WithOutputPath("./models")
+		WithOutputPath(outputPath)
 
 	// Parse the schema
 	if err := gen.Parse(schema); err != nil {
@@ -37,5 +39,5 @@ func generateModels() {
 		log.Fatal("Failed to generate code:", err)
 	}
 
-	fmt.Println("\nModels generated successfully to ./models")
+	fmt.Println("\nModels generated successfully to", outputPath)
 }

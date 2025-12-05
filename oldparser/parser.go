@@ -1,4 +1,4 @@
-package gosqlgen
+package oldparser
 
 import (
 	"fmt"

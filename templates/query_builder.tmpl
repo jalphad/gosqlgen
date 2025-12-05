@@ -577,14 +577,14 @@ func (q *{{ .BuilderName }}) Insert(ctx context.Context, record *{{ .StructName 
     {{- range .NonSequenceColumns }}
     {{ if .IsPointer }}
     if record.{{ .FieldName }} != nil {
-        columns = append(columns, "{{ .Name }}")
+        columns = append(columns, "{{ .ColumnName }}")
         placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
         args = append(args, record.{{ .FieldName }})
         argIdx++
     }
     {{ else }}
     // Required field (not nullable, no default)
-    columns = append(columns, "{{ .Name }}")
+    columns = append(columns, "{{ .ColumnName }}")
     placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
     args = append(args, record.{{ .FieldName }})
     argIdx++
@@ -636,14 +636,14 @@ func (q *{{ .BuilderName }}) InsertBatch(ctx context.Context, records []*{{ .Str
         {{- range .NonSequenceColumns }}
         {{ if .IsPointer }}
         if record.{{ .FieldName }} != nil {
-            columns = append(columns, "{{ .Name }}")
+            columns = append(columns, "{{ .ColumnName }}")
             placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
             args = append(args, record.{{ .FieldName }})
             argIdx++
         }
         {{ else }}
         // Required field (not nullable, no default)
-        columns = append(columns, "{{ .Name }}")
+        columns = append(columns, "{{ .ColumnName }}")
         placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
         args = append(args, record.{{ .FieldName }})
         argIdx++
@@ -692,7 +692,7 @@ func (q *{{ .BuilderName }}) Update(ctx context.Context, record *{{ .StructName 
     return fmt.Errorf("table {{ .TableName }} has no primary key")
     {{- else -}}
     query := "UPDATE {{ .TableName }} SET " +
-        "{{- range $i, $col := .NonPrimaryColumns }}{{if $i}}, {{end}}{{ $col.Name }} = ${{ add $i 2 }}{{- end }}" +
+        "{{- range $i, $col := .NonPrimaryColumns }}{{if $i}}, {{end}}{{ $col.ColumnName }} = ${{ add $i 2 }}{{- end }}" +
         " WHERE {{ .PrimaryKey }} = $1"
 
     var tag pgconn.CommandTag
@@ -803,9 +803,9 @@ func (q *{{ .BuilderName }}) Delete(ctx context.Context) (int64, error) {
 }
 
 {{- define "ifAliasLower" }}
-{{- if eq .Name (.FieldName | toLower) }}
-if aliasLower == "{{ .Name }}" {
+{{- if eq .ColumnName (.FieldName | toLower) }}
+if aliasLower == "{{ .ColumnName }}" {
 {{- else }}
-if aliasLower == "{{ .Name }}" || aliasLower == "{{ .FieldName | toLower }}" {
+if aliasLower == "{{ .ColumnName }}" || aliasLower == "{{ .FieldName | toLower }}" {
 {{- end }}
 {{- end }}

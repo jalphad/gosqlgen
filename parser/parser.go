@@ -70,13 +70,15 @@ type Table struct {
 
 // Parser handles SQL parsing
 type Parser struct {
-	tables map[string]*Table
+	sequences map[string]string
+	tables    map[string]*Table
 }
 
 // NewParser creates a new SQL parser
 func NewParser() *Parser {
 	return &Parser{
-		tables: make(map[string]*Table),
+		sequences: make(map[string]string),
+		tables:    make(map[string]*Table),
 	}
 }
 
@@ -84,6 +86,9 @@ func NewParser() *Parser {
 func (p *Parser) Parse(sql string) error {
 	// Clean and normalize the SQL
 	sql = p.cleanSQL(sql)
+
+	// Parse all sequence statements
+	p.parseSequences(sql)
 
 	// Extract all CREATE TABLE statements
 	statements := p.extractCreateTableStatements(sql)
@@ -144,6 +149,7 @@ func (p *Parser) GetTables() map[string]*Table {
 // cleanSQL removes comments and normalizes whitespace
 func (p *Parser) cleanSQL(sql string) string {
 	// Remove single-line comments but preserve special comments like @skip-rel
+	reComments := regexp.MustCompile(`(--[^']*)$`)
 	lines := strings.Split(sql, "\n")
 	var cleaned []string
 	for _, line := range lines {
@@ -153,7 +159,9 @@ func (p *Parser) cleanSQL(sql string) string {
 			continue
 		}
 		// Remove regular SQL comments
-		if idx := strings.Index(line, "--"); idx >= 0 {
+		match := reComments.FindAllStringIndex(line, -1)
+		if match != nil {
+			idx := match[0][0]
 			line = line[:idx]
 		}
 		if strings.TrimSpace(line) != "" {
@@ -161,6 +169,29 @@ func (p *Parser) cleanSQL(sql string) string {
 		}
 	}
 	return strings.Join(cleaned, "\n")
+}
+
+func (p *Parser) parseSequences(sql string) {
+	// Regular expressions for parsing
+	reCreateSeq := regexp.MustCompile(`CREATE SEQUENCE\s+(?:(\w+)\.)?(\w+);`)
+	reAlterSeq := regexp.MustCompile(`ALTER SEQUENCE\s+(?:(\w+)\.)?(\w+)\s+OWNED BY\s+(?:(\w+)\.)?(\w+)\.(\w+);`)
+
+	// First pass: find CREATE SEQUENCE statements
+	sequenceNames := make(map[string]struct{})
+	matches := reCreateSeq.FindAllStringSubmatch(sql, -1)
+	for _, match := range matches {
+		seqName := match[2]
+		sequenceNames[seqName] = struct{}{}
+	}
+
+	matches = reAlterSeq.FindAllStringSubmatch(sql, -1)
+	for _, match := range matches {
+		seqName := match[2]
+		tableName := match[4]
+		columnName := match[5]
+
+		p.sequences[fmt.Sprintf("%s.%s", tableName, columnName)] = seqName
+	}
 }
 
 // extractCreateTableStatements extracts individual CREATE TABLE statements
@@ -270,15 +301,19 @@ func (p *Parser) splitTableItems(body string) []string {
 	var current strings.Builder
 	depth := 0
 
+	var inComment bool
 	for _, char := range body {
-		switch char {
-		case '(':
+		switch {
+		case char == '\'':
+			inComment = !inComment
+			current.WriteRune(char)
+		case char == '(' && !inComment:
 			depth++
 			current.WriteRune(char)
-		case ')':
+		case char == ')' && !inComment:
 			depth--
 			current.WriteRune(char)
-		case ',':
+		case char == ',' && !inComment:
 			if depth == 0 {
 				items = append(items, current.String())
 				current.Reset()
@@ -313,6 +348,12 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 		Tags:       make(map[string]string),
 	}
 
+	// Check if column has an associated sequence
+	if _, ok := p.sequences[fmt.Sprintf("%s.%s", table.Name, col.Name)]; ok {
+		col.IsSequence = true
+		col.HasDefault = true
+	}
+
 	// Parse the rest of the definition
 	remainingDef := strings.Join(parts[1:], " ")
 
@@ -322,8 +363,11 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 	// Map SQL type to Go type
 	col.GoType = p.mapSQLTypeToGo(parts[1])
 
-	// Check for SERIAL or BIGSERIAL
-	if matched, _ := regexp.MatchString(`(?i)\b(SERIAL|BIGSERIAL)\b`, remainingDef); matched {
+	// Check if column has an associated sequence or is of SERIAL or BIGSERIAL type
+	if _, ok := p.sequences[fmt.Sprintf("%s.%s", table.Name, col.Name)]; ok {
+		col.IsSequence = true
+		col.HasDefault = true
+	} else if matched, _ := regexp.MatchString(`(?i)\b(SERIAL|BIGSERIAL)\b`, remainingDef); matched {
 		col.IsSequence = true
 		col.HasDefault = true
 		if strings.Contains(strings.ToUpper(remainingDef), "BIGSERIAL") {
@@ -350,7 +394,7 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 	}
 
 	// Check for DEFAULT
-	defaultRe := regexp.MustCompile(`(?i)\bDEFAULT\s+([^,\s]+(?:\s*\([^)]*\))?)`)
+	defaultRe := regexp.MustCompile(`(?i)\bDEFAULT\s+('.*'|[^,\s]+)`)
 	if defaultMatch := defaultRe.FindStringSubmatch(remainingDef); len(defaultMatch) > 1 {
 		col.HasDefault = true
 		col.DefaultValue = strings.TrimSpace(defaultMatch[1])
@@ -368,6 +412,10 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 		table.ForeignKeys = append(table.ForeignKeys, fk)
 	}
 
+	// Set struct tags
+	col.Tags["db"] = col.Name
+	col.Tags["json"] = toSnakeCase(col.Name)
+
 	table.Columns = append(table.Columns, col)
 	return nil
 }
@@ -378,13 +426,13 @@ func (p *Parser) extractSQLType(def string) string {
 	typeRe := regexp.MustCompile(`(?i)^((?:CHARACTER\s+VARYING|VARCHAR|INTEGER|BIGINT|SERIAL|BIGSERIAL|TEXT|BOOLEAN|TIMESTAMP(?:\s+(?:WITH|WITHOUT)\s+TIME\s+ZONE)?|DATE|TIME(?:\s+(?:WITH|WITHOUT)\s+TIME\s+ZONE)?|UUID|NUMERIC|DECIMAL|REAL|DOUBLE\s+PRECISION|SMALLINT|BIGINT)(?:\s*\(\d+(?:\s*,\s*\d+)?\))?)`)
 	match := typeRe.FindStringSubmatch(def)
 	if len(match) > 1 {
-		return strings.TrimSpace(match[1])
+		return strings.ToUpper(strings.TrimSpace(match[1]))
 	}
 
 	// Fallback: return first word
 	parts := strings.Fields(def)
 	if len(parts) > 0 {
-		return parts[0]
+		return strings.ToUpper(parts[0])
 	}
 
 	return "TEXT"
@@ -848,7 +896,7 @@ func (p *Parser) mapSQLTypeToGo(sqlType string) string {
 	case "JSON", "JSONB":
 		return "json.RawMessage"
 	case "UUID":
-		return "string"
+		return "uuid.UUID"
 	default:
 		return "any"
 	}
@@ -865,4 +913,24 @@ func parseFKColumnName(fkColumn string) (prefix, suffix string, err error) {
 	suffix = parts[len(parts)-1]
 	prefix = strings.Join(parts[:len(parts)-1], "_")
 	return prefix, suffix, nil
+}
+
+// toSnakeCase converts a table name to snake case
+func toSnakeCase(s string) string {
+	var result []rune
+	for i, r := range s {
+		if notFirstOrLast(i, s) && isUpper(r) && (!isUpper(rune(s[i-1])) || !isUpper(rune(s[i+1]))) {
+			result = append(result, '_')
+		}
+		result = append(result, r)
+	}
+	return strings.ToLower(string(result))
+}
+
+func notFirstOrLast(index int, s string) bool {
+	return index > 0 && index < len(s)-1
+}
+
+func isUpper(r rune) bool {
+	return r >= 'A' && r <= 'Z'
 }

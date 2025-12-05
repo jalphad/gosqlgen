@@ -28,7 +28,7 @@ CREATE TABLE public.comments (
                                  id integer NOT NULL,
                                  post_id integer NOT NULL,
                                  user_id uuid NOT NULL,
-                                 content text NOT NULL DEFAULT '-- not a comment',
+                                 content text NOT NULL,
                                  is_approved boolean DEFAULT false,
                                  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
                                  test_date date DEFAULT CURRENT_DATE

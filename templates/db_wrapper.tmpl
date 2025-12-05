@@ -11,7 +11,7 @@ func NewDB(pool *pgxpool.Pool) *DB {
 {{- range .Tables }}
 
 // {{ .MethodName }} returns a query builder for {{ .TableName }}
-func (db *DB) {{ .MethodName }}() *{{ .BuilderName }} {
+func (db *DB) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
 	return New{{ .BuilderName }}(db.pool)
 }
 {{- end }}
@@ -37,9 +37,16 @@ func NewTx(tx pgx.Tx) *Tx {
 {{- range .Tables }}
 
 // {{ .MethodName }} returns a query builder within the transaction
-func (tx *Tx) {{ .MethodName }}() *{{ .BuilderName }} {
+func (tx *Tx) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
 	q := New{{ .BuilderName }}(nil)
-	q.WithTx(tx.tx)
-	return q
+	return q.WithTx(tx.tx)
+}
+{{- end }}
+
+{{- range .Tables }}
+
+// New{{ .BuilderName }} returns a query builder for {{ .TableName }}
+func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
+	return builder.NewKnownTableBuilder(&{{ .StructName }}{}, pool)
 }
 {{- end }}

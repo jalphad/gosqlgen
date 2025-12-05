@@ -3,7 +3,7 @@ package templates
 import (
 	"bytes"
 	_ "embed"
-	"slices"
+	"regexp"
 	"strings"
 	"text/template"
 )
@@ -48,7 +48,7 @@ type QueryBuilderData struct {
 
 // Column represents template column data
 type Column struct {
-	Name       string
+	ColumnName string
 	FieldName  string
 	GoType     string
 	IsNullable bool
@@ -65,30 +65,37 @@ type ForeignKeyData struct {
 
 // TableStructData contains the data for rendering the table struct template
 type TableStructData struct {
-	StructName       string
-	TableName        string
-	ReceiverName     string
-	Fields           []StructField
-	JoinedFields     []JoinedField
-	ReverseRelFields []ReverseRelField
-	ManyToManyFields []ManyToManyField
+	StructName         string
+	TableName          string
+	ReceiverName       string
+	Fields             []StructField
+	JoinedFields       []JoinedField
+	ReverseRelFields   []ReverseRelField
+	ManyToManyFields   []ManyToManyField
+	NonSequenceColumns []StructField
+	PrimaryKeys        []string
+	PrimaryKeyFields   []string
 }
 
 // StructField represents a field in the generated struct
 type StructField struct {
 	FieldName  string
+	ColumnName string
 	GoType     string
 	SQLType    string
 	StructTags string
+	IsPointer  bool
 }
 
 // JoinedField represents a joined relationship field
 type JoinedField struct {
-	FieldName        string // e.g., "User", "Author", "Sender"
-	GoType           string // e.g., "*UsersDto"
-	ReferencedTable  string // e.g., "users"
-	FKColumn         string // e.g., "user_id"
-	ReferencedColumn string // e.g., "id"
+	FieldName         string   // e.g., "User", "Author", "Sender"
+	GoType            string   // e.g., "*UsersDto"
+	StructName        string   // e.g., "UsersDto"
+	ReferencedTable   string   // e.g., "users"
+	FKColumn          string   // e.g., "user_id"
+	ReferencedColumn  string   // e.g., "id"
+	ReferencedColumns []Column // columns in the referenced table
 }
 
 // ReverseRelLoaderField contains data for reverse relationship loader
@@ -104,6 +111,7 @@ type ReverseRelLoaderField struct {
 type ReverseRelField struct {
 	FieldName   string // e.g., "Posts"
 	GoType      string // e.g., "[]*PostsDto"
+	StructName  string // "PostsDto"
 	FromTable   string // e.g., "posts"
 	FKColumn    string // e.g., "user_id"
 	FromPKField string // e.g., "Id"
@@ -113,6 +121,7 @@ type ReverseRelField struct {
 type ManyToManyField struct {
 	FieldName         string // e.g., "Tags"
 	GoType            string // e.g., "[]*TagsDto"
+	StructName        string // "PostsDto"
 	JunctionTable     string // e.g., "post_tags"
 	LeftFKColumn      string // e.g., "post_id"
 	RightFKColumn     string // e.g., "tag_id"
@@ -170,6 +179,7 @@ type TableMethod struct {
 	MethodName  string
 	BuilderName string
 	TableName   string
+	StructName  string // "TagsDto
 }
 
 // CollectionLoaderData contains data for rendering collection loader methods
@@ -240,11 +250,18 @@ func RenderTableStruct(data TableStructData) (string, error) {
 		"isPtr": func(goType string) bool {
 			return strings.HasPrefix(goType, "*")
 		},
-		"hasSuffix": strings.HasSuffix,
+		"hasSuffix":    strings.HasSuffix,
+		"toLower":      strings.ToLower,
+		"toPascalCase": ToPascalCase,
+		"join":         strings.Join,
 		"needsCustomUnmarshal": func(fields []StructField) bool {
 			for _, field := range fields {
+				re := regexp.MustCompile(`(?i)^(date|time(stamp)?)( with(out)? time zone)?$`)
 				if strings.HasSuffix(field.GoType, "time.Time") &&
-					slices.Contains([]string{"DATE", "TIME", "TIMESTAMP"}, field.SQLType) {
+					re.MatchString(field.SQLType) {
+					//slices.Contains([]string{"date", "time", "timestamp",
+					//	"time with time zone", "timestamp with time zone",
+					//}, field.SQLType) {
 					return true
 				}
 			}

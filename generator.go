@@ -33,6 +33,7 @@ func NewGenerator(parser *parser.Parser) *Generator {
 			"github.com/jackc/pgx/v5":         true,
 			"github.com/jackc/pgx/v5/pgxpool": true,
 			"github.com/jackc/pgx/v5/pgconn":  true,
+			"github.com/google/uuid":          true,
 		},
 	}
 }
@@ -85,19 +86,19 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		}
 
 		// Column references
-		if err := g.generateFieldReferences(&tableBuf, table); err != nil {
-			return nil, err
-		}
+		//if err := g.generateFieldReferences(&tableBuf, table); err != nil {
+		//	return nil, err
+		//}
 
 		// Query builder
-		if err := g.generateTypeSafeQueryBuilder(&tableBuf, table); err != nil {
-			return nil, err
-		}
+		//if err := g.generateTypeSafeQueryBuilder(&tableBuf, table); err != nil {
+		//	return nil, err
+		//}
 
 		// Join builders
-		if err := g.generateJoinBuilders(&tableBuf, table); err != nil {
-			return nil, err
-		}
+		//if err := g.generateJoinBuilders(&tableBuf, table); err != nil {
+		//	return nil, err
+		//}
 
 		// Format the generated code
 		filename := fmt.Sprintf("%s.gen.go", table.Name)
@@ -157,25 +158,25 @@ func (g *Generator) Generate() (string, error) {
 	}
 
 	// Generate field references for type safety
-	for _, table := range g.parser.GetTables() {
-		if err := g.generateFieldReferences(&buf, table); err != nil {
-			return "", err
-		}
-	}
+	//for _, table := range g.parser.GetTables() {
+	//	if err := g.generateFieldReferences(&buf, table); err != nil {
+	//		return "", err
+	//	}
+	//}
 
 	// Generate query builders with type-safe methods
-	for _, table := range g.parser.GetTables() {
-		if err := g.generateTypeSafeQueryBuilder(&buf, table); err != nil {
-			return "", err
-		}
-	}
+	//for _, table := range g.parser.GetTables() {
+	//	if err := g.generateTypeSafeQueryBuilder(&buf, table); err != nil {
+	//		return "", err
+	//	}
+	//}
 
 	// Generate join builders
-	for _, table := range g.parser.GetTables() {
-		if err := g.generateJoinBuilders(&buf, table); err != nil {
-			return "", err
-		}
-	}
+	//for _, table := range g.parser.GetTables() {
+	//	if err := g.generateJoinBuilders(&buf, table); err != nil {
+	//		return "", err
+	//	}
+	//}
 
 	// Generate database wrapper
 	if err := g.generateDatabaseWrapper(&buf); err != nil {
@@ -223,16 +224,25 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 
 	// Prepare template data
 	data := templates.TableStructData{
-		StructName:       structName,
-		TableName:        table.Name,
-		ReceiverName:     receiverName,
-		Fields:           make([]templates.StructField, 0, len(table.Columns)),
-		JoinedFields:     make([]templates.JoinedField, 0, len(table.ForeignKeys)),
-		ReverseRelFields: g.reverseRelations(table),
-		ManyToManyFields: g.manyToManyRelations(table),
+		StructName:         structName,
+		TableName:          table.Name,
+		ReceiverName:       receiverName,
+		Fields:             make([]templates.StructField, 0, len(table.Columns)),
+		JoinedFields:       make([]templates.JoinedField, 0, len(table.ForeignKeys)),
+		ReverseRelFields:   g.reverseRelations(table),
+		ManyToManyFields:   g.manyToManyRelations(table),
+		NonSequenceColumns: make([]templates.StructField, 0),
+		PrimaryKeys:        make([]string, 0),
+		PrimaryKeyFields:   make([]string, 0),
 	}
 
 	for _, col := range table.Columns {
+		if col.IsPrimary {
+			data.PrimaryKeys = append(data.PrimaryKeys, col.Name)
+			data.PrimaryKeyFields = append(data.PrimaryKeyFields, templates.ToPascalCase(col.Name))
+		}
+
+		var isPointer bool
 		fieldName := templates.ToPascalCase(col.Name)
 		goType := col.GoType
 
@@ -242,16 +252,25 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 		// 3. Column is a sequence (SERIAL/BIGSERIAL, can be omitted)
 		if col.IsNullable || col.HasDefault || col.IsSequence {
 			goType = "*" + goType
+			isPointer = true
 		}
 
 		tags := g.buildStructTags(col)
 
-		data.Fields = append(data.Fields, templates.StructField{
+		field := templates.StructField{
 			FieldName:  fieldName,
+			ColumnName: col.Name,
 			GoType:     goType,
 			SQLType:    col.SQLType,
 			StructTags: tags,
-		})
+			IsPointer:  isPointer,
+		}
+
+		if !col.IsSequence {
+			data.NonSequenceColumns = append(data.NonSequenceColumns, field)
+		}
+
+		data.Fields = append(data.Fields, field)
 	}
 
 	// Add joined fields for each foreign key
@@ -267,12 +286,26 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 
 		referencedStructName := templates.ToPascalCase(referencedTable.Name) + "Dto"
 
+		var referencedColumns []templates.Column
+		for _, col := range referencedTable.Columns {
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
+			referencedColumns = append(referencedColumns, templates.Column{
+				ColumnName: col.Name,
+				FieldName:  templates.ToPascalCase(col.Name),
+				GoType:     col.GoType,
+				IsNullable: col.IsNullable,
+				IsPointer:  isPointer,
+			})
+		}
+
 		data.JoinedFields = append(data.JoinedFields, templates.JoinedField{
-			FieldName:        joinedFieldName,
-			GoType:           "*" + referencedStructName,
-			ReferencedTable:  fk.ReferencedTableName,
-			FKColumn:         fk.Column,
-			ReferencedColumn: fk.ReferencedColumn,
+			FieldName:         joinedFieldName,
+			GoType:            "*" + referencedStructName,
+			StructName:        referencedStructName,
+			ReferencedTable:   fk.ReferencedTableName,
+			FKColumn:          fk.Column,
+			ReferencedColumn:  fk.ReferencedColumn,
+			ReferencedColumns: referencedColumns,
 		})
 	}
 
@@ -452,7 +485,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *parse
 		isPointer := col.IsNullable || col.HasDefault || col.IsSequence
 
 		tc := templates.Column{
-			Name:       col.Name,
+			ColumnName: col.Name,
 			FieldName:  templates.ToPascalCase(col.Name),
 			GoType:     col.GoType,
 			IsNullable: col.IsNullable,
@@ -485,7 +518,7 @@ func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *parse
 		for _, col := range referencedTable.Columns {
 			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
 			referencedColumns = append(referencedColumns, templates.Column{
-				Name:       col.Name,
+				ColumnName: col.Name,
 				FieldName:  templates.ToPascalCase(col.Name),
 				GoType:     col.GoType,
 				IsNullable: col.IsNullable,
@@ -622,14 +655,16 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 
 	// Generate methods for each table
 	for _, table := range g.parser.GetTables() {
-		structName := templates.ToPascalCase(table.Name)
-		methodName := structName
-		builderName := structName + "Query"
+		tableName := templates.ToPascalCase(table.Name)
+		methodName := tableName
+		builderName := tableName + "Query"
+		structName := tableName + "Dto"
 
 		data.Tables = append(data.Tables, templates.TableMethod{
 			MethodName:  methodName,
 			BuilderName: builderName,
 			TableName:   table.Name,
+			StructName:  structName,
 		})
 	}
 
@@ -703,7 +738,8 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 
 		ret = append(ret, templates.ReverseRelField{
 			FieldName:   reverseRel.FieldName,
-			GoType:      "[]*" + fromStructName,
+			GoType:      "[]" + fromStructName,
+			StructName:  fromStructName,
 			FromTable:   reverseRel.FromTable.Name,
 			FKColumn:    reverseRel.FKColumn,
 			FromPKField: fromPKField,
@@ -729,7 +765,8 @@ func (g *Generator) manyToManyRelations(table *parser.Table) []templates.ManyToM
 
 		ret = append(ret, templates.ManyToManyField{
 			FieldName:         m2m.FieldName,
-			GoType:            "[]*" + refStructName,
+			GoType:            "[]" + refStructName,
+			StructName:        refStructName,
 			JunctionTable:     m2m.JunctionTable.Name,
 			LeftFKColumn:      m2m.LeftFKColumn,
 			RightFKColumn:     m2m.RightFKColumn,
