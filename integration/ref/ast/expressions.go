@@ -99,25 +99,6 @@ func (e *KeywordExpression) toSQL(params *[]any) string {
 	return e.node.Op + " " + strings.Join(parts, ", ")
 }
 
-type ColumnExpression[T MappedTypes] struct {
-	columnNode
-}
-
-func NewColumnExpresion[T MappedTypes](table, column string) *ColumnExpression[T] {
-	return &ColumnExpression[T]{
-		columnNode: columnNode{
-			Column: &ColumnRef{
-				Table:  table,
-				Column: column,
-			},
-		},
-	}
-}
-
-func (e *ColumnExpression[T]) Name() string {
-	return e.columnNode.Column.Column
-}
-
 type StringColumnExpression struct {
 	*stringType
 }
