@@ -17,6 +17,14 @@ type SelectStatement struct {
 	Limit      *LimitClause      // LIMIT/OFFSET
 }
 
+func (s *SelectStatement) GetJoinedTables() []string {
+	ret := make([]string, 0, len(s.From.joins))
+	for _, join := range s.From.joins {
+		ret = append(ret, join.Right.Name)
+	}
+	return ret
+}
+
 func (s *SelectStatement) getNode() ExpressionNode {
 	panic("not implemented")
 }

@@ -1,6 +1,8 @@
 package ast
 
-import "strings"
+import (
+	"strings"
+)
 
 func Render(e Expression, params *[]any) string {
 	return e.toSQL(params)
@@ -97,12 +99,12 @@ func (e *KeywordExpression) toSQL(params *[]any) string {
 	return e.node.Op + " " + strings.Join(parts, ", ")
 }
 
-type ColumnExpression struct {
+type ColumnExpression[T MappedTypes] struct {
 	columnNode
 }
 
-func NewColumnExpresion(table, column string) *ColumnExpression {
-	return &ColumnExpression{
+func NewColumnExpresion[T MappedTypes](table, column string) *ColumnExpression[T] {
+	return &ColumnExpression[T]{
 		columnNode: columnNode{
 			Column: &ColumnRef{
 				Table:  table,
@@ -110,6 +112,10 @@ func NewColumnExpresion(table, column string) *ColumnExpression {
 			},
 		},
 	}
+}
+
+func (e *ColumnExpression[T]) Name() string {
+	return e.columnNode.Column.Column
 }
 
 type StringColumnExpression struct {
@@ -123,7 +129,7 @@ func NewStringColumnExpression(table, column string) *StringColumnExpression {
 }
 
 func (e *StringColumnExpression) Name() string {
-	return e.getNode().Column.Column
+	return e.stringType.sqlType.getNode().Column.Column
 }
 
 type IntColumnExpression struct {
@@ -137,7 +143,7 @@ func NewIntColumnExpression(table, column string) *IntColumnExpression {
 }
 
 func (e *IntColumnExpression) Name() string {
-	return e.getNode().Column.Column
+	return e.intType.sqlType.getNode().Column.Column
 }
 
 type BoolColumnExpression struct {
@@ -151,7 +157,7 @@ func NewBoolColumnExpression(table, column string) *BoolColumnExpression {
 }
 
 func (e *BoolColumnExpression) Name() string {
-	return e.getNode().Column.Column
+	return e.boolType.sqlType.getNode().Column.Column
 }
 
 type UUIDColumnExpression struct {
@@ -165,7 +171,7 @@ func NewUUIDColumnExpression(table, column string) *UUIDColumnExpression {
 }
 
 func (e *UUIDColumnExpression) Name() string {
-	return e.getNode().Column.Column
+	return e.uuidType.sqlType.getNode().Column.Column
 }
 
 type (

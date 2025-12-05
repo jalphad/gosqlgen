@@ -9,12 +9,12 @@ import (
 )
 
 type ArrayTypes interface {
-	[]float64 | []int | []string |
+	[]float64 | []int | []int64 | []string |
 		[]time.Time | []uuid.UUID
 }
 
 type MappedTypes interface {
-	float64 | int | string | bool |
+	float64 | int | int64 | string | bool |
 		time.Time | time.Duration |
 		uuid.UUID |
 		pgtype.Numeric |
@@ -26,7 +26,6 @@ type ofType[T MappedTypes] = OfType[T]
 type OfType[T MappedTypes] interface {
 	expression
 	isOfType(_ T)
-	new(Expression) OfType[T]
 }
 
 func NewSQLType[T MappedTypes](t T) OfType[T] {
@@ -41,9 +40,6 @@ type SQLType[T MappedTypes] struct {
 }
 
 func (t *SQLType[T]) isOfType(_ T) {}
-func (t *SQLType[T]) new(e Expression) OfType[T] {
-	return &SQLType[T]{e}
-}
 
 type sqlType[T MappedTypes] = SQLType[T]
 
@@ -92,35 +88,39 @@ func (t *StringType) IsNotNull() *BoolType {
 }
 
 func Int(e Expression) *IntType {
-	return &IntType{SQLType[int]{e}}
+	return &IntType{SQLType[int64]{e}}
 }
 
 // IntType represents an integer expression
 type IntType struct {
-	sqlType[int]
+	sqlType[int64]
 }
 
-func (t *IntType) Eq(expr OfType[int]) *BoolType {
+func (t *IntType) Eq(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
-func (t *IntType) Gt(expr OfType[int]) *BoolType {
+func (t *IntType) Gt(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
 }
 
-func (t *IntType) Lt(expr OfType[int]) *BoolType {
+func (t *IntType) Lt(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: "<", Args: []Expression{t, expr}})
 }
 
-func (t *IntType) Gte(expr OfType[int]) *BoolType {
+func (t *IntType) Gte(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t, expr}})
 }
 
-func (t *IntType) Lte(expr OfType[int]) *BoolType {
+func (t *IntType) Lte(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
 }
 
-func (t *IntType) Between(start, end OfType[int]) *BoolType {
+func (t *IntType) In(expr OfType[[]int64]) *BoolType {
+	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+}
+
+func (t *IntType) Between(start, end OfType[int64]) *BoolType {
 	return Bool(&UnaryNode{
 		Op: "BETWEEN",
 		Args: []Expression{

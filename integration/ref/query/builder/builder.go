@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/models"
+	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
@@ -147,6 +147,50 @@ func NewUsersQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.UsersDto, *mode
 	}
 }
 
+func NewPostsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.PostsDto, *models.PostsDto] {
+	return &KnownTableBuilder[models.PostsDto, *models.PostsDto]{
+		builder: Builder[models.PostsDto, *models.PostsDto]{
+			pool: pool,
+			stmt: &ast.SelectStatement{
+				From: &ast.TableSource{Name: "posts"},
+			},
+		},
+	}
+}
+
+func NewCommentsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.CommentsDto, *models.CommentsDto] {
+	return &KnownTableBuilder[models.CommentsDto, *models.CommentsDto]{
+		builder: Builder[models.CommentsDto, *models.CommentsDto]{
+			pool: pool,
+			stmt: &ast.SelectStatement{
+				From: &ast.TableSource{Name: "comments"},
+			},
+		},
+	}
+}
+
+func NewTagsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.TagsDto, *models.TagsDto] {
+	return &KnownTableBuilder[models.TagsDto, *models.TagsDto]{
+		builder: Builder[models.TagsDto, *models.TagsDto]{
+			pool: pool,
+			stmt: &ast.SelectStatement{
+				From: &ast.TableSource{Name: "tags"},
+			},
+		},
+	}
+}
+
+func NewPostTagsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.PostTagsDto, *models.PostTagsDto] {
+	return &KnownTableBuilder[models.PostTagsDto, *models.PostTagsDto]{
+		builder: Builder[models.PostTagsDto, *models.PostTagsDto]{
+			pool: pool,
+			stmt: &ast.SelectStatement{
+				From: &ast.TableSource{Name: "post_tags"},
+			},
+		},
+	}
+}
+
 func Asc(column ast.Expression) *ast.OrderByItem {
 	return &ast.OrderByItem{
 		Field:     column,
@@ -158,16 +202,6 @@ func Desc(column ast.Expression) *ast.OrderByItem {
 	return &ast.OrderByItem{
 		Field:     column,
 		Direction: ast.Desc,
-	}
-}
-
-// expression helpers
-func Column(table, col string) ast.Expression {
-	return &ast.ColumnNode{
-		Column: &ast.ColumnRef{
-			Table:  table,
-			Column: col,
-		},
 	}
 }
 

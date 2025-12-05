@@ -70,10 +70,10 @@ func (n *BinaryNode) toSQL(params *[]any) string {
 
 type FunctionNode struct {
 	node     ExpressionNode
-	renderFn renderFunc
+	renderFn RenderFunc
 }
 
-func NewFunctionNode(op string, args []Expression, fn renderFunc) *FunctionNode {
+func NewFunctionNode(op string, args []Expression, fn RenderFunc) *FunctionNode {
 	return &FunctionNode{
 		node: ExpressionNode{
 			Op:   op,
@@ -115,7 +115,7 @@ type (
 	functionNode = FunctionNode
 )
 
-type renderFunc func(ExpressionNode, *[]any) string
+type RenderFunc func(ExpressionNode, *[]any) string
 
 func FunctionDefaultRender(node ExpressionNode, params *[]any) string {
 	parts := make([]string, 0, len(node.Args))
