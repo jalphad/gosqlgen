@@ -15,8 +15,9 @@ func Pair[T ast.MappedTypes](name string, expression ast.OfType[T]) *ast.NamedEx
 }
 
 // expression helpers
-func Column[T ast.MappedTypes](table, col string) *ast.ColumnExpression[T] {
-	return ast.NewColumnExpresion[T](table, col)
+func Column[T ast.MappedTypes](table, col string) *ast.NamedExpressionWrapper[T] {
+	//return ast.NewNamedExpression(col, ast.NewNewColumnNode(table, col))
+	panic("not implemented")
 }
 
 func Asc(column ast.Expression) *ast.OrderByItem {

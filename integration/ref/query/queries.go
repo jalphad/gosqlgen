@@ -13,7 +13,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
-func UserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.CompleteQuery[models.UsersDto] {
+func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Select(
 			users.Id(),
@@ -32,11 +32,17 @@ func UserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.CompleteQuery[mo
 		GroupBy(users.Id())
 }
 
-func PostsWithTags(id int64, pool *pgxpool.Pool) builder.CompleteQuery[models.PostsDto] {
+func UpdateUser(pool *pgxpool.Pool) builder.UpdateFinalizeQuery[*models.UsersDto] {
+	bdr := builder.NewUpdateBuilder[models.UsersDto, *models.UsersDto](pool)
+	return bdr.Update(users.AllColumns()...)
+}
+
+func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {
 	return models.NewPostsQuery(pool).
 		Select(
 			posts.Id(),
 			posts.Title(),
+			posts.UserId(),
 			As("tags", Coalesce(
 				JsonAgg(
 					Distinct(JsonbBuildObject(
@@ -49,5 +55,5 @@ func PostsWithTags(id int64, pool *pgxpool.Pool) builder.CompleteQuery[models.Po
 		Join(ast.JoinLeft, "post_tags", post_tags.PostId().Eq(posts.Id())).
 		Join(ast.JoinLeft, "tags", tags.Id().Eq(post_tags.TagId())).
 		Where(posts.Id().Eq(Lit(id))).
-		GroupBy(posts.Id(), posts.Title())
+		GroupBy(posts.Id(), posts.Title(), posts.UserId())
 }
