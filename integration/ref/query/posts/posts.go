@@ -4,8 +4,8 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
-func Id() *ast.UUIDColumnExpression {
-	return ast.NewUUIDColumnExpression("posts", "id")
+func Id() *ast.IntColumnExpression {
+	return ast.NewIntColumnExpression("posts", "id")
 }
 
 func Title() *ast.StringColumnExpression {

@@ -1,22 +1,40 @@
-package query
+package builder
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
 type DTO[T any] interface {
 	*T
 	ScanInto(rows pgx.Rows, stmt *ast.SelectStatement) error
+	PrepareInsert() (string, []any, []any)
+	TableName() string
 }
 
 // KnownTableBuilder is the builder for known tables
 type KnownTableBuilder[T any, O DTO[T]] struct {
 	builder[T, O]
+}
+
+func NewKnownTableBuilder[T any, O DTO[T]](dto O, pool *pgxpool.Pool) *KnownTableBuilder[T, O] {
+	return &KnownTableBuilder[T, O]{
+		builder: Builder[T, O]{
+			pool: pool,
+			stmt: &ast.SelectStatement{
+				From: &ast.TableSource{Name: dto.TableName()},
+			},
+		},
+	}
+}
+
+func (qb *KnownTableBuilder[T, O]) WithTx(tx pgx.Tx) *KnownTableBuilder[T, O] {
+	qb.builder.tx = tx
+	return qb
 }
 
 func (qb *KnownTableBuilder[T, O]) Select(columns ...ast.NamedExpression) JoinQuery[T] {
@@ -39,6 +57,11 @@ type Builder[T any, O DTO[T]] struct {
 	tx     pgx.Tx
 	stmt   *ast.SelectStatement
 	params []interface{}
+}
+
+func (qb *Builder[T, O]) WithTx(tx pgx.Tx) *Builder[T, O] {
+	qb.tx = tx
+	return qb
 }
 
 func (qb *Builder[T, O]) Select(columns ...ast.NamedExpression) FromQuery[T] {
@@ -103,7 +126,6 @@ func (qb *Builder[T, O]) Find(ctx context.Context) ([]T, error) {
 	} else {
 		rows, err = qb.pool.Query(ctx, query, args...)
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -136,73 +158,63 @@ func (qb *Builder[T, O]) FindOne(ctx context.Context) (T, error) {
 	return results[0], nil
 }
 
-func NewUsersQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.UsersDto, *models.UsersDto] {
-	return &KnownTableBuilder[models.UsersDto, *models.UsersDto]{
-		builder: Builder[models.UsersDto, *models.UsersDto]{
-			pool: pool,
-			stmt: &ast.SelectStatement{
-				From: &ast.TableSource{Name: "users"},
-			},
-		},
+// Insert inserts a new record
+// Fields with nil values (defaults/sequences) are omitted, database handles them
+func (qb *Builder[T, O]) Insert(ctx context.Context, record O) error {
+	query, args, pk := record.PrepareInsert()
+	if len(args) == 0 {
+		return fmt.Errorf("no values provided for insert")
 	}
+
+	var row pgx.Row
+	if qb.tx != nil {
+		row = qb.tx.QueryRow(ctx, query, args...)
+	} else {
+		row = qb.pool.QueryRow(ctx, query, args...)
+	}
+	var err error
+	if len(pk) > 0 {
+		err = row.Scan(pk...)
+	}
+
+	return err
 }
 
-func NewPostsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.PostsDto, *models.PostsDto] {
-	return &KnownTableBuilder[models.PostsDto, *models.PostsDto]{
-		builder: Builder[models.PostsDto, *models.PostsDto]{
-			pool: pool,
-			stmt: &ast.SelectStatement{
-				From: &ast.TableSource{Name: "posts"},
-			},
-		},
+// InsertBatch inserts multiple records efficiently using pgx batch
+func (qb *Builder[T, O]) InsertBatch(ctx context.Context, records []O) error {
+	if len(records) == 0 {
+		return nil
 	}
-}
 
-func NewCommentsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.CommentsDto, *models.CommentsDto] {
-	return &KnownTableBuilder[models.CommentsDto, *models.CommentsDto]{
-		builder: Builder[models.CommentsDto, *models.CommentsDto]{
-			pool: pool,
-			stmt: &ast.SelectStatement{
-				From: &ast.TableSource{Name: "comments"},
-			},
-		},
-	}
-}
+	var pks [][]any
+	batch := &pgx.Batch{}
+	for _, record := range records {
+		query, args, pk := record.PrepareInsert()
 
-func NewTagsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.TagsDto, *models.TagsDto] {
-	return &KnownTableBuilder[models.TagsDto, *models.TagsDto]{
-		builder: Builder[models.TagsDto, *models.TagsDto]{
-			pool: pool,
-			stmt: &ast.SelectStatement{
-				From: &ast.TableSource{Name: "tags"},
-			},
-		},
+		if len(args) > 0 {
+			pks = append(pks, pk)
+			batch.Queue(query, args...)
+		}
 	}
-}
 
-func NewPostTagsQuery(pool *pgxpool.Pool) *KnownTableBuilder[models.PostTagsDto, *models.PostTagsDto] {
-	return &KnownTableBuilder[models.PostTagsDto, *models.PostTagsDto]{
-		builder: Builder[models.PostTagsDto, *models.PostTagsDto]{
-			pool: pool,
-			stmt: &ast.SelectStatement{
-				From: &ast.TableSource{Name: "post_tags"},
-			},
-		},
+	var br pgx.BatchResults
+	if qb.tx != nil {
+		br = qb.tx.SendBatch(ctx, batch)
+	} else {
+		br = qb.pool.SendBatch(ctx, batch)
 	}
-}
+	defer br.Close()
 
-func Asc(column ast.Expression) *ast.OrderByItem {
-	return &ast.OrderByItem{
-		Field:     column,
-		Direction: ast.Asc,
+	// Scan returned PKs (if any) back into records
+	if len(pks[0]) > 0 {
+		for i := range records {
+			if err := br.QueryRow().Scan(pks[i]...); err != nil {
+				return fmt.Errorf("failed to scan batch result %d: %w", i, err)
+			}
+		}
 	}
-}
 
-func Desc(column ast.Expression) *ast.OrderByItem {
-	return &ast.OrderByItem{
-		Field:     column,
-		Direction: ast.Desc,
-	}
+	return br.Close()
 }
 
 type builder[T any, O DTO[T]] = Builder[T, O]
