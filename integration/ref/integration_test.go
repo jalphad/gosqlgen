@@ -11,9 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/ref/ast"
+	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/query"
-	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -132,7 +131,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Create User", func(t *testing.T) {
 		// Arrange
-		user := &UsersDto{
+		user := &models.UsersDto{
 			Username:  "johndoe",
 			Email:     "john@example.com",
 			FullName:  strPtr("John Doe"),
@@ -142,7 +141,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		}
 
 		// Act
-		err := testDB.Users().Insert(context.Background(), user)
+		err := models.NewUsersQuery(testDB.pool).Insert(context.Background(), user)
+		//err := testDB.Users().Insert(context.Background(), user)
 
 		// Assert
 		require.NoError(t, err)
@@ -152,11 +152,11 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Find User by ID", func(t *testing.T) {
 		// Arrange
-		user := &UsersDto{
+		user := &models.UsersDto{
 			Username: "janedoe",
 			Email:    "jane@example.com",
 		}
-		err := testDB.Users().Insert(context.Background(), user)
+		err := models.NewUsersQuery(testDB.pool).Insert(context.Background(), user)
 		require.NoError(t, err)
 
 		// Act
@@ -164,10 +164,10 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		//	UsersClause().Id.Eq(*user.Id),
 		//).FindOne(context.Background())
 
-		found, err := query.NewUsersQuery(testDB.pool).
+		found, err := models.NewUsersQuery(testDB.pool).
 			Select(users.AllColumns()...).
 			Where(
-				users.Id().Eq(query.Lit(uuid.MustParse(*user.Id)))).
+				users.Id().Eq(query.Lit(*user.Id))).
 			FindOne(context.Background())
 
 		// Assert
@@ -178,25 +178,28 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Update User", func(t *testing.T) {
 		// Arrange
-		user := &UsersDto{
+		user := &models.UsersDto{
 			Username: "updateme",
 			Email:    "update@example.com",
 		}
-		err := testDB.Users().Insert(context.Background(), user)
+		err := models.NewUsersQuery(testDB.pool).Insert(context.Background(), user)
 		require.NoError(t, err)
 
 		user.Email = "updated@example.com"
 		user.FullName = strPtr("Updated Name")
 
 		// Act
-		err = testDB.Users().Update(context.Background(), user)
+		affected, err := query.UpdateUser(testDB.pool).Exec(context.Background(), user)
+
+		//err = testDB.Users().Update(context.Background(), user)
 		require.NoError(t, err)
 		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
+			UsersClause().Id.Eq(*user.Id),
 		).FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
+		assert.Equal(t, int64(1), affected)
 		assert.Equal(t, user.Email, found.Email)
 		assert.Equal(t, user.FullName, found.FullName)
 	})
@@ -699,21 +702,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
-		user, err := query.NewUsersQuery(testDB.pool).
-			Select(
-				users.Id(),
-				query.As(query.Coalesce(
-					query.JsonAgg(
-						query.Distinct(query.JsonbBuildObject(
-							comments.Id(),
-							comments.UserId(),
-							comments.Content(),
-						)),
-					),
-				), "comments"),
-			).Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
-			Where(users.Id().Eq(query.Lit(uuid.MustParse(*user1.Id)))).
-			GroupBy(users.Id()).FindOne(context.Background())
+		user, err := query.RetrieveUserWithComments(uuid.MustParse(*user1.Id), testDB.pool).FindOne(context.Background())
 
 		//user, err := testDB.Users().
 		//Select(
@@ -818,17 +807,19 @@ func TestIntegration_ManyToMany(t *testing.T) {
 
 	t.Run("Eager load tags for posts", func(t *testing.T) {
 		// Act
-		post, err := testDB.Posts().
-			Select(
-				PostsTable.Id(),
-				PostsTable.Title(),
-				PostsTable.UserId(),
-				PostsTable.AggregateTags()).
-			JoinOn(LeftJoin, (&PostTagsDto{}).TableName(), PostTagsTable.PostId(), PostsTable.Id()).
-			JoinOn(LeftJoin, (&TagsDto{}).TableName(), TagsTable.Id(), PostTagsTable.TagId()).
-			WhereIdEq(*post1.Id).
-			GroupBy(PostsTable.Id(), PostsTable.Title(), PostsTable.UserId()).
-			FindOne(context.Background())
+		post, err := query.RetrievePostWithTags(*post1.Id, testDB.pool).FindOne(context.Background())
+
+		//post, err := testDB.Posts().
+		//	Select(
+		//		PostsTable.Id(),
+		//		PostsTable.Title(),
+		//		PostsTable.UserId(),
+		//		PostsTable.AggregateTags()).
+		//	JoinOn(LeftJoin, (&PostTagsDto{}).TableName(), PostTagsTable.PostId(), PostsTable.Id()).
+		//	JoinOn(LeftJoin, (&TagsDto{}).TableName(), TagsTable.Id(), PostTagsTable.TagId()).
+		//	WhereIdEq(*post1.Id).
+		//	GroupBy(PostsTable.Id(), PostsTable.Title(), PostsTable.UserId()).
+		//	FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
