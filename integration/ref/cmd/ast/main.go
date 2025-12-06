@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 
+	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/query"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
 func main() {
-	qry := query.NewUsersQuery(nil).
+	qry := models.NewUsersQuery(nil).
 		Select(
 			users.Id(),
 			users.FullName(),
@@ -23,9 +24,9 @@ func main() {
 			query.Desc(users.Username())).
 		Limit(20).Offset(20)
 
-	sql, params := qry.ToSql()
-	fmt.Println(sql)    // SELECT users.id, users.username FROM users AS users WHERE users.email LIKE $1 AND users.is_active = $2
-	fmt.Println(params) // [%@corp.com true]
+	sql := qry.ToSql()
+	fmt.Println(sql) // SELECT users.id, users.username FROM users AS users WHERE users.email LIKE $1 AND users.is_active = $2
+	//fmt.Println(params) // [%@corp.com true]
 
 	//query = query.NewUsersQuery().Where(
 	//	query.Column("users", "created_at").Gt(time.Now()).
