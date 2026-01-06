@@ -16,10 +16,6 @@ func NewColumnNode(table, column string) *ColumnNode {
 	}
 }
 
-func (n *ColumnNode) getNode() ExpressionNode {
-	return ExpressionNode(*n)
-}
-
 func (n *ColumnNode) toSQL(_ *[]any) string {
 	return n.Column.Table + "." + n.Column.Column
 }
@@ -33,10 +29,6 @@ func NewLiteralExpression(val any) *LiteralNode {
 // LiteralNode represents literal values passed as arguments to the SQL prepared statement
 type LiteralNode ExpressionNode
 
-func (n *LiteralNode) getNode() ExpressionNode {
-	return ExpressionNode(*n)
-}
-
 func (n *LiteralNode) toSQL(params *[]any) string {
 	*params = append(*params, n.Literal)
 	return fmt.Sprintf("$%d", len(*params))
@@ -44,19 +36,11 @@ func (n *LiteralNode) toSQL(params *[]any) string {
 
 type UnaryNode ExpressionNode
 
-func (n *UnaryNode) getNode() ExpressionNode {
-	return ExpressionNode(*n)
-}
-
 func (n *UnaryNode) toSQL(params *[]any) string {
 	return n.Op + " " + n.Args[0].toSQL(params)
 }
 
 type BinaryNode ExpressionNode
-
-func (n *BinaryNode) getNode() ExpressionNode {
-	return ExpressionNode(*n)
-}
 
 func (n *BinaryNode) toSQL(params *[]any) string {
 	left := n.Args[0]
@@ -81,10 +65,6 @@ func NewFunctionNode(op string, args []Expression, fn RenderFunc) *FunctionNode 
 		},
 		renderFn: fn,
 	}
-}
-
-func (n *FunctionNode) getNode() ExpressionNode {
-	return n.node
 }
 
 func (n *FunctionNode) toSQL(params *[]any) string {

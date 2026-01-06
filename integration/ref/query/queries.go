@@ -13,6 +13,29 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
+func InsertUser(pool *pgxpool.Pool) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
+	return models.NewUsersQuery(pool).
+		Insert(
+			users.Email(),
+			users.Username(),
+			users.FullName(),
+			users.IsActive(),
+		).
+		OnConflict(users.Id()).Do(ast.Update(users.Email()).Where(Lit(true))).
+		Returning(users.Id())
+}
+
+func UpdateUser(pool *pgxpool.Pool, userId uuid.UUID) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
+	return models.NewUsersQuery(pool).
+		Update(
+			users.Email(),
+			users.Username(),
+			users.FullName(),
+			users.IsActive(),
+		).
+		Where(users.Id().Eq(Lit(userId)))
+}
+
 func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Select(
@@ -30,11 +53,6 @@ func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFi
 		Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
 		Where(users.Id().Eq(Lit(id))).
 		GroupBy(users.Id())
-}
-
-func UpdateUser(pool *pgxpool.Pool) builder.UpdateFinalizeQuery[*models.UsersDto] {
-	bdr := builder.NewUpdateBuilder[models.UsersDto, *models.UsersDto](pool)
-	return bdr.Update(users.AllColumns()...)
 }
 
 func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {

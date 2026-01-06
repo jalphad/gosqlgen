@@ -5,6 +5,10 @@ import (
 	"strings"
 )
 
+type SqlStatement interface {
+	Returns() []NamedExpression
+}
+
 // SelectStatement represents a full SELECT query AST.
 type SelectStatement struct {
 	With       []*CTE            // Common Table Expressions
@@ -17,16 +21,16 @@ type SelectStatement struct {
 	Limit      *LimitClause      // LIMIT/OFFSET
 }
 
+func (s *SelectStatement) Returns() []NamedExpression {
+	return s.SelectList
+}
+
 func (s *SelectStatement) GetJoinedTables() []string {
 	ret := make([]string, 0, len(s.From.joins))
 	for _, join := range s.From.joins {
 		ret = append(ret, join.Right.Name)
 	}
 	return ret
-}
-
-func (s *SelectStatement) getNode() ExpressionNode {
-	panic("not implemented")
 }
 
 func (s *SelectStatement) toSQL(params *[]any) string {
@@ -105,11 +109,6 @@ type JoinExpr struct {
 
 func (j *JoinExpr) toSQL(i *[]any) string {
 	return string(j.Type) + " JOIN " + j.Right.Name + " ON " + j.Condition.toSQL(i)
-}
-
-func (j *JoinExpr) getNode() ExpressionNode {
-	//TODO implement me
-	panic("implement me")
 }
 
 // JoinType enumerates join types.

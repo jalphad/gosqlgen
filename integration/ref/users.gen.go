@@ -83,9 +83,156 @@ func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
 	return nil
 }
 
+func (u *UsersDto) GetArgs(columns []ast.NamedExpression) []any {
+	var args []any
+	dtoValues := map[string]any{
+		"id":         u.Id,
+		"username":   u.Username,
+		"email":      u.Email,
+		"full_name":  u.FullName,
+		"created_at": u.CreatedAt,
+		"updated_at": u.UpdatedAt,
+		"is_active":  u.IsActive,
+	}
+
+	for _, column := range columns {
+		val, ok := dtoValues[column.Name()]
+		if ok {
+			args = append(args, val)
+		}
+	}
+
+	return args
+}
+
+func (u *UsersDto) ScanInto(rows pgx.Rows, stmt ast.SqlStatement) error {
+	var scanDest []interface{}
+	var jsonUnmarshalFuncs []func() error
+
+	columns := stmt.Returns()
+	if len(columns) > 0 {
+		// Use selectFields - scan in exact order
+		for _, field := range columns {
+			destPtr, unmarshalFunc := u.getScanDestForField(field)
+			scanDest = append(scanDest, destPtr)
+			if unmarshalFunc != nil {
+				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+			}
+		}
+	} else {
+		// Default behavior - scan all table columns + joined tables
+		scanDest = append(scanDest, &u.Id)
+		scanDest = append(scanDest, &u.Username)
+		scanDest = append(scanDest, &u.Email)
+		scanDest = append(scanDest, &u.FullName)
+		scanDest = append(scanDest, &u.CreatedAt)
+		scanDest = append(scanDest, &u.UpdatedAt)
+		scanDest = append(scanDest, &u.IsActive)
+
+		// Add joined table columns if active
+	}
+
+	// Perform scan
+	if err := rows.Scan(scanDest...); err != nil {
+		return err
+	}
+
+	// Execute JSON unmarshal functions and collect errors
+	var unmarshalErrors []error
+	for _, fn := range jsonUnmarshalFuncs {
+		if err := fn(); err != nil {
+			unmarshalErrors = append(unmarshalErrors, err)
+		}
+	}
+
+	if len(unmarshalErrors) > 0 {
+		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+	}
+
+	return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func (u *UsersDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
+	// Normalize fieldName for matching (lowercase)
+	lower := strings.ToLower(ref.Name())
+	// Check if fieldName matches a reverse relationship collection field
+	if lower == "posts" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*PostsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Posts: %w", err)
+				}
+				u.Posts = items
+			} else {
+				u.Posts = []*PostsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+	if lower == "comments" {
+		var jsonData []byte
+		unmarshalFunc := func() error {
+			if len(jsonData) > 0 && string(jsonData) != "null" {
+				var items []*CommentsDto
+				if err := json.Unmarshal(jsonData, &items); err != nil {
+					return fmt.Errorf("field Comments: %w", err)
+				}
+				u.Comments = items
+			} else {
+				u.Comments = []*CommentsDto{}
+			}
+			return nil
+		}
+		return &jsonData, unmarshalFunc
+	}
+
+	// Check if alias matches a regular table column
+	if strings.HasPrefix(ast.Render(ref, &[]any{}), "users.") {
+		if lower == "id" {
+			return &u.Id, nil
+		}
+		if lower == "username" {
+			return &u.Username, nil
+		}
+		if lower == "email" {
+			return &u.Email, nil
+		}
+		if lower == "full_name" || lower == "fullname" {
+			return &u.FullName, nil
+		}
+		if lower == "created_at" || lower == "createdat" {
+			return &u.CreatedAt, nil
+		}
+		if lower == "updated_at" || lower == "updatedat" {
+			return &u.UpdatedAt, nil
+		}
+		if lower == "is_active" || lower == "isactive" {
+			return &u.IsActive, nil
+		}
+	}
+
+	// No match - store in FromExpressions as interface{}
+	if u.FromExpressions == nil {
+		u.FromExpressions = make(map[string]interface{})
+	}
+	var value interface{}
+	// Store a pointer to value that we'll populate after scan
+	unmarshalFunc := func() error {
+		u.FromExpressions[ref.Name()] = value
+		return nil
+	}
+	return &value, unmarshalFunc
+}
+
 // UsersFields provides type-safe field references for UsersDto
 type UsersFields struct{}
 
+// UsersTable returns field references for UsersDto
 var UsersTable = UsersFields{}
 
 // Id returns a field reference for UsersDto.Id

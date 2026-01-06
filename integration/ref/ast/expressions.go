@@ -11,7 +11,6 @@ func Render(e Expression, params *[]any) string {
 // Expression represents any SQL Expression (binary, unary, function, literal).
 type Expression interface {
 	toSQL(*[]any) string
-	getNode() ExpressionNode
 }
 
 type AliasedExpression interface {
@@ -80,10 +79,6 @@ type KeywordExpression struct {
 	node ExpressionNode
 }
 
-func (e *KeywordExpression) getNode() ExpressionNode {
-	return e.node
-}
-
 func NewKeywordExpression(op string, expressions ...Expression) *KeywordExpression {
 	return &KeywordExpression{ExpressionNode{
 		Op:   op,
@@ -110,7 +105,7 @@ func NewStringColumnExpression(table, column string) *StringColumnExpression {
 }
 
 func (e *StringColumnExpression) Name() string {
-	return e.stringType.sqlType.getNode().Column.Column
+	return e.stringType.sqlType.expression.(*ColumnNode).Column.Column
 }
 
 type IntColumnExpression struct {
@@ -124,7 +119,7 @@ func NewIntColumnExpression(table, column string) *IntColumnExpression {
 }
 
 func (e *IntColumnExpression) Name() string {
-	return e.intType.sqlType.getNode().Column.Column
+	return e.intType.sqlType.expression.(*ColumnNode).Column.Column
 }
 
 type BoolColumnExpression struct {
@@ -138,7 +133,7 @@ func NewBoolColumnExpression(table, column string) *BoolColumnExpression {
 }
 
 func (e *BoolColumnExpression) Name() string {
-	return e.boolType.sqlType.getNode().Column.Column
+	return e.boolType.sqlType.expression.(*ColumnNode).Column.Column
 }
 
 type UUIDColumnExpression struct {
@@ -152,7 +147,7 @@ func NewUUIDColumnExpression(table, column string) *UUIDColumnExpression {
 }
 
 func (e *UUIDColumnExpression) Name() string {
-	return e.uuidType.sqlType.getNode().Column.Column
+	return e.uuidType.sqlType.expression.(*ColumnNode).Column.Column
 }
 
 type (

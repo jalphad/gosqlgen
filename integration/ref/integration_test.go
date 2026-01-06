@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jalphad/gosqlgen/integration/models.new"
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/ory/dockertest/v3"
@@ -141,7 +142,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		}
 
 		// Act
-		err := models.NewUsersQuery(testDB.pool).Insert(context.Background(), user)
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
 		//err := testDB.Users().Insert(context.Background(), user)
 
 		// Assert
@@ -156,7 +157,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "janedoe",
 			Email:    "jane@example.com",
 		}
-		err := models.NewUsersQuery(testDB.pool).Insert(context.Background(), user)
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
 		require.NoError(t, err)
 
 		// Act
@@ -182,20 +183,20 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "updateme",
 			Email:    "update@example.com",
 		}
-		err := models.NewUsersQuery(testDB.pool).Insert(context.Background(), user)
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
 		require.NoError(t, err)
 
 		user.Email = "updated@example.com"
 		user.FullName = strPtr("Updated Name")
 
 		// Act
-		affected, err := query.UpdateUser(testDB.pool).Exec(context.Background(), user)
+		affected, _, err := query.UpdateUser(testDB.pool, *user.Id).Exec(context.Background(), user)
 
 		//err = testDB.Users().Update(context.Background(), user)
 		require.NoError(t, err)
-		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user.Id),
-		).FindOne(context.Background())
+		found, err := testDB.Users().
+			Where(UsersClause().Id.Eq(*user.Id)).
+			FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
@@ -227,6 +228,77 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		).FindOne(context.Background())
 		require.Error(t, err)
 		assert.ErrorIs(t, err, pgx.ErrNoRows)
+	})
+
+	t.Run("Create User with Conflict", func(t *testing.T) {
+		// Arrange
+		user := &models.UsersDto{
+			Username:  "johndoe",
+			Email:     "john@example.com",
+			FullName:  strPtr("John Doe"),
+			IsActive:  boolPtr(true),
+			CreatedAt: timePtr(time.Now()),
+			UpdatedAt: timePtr(time.Now()),
+		}
+
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
+		require.NoError(t, err)
+
+		user.Email = "updated@example.com"
+		conflict := models.NewUsersQuery(testDB.pool).
+			Insert(
+				users.Id(),
+				users.Email(),
+				users.Username(),
+				users.FullName(),
+				users.IsActive(),
+			).
+			OnConflict(users.Username()).Do(ast.Update(users.Email()).Where(query.Lit(true))).
+			Returning(users.Id())
+
+		err = conflict.Exec(context.Background(), user)
+		require.NoError(t, err)
+
+		// Act
+		found, err := models.NewUsersQuery(testDB.pool).
+			Select(users.AllColumns()...).
+			Where(
+				users.Id().Eq(query.Lit(*user.Id))).
+			FindOne(context.Background())
+
+		require.NoError(t, err)
+		assert.Equal(t, user.Email, found.Email)
+	})
+
+	t.Run("Update user, return full name", func(t *testing.T) {
+		// Arrange
+		fullName := "Update Me"
+		user := &models.UsersDto{
+			Username: "updateme",
+			Email:    "updateme@example.com",
+			FullName: &fullName,
+		}
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
+		require.NoError(t, err)
+
+		user.Email = "updated@example.com"
+		user.Username = "updatedname"
+
+		// Act
+		affected, details, err := models.NewUsersQuery(testDB.pool).
+			Update(
+				users.Email(),
+				users.Username(),
+				users.IsActive(),
+			).
+			Where(users.Id().Eq(query.Lit(*user.Id))).
+			Returning(users.FullName()).
+			Exec(context.Background(), user)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), affected)
+		assert.Equal(t, fullName, *details[0].FullName)
 	})
 }
 
@@ -621,21 +693,22 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	cleanupTables(t)
 
 	// Setup test data
-	user1 := &UsersDto{Username: "author1", Email: "author1@example.com"}
+	user1 := &models.UsersDto{Username: "author1", Email: "author1@example.com"}
 	user2 := &UsersDto{Username: "author2", Email: "author2@example.com"}
-	testDB.Users().Insert(context.Background(), user1)
+	query.InsertUser(testDB.pool).Exec(context.Background(), user1)
+	//testDB.Users().Insert(context.Background(), user1)
 	testDB.Users().Insert(context.Background(), user2)
 
 	// Create posts for user1
-	post1 := &PostsDto{UserId: *user1.Id, Title: "Post 1", Content: strPtr("Content 1")}
-	post2 := &PostsDto{UserId: *user1.Id, Title: "Post 2", Content: strPtr("Content 2")}
+	post1 := &PostsDto{UserId: user1.Id.String(), Title: "Post 1", Content: strPtr("Content 1")}
+	post2 := &PostsDto{UserId: user1.Id.String(), Title: "Post 2", Content: strPtr("Content 2")}
 	post3 := &PostsDto{UserId: *user2.Id, Title: "Post 3", Content: strPtr("Content 3")}
 	testDB.Posts().Insert(context.Background(), post1)
 	testDB.Posts().Insert(context.Background(), post2)
 	testDB.Posts().Insert(context.Background(), post3)
 
 	// Create comments
-	comment1 := &CommentsDto{PostId: *post1.Id, UserId: *user1.Id, Content: "Comment 1"}
+	comment1 := &CommentsDto{PostId: *post1.Id, UserId: user1.Id.String(), Content: "Comment 1"}
 	comment2 := &CommentsDto{PostId: *post1.Id, UserId: *user2.Id, Content: "Comment 2"}
 	testDB.Comments().Insert(context.Background(), comment1)
 	testDB.Comments().Insert(context.Background(), comment2)
@@ -643,7 +716,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Posts for User", func(t *testing.T) {
 		// Arrange
 		user, err := testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user1.Id)),
+			UsersClause().Id.Eq(*user1.Id),
 		).FindOne(context.Background())
 		require.NoError(t, err)
 		expectedTitles := []string{post1.Title, post2.Title}
@@ -687,7 +760,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Comments for User", func(t *testing.T) {
 		// Arrange
 		user, err := testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user1.Id)),
+			UsersClause().Id.Eq(*user1.Id),
 		).FindOne(context.Background())
 		require.NoError(t, err)
 
@@ -702,7 +775,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
-		user, err := query.RetrieveUserWithComments(uuid.MustParse(*user1.Id), testDB.pool).FindOne(context.Background())
+		user, err := query.RetrieveUserWithComments(*user1.Id, testDB.pool).FindOne(context.Background())
 
 		//user, err := testDB.Users().
 		//Select(
