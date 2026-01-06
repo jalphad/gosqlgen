@@ -16,28 +16,28 @@ func (s *UpdateStatement) Returns() []NamedExpression {
 	return s.Returning
 }
 
-func (s *UpdateStatement) toSQL(params *[]any) string {
-	var query strings.Builder
+func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString("UPDATE " + s.Table + " SET ")
 
-	query.WriteString("UPDATE " + s.Table + " SET ")
-
-	setClauses := make([]string, 0, len(s.SetList))
-	for _, set := range s.SetList {
-		setClauses = append(setClauses, set.Key.Name()+" = "+Render(set.Value, params))
+	for i := 0; i < len(s.SetList)-1; i++ {
+		builder.WriteString(s.SetList[i].Key.Name() + " = ")
+		s.SetList[i].Value.toSQL(builder, params)
+		builder.WriteString(", ")
 	}
-	query.WriteString(strings.Join(setClauses, ", "))
+	builder.WriteString(s.SetList[len(s.SetList)-1].Key.Name() + " = ")
+	s.SetList[len(s.SetList)-1].Value.toSQL(builder, params)
 
 	if s.From != nil {
-		query.WriteString(" FROM " + s.From.Name)
+		builder.WriteString(" FROM " + s.From.Table)
 		for _, join := range s.From.joins {
-			query.WriteString(join.toSQL(params))
+			join.toSQL(builder, params)
 		}
 	}
 
 	// Add WHERE conditions
 	if s.Where != nil {
-		query.WriteString(" WHERE ")
-		query.WriteString(s.Where.toSQL(params))
+		builder.WriteString(" WHERE ")
+		s.Where.toSQL(builder, params)
 	}
 
 	if len(s.Returning) > 0 {
@@ -45,10 +45,8 @@ func (s *UpdateStatement) toSQL(params *[]any) string {
 		for _, val := range s.Returning {
 			returning = append(returning, val.Name())
 		}
-		query.WriteString(" RETURNING " + strings.Join(returning, ", "))
+		builder.WriteString(" RETURNING " + strings.Join(returning, ", "))
 	}
-
-	return query.String()
 }
 
 type SetKV struct {

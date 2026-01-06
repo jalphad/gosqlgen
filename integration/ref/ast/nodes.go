@@ -16,8 +16,8 @@ func NewColumnNode(table, column string) *ColumnNode {
 	}
 }
 
-func (n *ColumnNode) toSQL(_ *[]any) string {
-	return n.Column.Table + "." + n.Column.Column
+func (n *ColumnNode) toSQL(builder *strings.Builder, _ *[]any) {
+	builder.WriteString(n.Column.Table + "." + n.Column.Column)
 }
 
 func NewLiteralExpression(val any) *LiteralNode {
@@ -29,27 +29,30 @@ func NewLiteralExpression(val any) *LiteralNode {
 // LiteralNode represents literal values passed as arguments to the SQL prepared statement
 type LiteralNode ExpressionNode
 
-func (n *LiteralNode) toSQL(params *[]any) string {
+func (n *LiteralNode) toSQL(builder *strings.Builder, params *[]any) {
 	*params = append(*params, n.Literal)
-	return fmt.Sprintf("$%d", len(*params))
+	builder.WriteString(fmt.Sprintf("$%d", len(*params)))
 }
 
 type UnaryNode ExpressionNode
 
-func (n *UnaryNode) toSQL(params *[]any) string {
-	return n.Op + " " + n.Args[0].toSQL(params)
+func (n *UnaryNode) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString(n.Op + " ")
+	n.Args[0].toSQL(builder, params)
 }
 
 type BinaryNode ExpressionNode
 
-func (n *BinaryNode) toSQL(params *[]any) string {
+func (n *BinaryNode) toSQL(builder *strings.Builder, params *[]any) {
 	left := n.Args[0]
 	right := n.Args[1]
 	if _, ok := right.(*BinaryNode); ok {
 		right = NewGroupedExpression(right)
 	}
 
-	return left.toSQL(params) + " " + n.Op + " " + right.toSQL(params)
+	left.toSQL(builder, params)
+	builder.WriteString(" " + n.Op + " ")
+	right.toSQL(builder, params)
 }
 
 type FunctionNode struct {
@@ -67,11 +70,11 @@ func NewFunctionNode(op string, args []Expression, fn RenderFunc) *FunctionNode 
 	}
 }
 
-func (n *FunctionNode) toSQL(params *[]any) string {
+func (n *FunctionNode) toSQL(builder *strings.Builder, params *[]any) {
 	if n.renderFn == nil {
 		n.renderFn = FunctionDefaultRender
 	}
-	return n.renderFn(n.node, params)
+	n.renderFn(n.node, builder, params)
 }
 
 // ExpressionNode represents a non-leaf node in the SQL Expression AST
@@ -95,12 +98,14 @@ type (
 	functionNode = FunctionNode
 )
 
-type RenderFunc func(ExpressionNode, *[]any) string
+type RenderFunc func(ExpressionNode, *strings.Builder, *[]any)
 
-func FunctionDefaultRender(node ExpressionNode, params *[]any) string {
-	parts := make([]string, 0, len(node.Args))
-	for _, arg := range node.Args {
-		parts = append(parts, arg.toSQL(params))
+func FunctionDefaultRender(node ExpressionNode, builder *strings.Builder, params *[]any) {
+	builder.WriteString(node.Op + "(")
+	for i := 0; i < len(node.Args)-1; i++ {
+		node.Args[i].toSQL(builder, params)
+		builder.WriteString(", ")
 	}
-	return node.Op + "(" + strings.Join(parts, ", ") + ")"
+	node.Args[len(node.Args)-1].toSQL(builder, params)
+	builder.WriteString(")")
 }

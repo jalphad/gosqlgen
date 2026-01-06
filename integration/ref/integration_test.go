@@ -207,25 +207,28 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Delete User", func(t *testing.T) {
 		// Arrange
-		user := &UsersDto{
+		user := &models.UsersDto{
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
-		err := testDB.Users().Insert(context.Background(), user)
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
 		require.NoError(t, err)
 
 		// Act
-		deleted, err := testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
-		).Delete(context.Background())
+		deleted, details, err := query.DeleteUser(testDB.pool, *user.Id).Exec(context.Background())
+		if err != nil {
+			return
+		}
 
 		// Assert
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, deleted)
+		assert.Nil(t, details)
 
-		_, err = testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
-		).FindOne(context.Background())
+		_, err = models.NewUsersQuery(testDB.pool).
+			Select().
+			Where(users.Id().Eq(query.Lit(*user.Id))).
+			FindOne(context.Background())
 		require.Error(t, err)
 		assert.ErrorIs(t, err, pgx.ErrNoRows)
 	})
@@ -233,8 +236,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	t.Run("Create User with Conflict", func(t *testing.T) {
 		// Arrange
 		user := &models.UsersDto{
-			Username:  "johndoe",
-			Email:     "john@example.com",
+			Username:  "conflictedjohndoe",
+			Email:     "john@conflict.example.com",
 			FullName:  strPtr("John Doe"),
 			IsActive:  boolPtr(true),
 			CreatedAt: timePtr(time.Now()),
@@ -244,18 +247,16 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
 		require.NoError(t, err)
 
-		user.Email = "updated@example.com"
+		user.Email = "updated@conflict.example.com"
 		conflict := models.NewUsersQuery(testDB.pool).
 			Insert(
-				users.Id(),
 				users.Email(),
 				users.Username(),
 				users.FullName(),
 				users.IsActive(),
 			).
-			OnConflict(users.Username()).Do(ast.Update(users.Email()).Where(query.Lit(true))).
+			OnConflict(users.Username()).Do(ast.Update(users.Email())).
 			Returning(users.Id())
-
 		err = conflict.Exec(context.Background(), user)
 		require.NoError(t, err)
 
@@ -270,18 +271,18 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.Equal(t, user.Email, found.Email)
 	})
 
-	t.Run("Update user, return full name", func(t *testing.T) {
+	t.Run("Update user returning full name", func(t *testing.T) {
 		// Arrange
 		fullName := "Update Me"
 		user := &models.UsersDto{
-			Username: "updateme",
-			Email:    "updateme@example.com",
+			Username: "updatemeandreturn",
+			Email:    "updateme@returning.example.com",
 			FullName: &fullName,
 		}
 		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
 		require.NoError(t, err)
 
-		user.Email = "updated@example.com"
+		user.Email = "updated@returning.example.com"
 		user.Username = "updatedname"
 
 		// Act
@@ -299,6 +300,35 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), affected)
 		assert.Equal(t, fullName, *details[0].FullName)
+	})
+
+	t.Run("Delete User returning id", func(t *testing.T) {
+		// Arrange
+		user := &models.UsersDto{
+			Username: "deleteme",
+			Email:    "delete@example.com",
+		}
+		err := query.InsertUser(testDB.pool).Exec(context.Background(), user)
+		require.NoError(t, err)
+
+		// Act
+		deleted, details, err := models.NewUsersQuery(testDB.pool).
+			Delete().
+			Where(users.Id().Eq(query.Lit(*user.Id))).
+			Returning(users.Id()).
+			Exec(context.Background())
+		require.NoError(t, err)
+
+		// Assert
+		require.NoError(t, err)
+		assert.EqualValues(t, 1, deleted)
+		assert.Equal(t, *user.Id, *details[0].Id)
+
+		_, err = models.NewUsersQuery(testDB.pool).
+			Select().
+			Where(users.Id().Eq(query.Lit(*user.Id))).FindOne(context.Background())
+		require.Error(t, err)
+		assert.ErrorIs(t, err, pgx.ErrNoRows)
 	})
 }
 

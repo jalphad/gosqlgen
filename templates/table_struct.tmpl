@@ -219,45 +219,25 @@ func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedE
     return &value, unmarshalFunc
 }
 
-// PrepareInsert returns the data about the columns to be inserted
-// Fields with nil values (defaults/sequences) are omitted, database handles them
-func ({{ .ReceiverName }} *{{ .StructName }}) PrepareInsert() (string, []any, []any) {
-    var columns []string
-    var placeholders []string
-    var args []any
-    argIdx := 1
+// GetArg returns an expression which will be converted to a parameter in the SQL query
+func ({{ .ReceiverName }} *{{ .StructName }}) PrepareInsert() (ast.Expression, error) {
+    // Normalize column name for matching (lowercase)
+    columnLower := strings.ToLower(ref.Name())
 
-    // Dynamically build column list based on non-nil values
-    {{- range .NonSequenceColumns }}
-    {{- if .IsPointer }}
-    if {{ $.ReceiverName }}.{{ .FieldName }} != nil {
-        columns = append(columns, "{{ .ColumnName }}")
-        placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-        args = append(args, {{ $.ReceiverName }}.{{ .FieldName }})
-        argIdx++
+    {{- range .Fields }}
+    {{ template "ifAliasLower" . }}
+        {{- if .IsPointer }}
+        if {{ $.ReceiverName }}.{{ .FieldName }} == nil {
+            return ast.NewLiteralExpression(nil), nil
+        }
+        return ast.NewSQLType(*{{ $.ReceiverName }}.{{ .FieldName }}, nil
+        {{- else }}
+        return ast.NewSQLType({{ $.ReceiverName }}.{{ .FieldName }}, nil
+        {{- end }}
     }
-    {{ else }}
-    // Required field (not nullable, no default)
-    columns = append(columns, "{{ .ColumnName }}")
-    placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-    args = append(args, {{ $.ReceiverName }}.{{ .FieldName }})
-    argIdx++
-    {{ end }}
     {{- end }}
 
-    qry := fmt.Sprintf("INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKeys }} RETURNING {{ join .PrimaryKeys ", " }}{{ end }}",
-        strings.Join(columns, ", "),
-        strings.Join(placeholders, ", "))
-
-    {{ if .PrimaryKeyFields -}}
-    return qry, args, []any{
-    {{- range .PrimaryKeyFields -}}
-    &{{ $.ReceiverName }}.{{ . }},
-    {{- end -}}
-    }
-    {{- else }}
-    return qry, args, []any{}
-    {{- end }}
+    return nil, errors.New("unknown column")
 }
 
 {{- define "ifAliasLower" }}

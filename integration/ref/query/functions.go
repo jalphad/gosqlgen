@@ -24,12 +24,16 @@ func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Expression {
 	return ast.NewFunctionNode(
 		"jsonb_build_object",
 		nil,
-		func(node ast.ExpressionNode, params *[]any) string {
-			parts := make([]string, 0, len(expressions))
-			for _, expression := range expressions {
-				parts = append(parts, "'"+expression.Name()+"', "+ast.Render(expression, params))
+		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any) {
+			builder.WriteString(node.Op + "(")
+			for i := 0; i < len(expressions)-1; i++ {
+				builder.WriteString("'" + expressions[i].Name() + "', ")
+				ast.BuildQuery(expressions[i], builder, params)
+				builder.WriteString(", ")
 			}
-			return node.Op + "(" + strings.Join(parts, ", ") + ")"
+			builder.WriteString("'" + expressions[len(expressions)-1].Name() + "', ")
+			ast.BuildQuery(expressions[len(expressions)-1], builder, params)
+			builder.WriteString(")")
 		},
 	)
 }

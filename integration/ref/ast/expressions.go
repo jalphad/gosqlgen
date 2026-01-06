@@ -5,12 +5,19 @@ import (
 )
 
 func Render(e Expression, params *[]any) string {
-	return e.toSQL(params)
+	var query strings.Builder
+	e.toSQL(&query, params)
+
+	return query.String()
+}
+
+func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
+	e.toSQL(builder, params)
 }
 
 // Expression represents any SQL Expression (binary, unary, function, literal).
 type Expression interface {
-	toSQL(*[]any) string
+	toSQL(builder *strings.Builder, params *[]any)
 }
 
 type AliasedExpression interface {
@@ -41,8 +48,9 @@ func (a *AsExpression[T]) Name() string {
 
 func (a *AsExpression[T]) hasAlias() {}
 
-func (a *AsExpression[T]) toSQL(params *[]any) string {
-	return a.ofType.toSQL(params) + " AS " + a.alias
+func (a *AsExpression[T]) toSQL(builder *strings.Builder, params *[]any) {
+	a.ofType.toSQL(builder, params)
+	builder.WriteString(" AS " + a.alias)
 }
 
 func NewNamedExpression[T MappedTypes](name string, expression OfType[T]) *NamedExpressionWrapper[T] {
@@ -70,8 +78,10 @@ func NewGroupedExpression(e Expression) *GroupedExpression {
 	return &GroupedExpression{e}
 }
 
-func (e *GroupedExpression) toSQL(params *[]any) string {
-	return "(" + e.expression.toSQL(params) + ")"
+func (e *GroupedExpression) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString("(")
+	e.expression.toSQL(builder, params)
+	builder.WriteString(")")
 }
 
 // KeywordExpression represents known SQL keywords in the SQL language (like DISTINCT)
@@ -86,12 +96,12 @@ func NewKeywordExpression(op string, expressions ...Expression) *KeywordExpressi
 	}}
 }
 
-func (e *KeywordExpression) toSQL(params *[]any) string {
-	parts := []string{}
-	for _, arg := range e.node.Args {
-		parts = append(parts, arg.toSQL(params))
+func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any) {
+	for i := 0; i < len(e.node.Args)-1; i++ {
+		e.node.Args[i].toSQL(builder, params)
+		builder.WriteString(", ")
 	}
-	return e.node.Op + " " + strings.Join(parts, ", ")
+	e.node.Args[len(e.node.Args)-1].toSQL(builder, params)
 }
 
 type StringColumnExpression struct {

@@ -110,9 +110,38 @@ type UpdateFinalizeQuery[T any, O DTO[T]] interface {
 	ToSql() string
 }
 
+type DeleteQuery[T any, O DTO[T]] interface {
+	Delete(from string) DeleteUsingQuery[T, O]
+}
+
+type KnownTableDeleteQuery[T any, O DTO[T]] interface {
+	Delete() DeleteUsingQuery[T, O]
+}
+
+type DeleteUsingQuery[T any, O DTO[T]] interface {
+	Using(tables ...ast.NamedExpression) DeleteWhereQuery[T, O]
+	DeleteWhereQuery[T, O]
+}
+
+type DeleteWhereQuery[T any, O DTO[T]] interface {
+	Where(expr ast.OfType[bool]) DeleteReturningQuery[T, O]
+	DeleteReturningQuery[T, O]
+}
+
+type DeleteReturningQuery[T any, O DTO[T]] interface {
+	Returning(columns ...ast.NamedExpression) DeleteFinalizeQuery[T, O]
+	DeleteFinalizeQuery[T, O]
+}
+
+type DeleteFinalizeQuery[T any, O DTO[T]] interface {
+	Exec(ctx context.Context) (int64, []T, error)
+	ToSql() string
+}
+
 type KnownTableStartQuery[T any, O DTO[T]] interface {
 	WithTx(tx pgx.Tx) KnownTableStartQuery[T, O]
 	KnownTableSelectQuery[T]
+	KnownTableDeleteQuery[T, O]
 	InsertQuery[T, O]
 	UpdateQuery[T, O]
 }

@@ -68,7 +68,7 @@ func (u *UsersDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	if len(columns) > 0 {
 		// Use selectFields - scan in exact order
 		for _, field := range columns {
-			destPtr, unmarshalFunc := u.GetScanDestForField(field)
+			destPtr, unmarshalFunc := u.getScanDestForField(field)
 			scanDest = append(scanDest, destPtr)
 			if unmarshalFunc != nil {
 				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
@@ -107,9 +107,9 @@ func (u *UsersDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	return nil
 }
 
-// GetScanDestForField returns the appropriate scan destination for a field
+// getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (u *UsersDto) GetScanDestForField(ref ast.NamedExpression) (any, func() error) {
+func (u *UsersDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
@@ -196,7 +196,7 @@ func (u *UsersDto) GetScanDestForField(ref ast.NamedExpression) (any, func() err
 	return &value, unmarshalFunc
 }
 
-// PrepareInsert returns the data about the columns to be inserted
+// GetArg returns an expression which will be converted to a parameter in the SQL query
 func (u *UsersDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 	// Normalize column name for matching (lowercase)
 	columnLower := strings.ToLower(ref.Name())
@@ -239,28 +239,6 @@ func (u *UsersDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 	}
 
 	return nil, errors.New("unknown column")
-}
-
-func (u *UsersDto) GetArgs(columns []ast.NamedExpression) []any {
-	var args []any
-	dtoValues := map[string]any{
-		"id":         u.Id,
-		"username":   u.Username,
-		"email":      u.Email,
-		"full_name":  u.FullName,
-		"created_at": u.CreatedAt,
-		"updated_at": u.UpdatedAt,
-		"is_active":  u.IsActive,
-	}
-
-	for _, column := range columns {
-		val, ok := dtoValues[column.Name()]
-		if ok {
-			args = append(args, val)
-		}
-	}
-
-	return args
 }
 
 // LoadComments loads associated comments for this users

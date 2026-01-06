@@ -28,73 +28,89 @@ func (s *SelectStatement) Returns() []NamedExpression {
 func (s *SelectStatement) GetJoinedTables() []string {
 	ret := make([]string, 0, len(s.From.joins))
 	for _, join := range s.From.joins {
-		ret = append(ret, join.Right.Name)
+		ret = append(ret, join.Right.Table)
 	}
 	return ret
 }
 
-func (s *SelectStatement) toSQL(params *[]any) string {
-	var sb strings.Builder
-	sb.WriteString("SELECT ")
+func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString("SELECT ")
 	if len(s.SelectList) > 0 {
-		for i, expr := range s.SelectList {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(Render(expr, params))
+		for i := 0; i < len(s.SelectList)-1; i++ {
+			s.SelectList[i].toSQL(builder, params)
+			builder.WriteString(", ")
 		}
+		s.SelectList[len(s.SelectList)-1].toSQL(builder, params)
 	} else {
-		sb.WriteString("*")
+		builder.WriteString("*")
 	}
-	sb.WriteString(" FROM " + s.From.Name)
-	for _, join := range s.From.joins {
-		sb.WriteString(join.toSQL(params))
-	}
+
+	builder.WriteString(" FROM")
+	s.From.toSQL(builder, params)
+
 	if s.Where != nil {
-		sb.WriteString(" WHERE " + Render(s.Where, params))
+		builder.WriteString(" WHERE ")
+		s.Where.toSQL(builder, params)
 	}
+
 	if len(s.GroupBy) > 0 {
-		sb.WriteString(" GROUP BY ")
-		for i, expr := range s.GroupBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(Render(expr, params))
+		builder.WriteString(" GROUP BY ")
+		for i := 0; i < len(s.GroupBy)-1; i++ {
+			s.GroupBy[i].toSQL(builder, params)
+			builder.WriteString(", ")
 		}
+		s.GroupBy[len(s.GroupBy)-1].toSQL(builder, params)
 	}
+
 	if s.Having != nil {
-		sb.WriteString(" HAVING " + Render(s.Having, params))
+		builder.WriteString(" HAVING ")
+		s.Having.toSQL(builder, params)
 	}
+
 	if len(s.OrderBy) > 0 {
-		sb.WriteString(" ORDER BY ")
-		for i, expr := range s.OrderBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(Render(expr.Field, params) + " " + string(expr.Direction))
+		builder.WriteString(" ORDER BY ")
+		for i := 0; i < len(s.OrderBy)-1; i++ {
+			s.OrderBy[i].Field.toSQL(builder, params)
+			builder.WriteString(" " + string(s.OrderBy[i].Direction))
+			builder.WriteString(", ")
 		}
+		s.OrderBy[len(s.OrderBy)-1].Field.toSQL(builder, params)
+		builder.WriteString(" " + string(s.OrderBy[len(s.OrderBy)-1].Direction))
 	}
+
 	if s.Limit != nil {
 		if s.Limit.Limit > 0 {
-			sb.WriteString(fmt.Sprintf(" LIMIT %d", s.Limit.Limit))
+			builder.WriteString(fmt.Sprintf(" LIMIT %d", s.Limit.Limit))
 		}
 		if s.Limit.Offset > 0 {
-			sb.WriteString(fmt.Sprintf(" OFFSET %d", s.Limit.Offset))
+			builder.WriteString(fmt.Sprintf(" OFFSET %d", s.Limit.Offset))
 		}
 	}
-	return sb.String()
 }
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	Name  string      // Base table Name
+	Table string      // Base table Name
 	joins []*JoinExpr // Optional joins
+}
+
+func (s *TableSource) toSQL(builder *strings.Builder, params *[]any) string {
+	builder.WriteString(" " + s.Table)
+	for _, join := range s.joins {
+		join.toSQL(builder, params)
+	}
+
+	return builder.String()
+}
+
+func (s *TableSource) Name() string {
+	return s.Table
 }
 
 func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *TableSource {
 	s.joins = append(s.joins, &JoinExpr{
 		Type:      jointype,
-		Right:     &TableSource{Name: table},
+		Right:     &TableSource{Table: table},
 		Condition: on,
 	})
 	return s
@@ -107,8 +123,9 @@ type JoinExpr struct {
 	Condition OfType[bool] // ON condition
 }
 
-func (j *JoinExpr) toSQL(i *[]any) string {
-	return string(j.Type) + " JOIN " + j.Right.Name + " ON " + j.Condition.toSQL(i)
+func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")
+	j.Condition.toSQL(builder, params)
 }
 
 // JoinType enumerates join types.

@@ -23,7 +23,7 @@ type KnownTableBuilder[T any, O DTO[T]] struct {
 	tx        pgx.Tx
 	tableName string
 
-	sb                    selectBuilder[T, O]
+	sb                    SelectBuilder[T, O]
 	SelectGroupByQuery[T] //To make sure KnownTableBuilder implements the full interface
 }
 
@@ -34,60 +34,69 @@ func NewKnownTableBuilder[T any, O DTO[T]](dto O, pool *pgxpool.Pool) *KnownTabl
 	}
 }
 
-func (qb *KnownTableBuilder[T, O]) WithTx(tx pgx.Tx) KnownTableStartQuery[T, O] {
-	qb.tx = tx
-	return qb
+func (b *KnownTableBuilder[T, O]) WithTx(tx pgx.Tx) KnownTableStartQuery[T, O] {
+	b.tx = tx
+	return b
 }
 
-func (qb *KnownTableBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
+func (b *KnownTableBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
 	return &InsertBuilder[T, O]{
-		pool: qb.pool,
-		tx:   qb.tx,
+		pool: b.pool,
+		tx:   b.tx,
 		stmt: &ast.InsertStatement{
-			Table: qb.tableName,
+			Table: b.tableName,
 			Into:  columns,
 		},
 	}
 }
 
-func (qb *KnownTableBuilder[T, O]) Update(columns ...ast.NamedExpression) UpdateFromQuery[T, O] {
+func (b *KnownTableBuilder[T, O]) Select(columns ...ast.NamedExpression) SelectJoinQuery[T] {
+	if b.sb.stmt == nil {
+		b.sb.stmt = &ast.SelectStatement{
+			SelectList: columns,
+			From:       &ast.TableSource{Table: b.tableName},
+		}
+	}
+	b.sb.stmt.SelectList = append(b.sb.stmt.SelectList, columns...)
+	return b
+}
+
+func (b *KnownTableBuilder[T, O]) Update(columns ...ast.NamedExpression) UpdateFromQuery[T, O] {
 	setList := make([]*ast.SetKV, len(columns))
 	for i, column := range columns {
 		setList[i] = &ast.SetKV{Key: column}
 	}
 
 	return &UpdateBuilder[T, O]{
-		pool: qb.pool,
-		tx:   qb.tx,
+		pool: b.pool,
+		tx:   b.tx,
 		stmt: &ast.UpdateStatement{
-			Table:   qb.tableName,
+			Table:   b.tableName,
 			SetList: setList,
 		},
-		params: nil,
 	}
 }
 
-func (qb *KnownTableBuilder[T, O]) Select(columns ...ast.NamedExpression) SelectJoinQuery[T] {
-	if qb.sb.stmt == nil {
-		qb.sb.stmt = &ast.SelectStatement{
-			SelectList: columns,
-			From:       &ast.TableSource{Name: qb.tableName},
-		}
+func (b *KnownTableBuilder[T, O]) Delete() DeleteUsingQuery[T, O] {
+	return &DeleteBuilder[T, O]{
+		pool: b.pool,
+		tx:   b.tx,
+		stmt: &ast.DeleteStatement{
+			Table: b.tableName,
+		},
 	}
-	qb.sb.stmt.SelectList = append(qb.sb.stmt.SelectList, columns...)
-	return qb
 }
 
-func (qb *KnownTableBuilder[T, O]) Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[T] {
-	_ = qb.sb.stmt.From.Join(joinType, table, expr)
-	return qb
+func (b *KnownTableBuilder[T, O]) Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[T] {
+	_ = b.sb.stmt.From.Join(joinType, table, expr)
+	return b
 }
 
-func (qb *KnownTableBuilder[T, O]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
-	qb.sb.stmt.Where = expr
-	qb.sb.pool = qb.pool
-	qb.sb.tx = qb.tx
-	return &qb.sb
+func (b *KnownTableBuilder[T, O]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
+	b.sb.stmt.Where = expr
+	b.sb.pool = b.pool
+	b.sb.tx = b.tx
+	return &b.sb
 }
 
 type SelectBuilder[T any, O DTO[T]] struct {
@@ -97,71 +106,71 @@ type SelectBuilder[T any, O DTO[T]] struct {
 	params []any
 }
 
-func (qb *SelectBuilder[T, O]) WithTx(tx pgx.Tx) *SelectBuilder[T, O] {
-	qb.tx = tx
-	return qb
+func (b *SelectBuilder[T, O]) WithTx(tx pgx.Tx) *SelectBuilder[T, O] {
+	b.tx = tx
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) Select(columns ...ast.NamedExpression) SelectFromQuery[T] {
-	qb.stmt.SelectList = append(qb.stmt.SelectList, columns...)
-	return qb
+func (b *SelectBuilder[T, O]) Select(columns ...ast.NamedExpression) SelectFromQuery[T] {
+	b.stmt.SelectList = append(b.stmt.SelectList, columns...)
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) From(table *ast.TableSource) SelectWhereQuery[T] {
-	qb.stmt.From = table
-	return qb
+func (b *SelectBuilder[T, O]) From(table *ast.TableSource) SelectWhereQuery[T] {
+	b.stmt.From = table
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
-	qb.stmt.Where = expr
-	return qb
+func (b *SelectBuilder[T, O]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
+	b.stmt.Where = expr
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) GroupBy(columns ...ast.Expression) SelectHavingQuery[T] {
-	qb.stmt.GroupBy = columns
-	return qb
+func (b *SelectBuilder[T, O]) GroupBy(columns ...ast.Expression) SelectHavingQuery[T] {
+	b.stmt.GroupBy = columns
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) Having(expr ast.OfType[bool]) SelectOrderByQuery[T] {
-	qb.stmt.Having = expr
-	return qb
+func (b *SelectBuilder[T, O]) Having(expr ast.OfType[bool]) SelectOrderByQuery[T] {
+	b.stmt.Having = expr
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[T] {
-	qb.stmt.OrderBy = orderBy
-	return qb
+func (b *SelectBuilder[T, O]) OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[T] {
+	b.stmt.OrderBy = orderBy
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) Limit(limit int) SelectPagingQuery[T] {
-	if qb.stmt.Limit == nil {
-		qb.stmt.Limit = &ast.LimitClause{}
+func (b *SelectBuilder[T, O]) Limit(limit int) SelectPagingQuery[T] {
+	if b.stmt.Limit == nil {
+		b.stmt.Limit = &ast.LimitClause{}
 	}
-	qb.stmt.Limit.Limit = limit
-	return qb
+	b.stmt.Limit.Limit = limit
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) Offset(offset int) SelectPagingQuery[T] {
-	if qb.stmt.Limit == nil {
-		qb.stmt.Limit = &ast.LimitClause{}
+func (b *SelectBuilder[T, O]) Offset(offset int) SelectPagingQuery[T] {
+	if b.stmt.Limit == nil {
+		b.stmt.Limit = &ast.LimitClause{}
 	}
-	qb.stmt.Limit.Offset = offset
-	return qb
+	b.stmt.Limit.Offset = offset
+	return b
 }
 
-func (qb *SelectBuilder[T, O]) ToSql() string {
-	return ast.Render(qb.stmt, &qb.params)
+func (b *SelectBuilder[T, O]) ToSql() string {
+	return ast.Render(b.stmt, &b.params)
 }
 
-func (qb *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
-	query := qb.ToSql()
-	args := qb.params
+func (b *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
+	query := b.ToSql()
+	args := b.params
 
 	var rows pgx.Rows
 	var err error
-	if qb.tx != nil {
-		rows, err = qb.tx.Query(ctx, query, args...)
+	if b.tx != nil {
+		rows, err = b.tx.Query(ctx, query, args...)
 	} else {
-		rows, err = qb.pool.Query(ctx, query, args...)
+		rows, err = b.pool.Query(ctx, query, args...)
 	}
 	if err != nil {
 		return nil, err
@@ -172,7 +181,7 @@ func (qb *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
 	for rows.Next() {
 		var t T
 		result := O(&t)
-		if err = result.ScanInto(rows, qb.stmt); err != nil {
+		if err = result.ScanInto(rows, b.stmt); err != nil {
 			return nil, err
 		}
 		results = append(results, t)
@@ -181,9 +190,9 @@ func (qb *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
 	return results, rows.Err()
 }
 
-func (qb *SelectBuilder[T, O]) FindOne(ctx context.Context) (T, error) {
-	qb.Limit(1)
-	results, err := qb.Find(ctx)
+func (b *SelectBuilder[T, O]) FindOne(ctx context.Context) (T, error) {
+	b.Limit(1)
+	results, err := b.Find(ctx)
 	if err != nil {
 		var t T
 		return t, err
@@ -202,53 +211,53 @@ type InsertBuilder[T any, O DTO[T]] struct {
 	params []any
 }
 
-func (qb *InsertBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
-	qb.stmt.Into = append(qb.stmt.Into, columns...)
-	return qb
+func (b *InsertBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
+	b.stmt.Into = append(b.stmt.Into, columns...)
+	return b
 }
 
-func (qb *InsertBuilder[T, O]) OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T, O] {
-	qb.stmt.OnConflict = &ast.Conflict{
+func (b *InsertBuilder[T, O]) OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T, O] {
+	b.stmt.OnConflict = &ast.Conflict{
 		Columns: columns,
 	}
-	return qb
+	return b
 }
 
-func (qb *InsertBuilder[T, O]) Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T, O] {
-	qb.stmt.OnConflict.Action = expr
-	return qb
+func (b *InsertBuilder[T, O]) Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T, O] {
+	b.stmt.OnConflict.Action = expr
+	return b
 }
 
-func (qb *InsertBuilder[T, O]) Returning(columns ...ast.NamedExpression) InsertFinalizeQuery[T, O] {
-	qb.stmt.Returning = columns
-	return qb
+func (b *InsertBuilder[T, O]) Returning(columns ...ast.NamedExpression) InsertFinalizeQuery[T, O] {
+	b.stmt.Returning = columns
+	return b
 }
 
 // Exec inserts a new record
-func (qb *InsertBuilder[T, O]) Exec(ctx context.Context, record O) error {
-	for _, column := range qb.stmt.Into {
+func (b *InsertBuilder[T, O]) Exec(ctx context.Context, record O) error {
+	for _, column := range b.stmt.Into {
 		value, err := record.GetArg(column)
 		if err != nil {
 			return fmt.Errorf("error executing insert query: %w", err)
 		}
-		qb.stmt.Values = append(qb.stmt.Values, value)
+		b.stmt.Values = append(b.stmt.Values, value)
 	}
-	query := qb.ToSql()
-	args := qb.params
+	query := b.ToSql()
+	args := b.params
 
 	if len(args) == 0 {
 		return fmt.Errorf("no values provided for insert")
 	}
 
 	var row pgx.Row
-	if qb.tx != nil {
-		row = qb.tx.QueryRow(ctx, query, args...)
+	if b.tx != nil {
+		row = b.tx.QueryRow(ctx, query, args...)
 	} else {
-		row = qb.pool.QueryRow(ctx, query, args...)
+		row = b.pool.QueryRow(ctx, query, args...)
 	}
 	var err error
-	if len(qb.stmt.Returning) > 0 {
-		if err = record.ScanInto(row, qb.stmt); err != nil {
+	if len(b.stmt.Returning) > 0 {
+		if err = record.ScanInto(row, b.stmt); err != nil {
 			return err
 		}
 	}
@@ -256,12 +265,12 @@ func (qb *InsertBuilder[T, O]) Exec(ctx context.Context, record O) error {
 	return nil
 }
 
-func (qb *InsertBuilder[T, O]) ToSql() string {
-	return ast.Render(qb.stmt, &qb.params)
+func (b *InsertBuilder[T, O]) ToSql() string {
+	return ast.Render(b.stmt, &b.params)
 }
 
 // ExecBatch inserts multiple records efficiently using pgx batch
-func (qb *InsertBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error {
+func (b *InsertBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -269,32 +278,32 @@ func (qb *InsertBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error
 	batch := &pgx.Batch{}
 	for _, record := range records {
 		dto := O(&record)
-		for _, column := range qb.stmt.Into {
+		for _, column := range b.stmt.Into {
 			value, err := dto.GetArg(column)
 			if err != nil {
 				return fmt.Errorf("error executing insert query: %w", err)
 			}
-			qb.stmt.Values = append(qb.stmt.Values, value)
+			b.stmt.Values = append(b.stmt.Values, value)
 		}
-		qb.params = []any{}
-		query := qb.ToSql()
-		args := qb.params
+		b.params = []any{}
+		query := b.ToSql()
+		args := b.params
 		batch.Queue(query, args...)
 	}
 
 	var br pgx.BatchResults
-	if qb.tx != nil {
-		br = qb.tx.SendBatch(ctx, batch)
+	if b.tx != nil {
+		br = b.tx.SendBatch(ctx, batch)
 	} else {
-		br = qb.pool.SendBatch(ctx, batch)
+		br = b.pool.SendBatch(ctx, batch)
 	}
 	defer br.Close()
 
 	// Scan returned PKs (if any) back into records
-	if len(qb.stmt.Returning) > 0 {
+	if len(b.stmt.Returning) > 0 {
 		for _, record := range records {
 			dto := O(&record)
-			if err := dto.ScanInto(br.QueryRow().(pgx.Rows), qb.stmt); err != nil {
+			if err := dto.ScanInto(br.QueryRow().(pgx.Rows), b.stmt); err != nil {
 				return fmt.Errorf("failed to scan batch result %+v: %w", record, err)
 			}
 		}
@@ -304,20 +313,17 @@ func (qb *InsertBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error
 }
 
 type UpdateBuilder[T any, O DTO[T]] struct {
-	pool   *pgxpool.Pool
-	tx     pgx.Tx
-	stmt   *ast.UpdateStatement
-	params []any
+	pool *pgxpool.Pool
+	tx   pgx.Tx
+	stmt *ast.UpdateStatement
 }
 
-func NewUpdateBuilder[T any, O DTO[T]](pool *pgxpool.Pool) *UpdateBuilder[T, O] {
-	var o O
+func NewUpdateBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *UpdateBuilder[T, O] {
 	return &UpdateBuilder[T, O]{
 		pool: pool,
 		stmt: &ast.UpdateStatement{
-			Table: o.TableName(),
+			Table: table,
 		},
-		params: make([]any, 0),
 	}
 }
 
@@ -399,43 +405,88 @@ func (b *UpdateBuilder[T, O]) Exec(ctx context.Context, update O) (int64, []T, e
 	}
 
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
-
 }
 
 func (b *UpdateBuilder[T, O]) ToSql() string {
-	return ast.Render(b.stmt, &b.params)
+	params := make([]any, 0)
+	return ast.Render(b.stmt, &params)
 }
 
-//// Delete deletes matching records
-//func (qb *SelectBuilder) Delete(ctx context.Context) (int64, error) {
-//	var query strings.Builder
-//	var args []interface{}
-//	argIndex := 1
-//
-//	query.WriteString("DELETE FROM users")
-//
-//	// Add WHERE conditions
-//	if len(qb.conditions) > 0 {
-//		query.WriteString(" WHERE ")
-//		whereStr, whereArgs := qb.buildConditions(qb.conditions, &argIndex)
-//		query.WriteString(whereStr)
-//		args = append(args, whereArgs...)
-//	}
-//
-//	var tag pgconn.CommandTag
-//	var err error
-//
-//	if qb.tx != nil {
-//		tag, err = qb.tx.Exec(ctx, query.String(), args...)
-//	} else {
-//		tag, err = qb.pool.Exec(ctx, query.String(), args...)
-//	}
-//
-//	if err != nil {
-//		return 0, err
-//	}
-//
-//	return tag.RowsAffected(), nil
-//}
+type DeleteBuilder[T any, O DTO[T]] struct {
+	pool *pgxpool.Pool
+	tx   pgx.Tx
+	stmt *ast.DeleteStatement
+}
 
-type selectBuilder[T any, O DTO[T]] = SelectBuilder[T, O]
+func NewDeleteBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *DeleteBuilder[T, O] {
+	return &DeleteBuilder[T, O]{
+		pool: pool,
+		stmt: &ast.DeleteStatement{
+			Table: table,
+		},
+	}
+}
+
+func (b *DeleteBuilder[T, O]) Delete(from string) DeleteUsingQuery[T, O] {
+	b.stmt.Table = from
+	return b
+}
+
+func (b *DeleteBuilder[T, O]) Using(tables ...ast.NamedExpression) DeleteWhereQuery[T, O] {
+	b.stmt.Using = tables
+	return b
+}
+
+func (b *DeleteBuilder[T, O]) Where(expr ast.OfType[bool]) DeleteReturningQuery[T, O] {
+	b.stmt.Where = expr
+	return b
+}
+
+func (b *DeleteBuilder[T, O]) Returning(columns ...ast.NamedExpression) DeleteFinalizeQuery[T, O] {
+	b.stmt.Returning = columns
+	return b
+}
+
+func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
+	var err error
+	args := make([]any, 0)
+	query := ast.Render(b.stmt, &args)
+	if len(b.stmt.Returning) == 0 {
+		var tag pgconn.CommandTag
+		if b.tx != nil {
+			tag, err = b.tx.Exec(ctx, query, args...)
+		} else {
+			tag, err = b.pool.Exec(ctx, query, args...)
+		}
+
+		return tag.RowsAffected(), nil, err
+	}
+
+	var rows pgx.Rows
+	if b.tx != nil {
+		rows, err = b.tx.Query(ctx, query, args...)
+	} else {
+		rows, err = b.pool.Query(ctx, query, args...)
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	var results []T
+	for rows.Next() {
+		var t T
+		result := O(&t)
+		if err = result.ScanInto(rows, b.stmt); err != nil {
+			return rows.CommandTag().RowsAffected(), results, err
+		}
+		results = append(results, t)
+	}
+
+	return rows.CommandTag().RowsAffected(), results, rows.Err()
+}
+
+func (b *DeleteBuilder[T, O]) ToSql() string {
+	params := make([]any, 0)
+	return ast.Render(b.stmt, &params)
+}

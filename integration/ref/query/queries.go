@@ -36,6 +36,12 @@ func UpdateUser(pool *pgxpool.Pool, userId uuid.UUID) builder.UpdateFinalizeQuer
 		Where(users.Id().Eq(Lit(userId)))
 }
 
+func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
+	return models.NewUsersQuery(pool).
+		Delete().
+		Where(users.Id().Eq(Lit(userId)))
+}
+
 func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Select(
