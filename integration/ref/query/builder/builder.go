@@ -22,9 +22,6 @@ type KnownTableBuilder[T any, O DTO[T]] struct {
 	pool      *pgxpool.Pool
 	tx        pgx.Tx
 	tableName string
-
-	sb                    SelectBuilder[T, O]
-	SelectGroupByQuery[T] //To make sure KnownTableBuilder implements the full interface
 }
 
 func NewKnownTableBuilder[T any, O DTO[T]](dto O, pool *pgxpool.Pool) *KnownTableBuilder[T, O] {
@@ -51,14 +48,14 @@ func (b *KnownTableBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertO
 }
 
 func (b *KnownTableBuilder[T, O]) Select(columns ...ast.NamedExpression) SelectJoinQuery[T] {
-	if b.sb.stmt == nil {
-		b.sb.stmt = &ast.SelectStatement{
+	return &SelectBuilder[T, O]{
+		pool: b.pool,
+		tx:   b.tx,
+		stmt: &ast.SelectStatement{
 			SelectList: columns,
 			From:       &ast.TableSource{Table: b.tableName},
-		}
+		},
 	}
-	b.sb.stmt.SelectList = append(b.sb.stmt.SelectList, columns...)
-	return b
 }
 
 func (b *KnownTableBuilder[T, O]) Update(columns ...ast.NamedExpression) UpdateFromQuery[T, O] {
@@ -87,18 +84,6 @@ func (b *KnownTableBuilder[T, O]) Delete() DeleteUsingQuery[T, O] {
 	}
 }
 
-func (b *KnownTableBuilder[T, O]) Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[T] {
-	_ = b.sb.stmt.From.Join(joinType, table, expr)
-	return b
-}
-
-func (b *KnownTableBuilder[T, O]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
-	b.sb.stmt.Where = expr
-	b.sb.pool = b.pool
-	b.sb.tx = b.tx
-	return &b.sb
-}
-
 type SelectBuilder[T any, O DTO[T]] struct {
 	pool   *pgxpool.Pool
 	tx     pgx.Tx
@@ -118,6 +103,11 @@ func (b *SelectBuilder[T, O]) Select(columns ...ast.NamedExpression) SelectFromQ
 
 func (b *SelectBuilder[T, O]) From(table *ast.TableSource) SelectWhereQuery[T] {
 	b.stmt.From = table
+	return b
+}
+
+func (b *SelectBuilder[T, O]) Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[T] {
+	b.stmt.From.Join(joinType, table, expr)
 	return b
 }
 
@@ -359,11 +349,11 @@ func (b *UpdateBuilder[T, O]) Returning(columns ...ast.NamedExpression) UpdateFi
 //
 // Note that it's possible to affect multiple rows in a single query. In this case,
 // values provided through 'update' are applied to all rows.
-func (b *UpdateBuilder[T, O]) Exec(ctx context.Context, update O) (int64, []T, error) {
+func (b *UpdateBuilder[T, O]) Exec(ctx context.Context, record O) (int64, []T, error) {
 	var err error
 	for _, set := range b.stmt.SetList {
 		if set.Value == nil {
-			set.Value, err = update.GetArg(set.Key)
+			set.Value, err = record.GetArg(set.Key)
 			if err != nil {
 				return 0, nil, err
 			}
@@ -408,8 +398,51 @@ func (b *UpdateBuilder[T, O]) Exec(ctx context.Context, update O) (int64, []T, e
 }
 
 func (b *UpdateBuilder[T, O]) ToSql() string {
-	params := make([]any, 0)
+	params := make([]any, 0, len(b.stmt.SetList)+1)
 	return ast.Render(b.stmt, &params)
+}
+
+func (b *UpdateBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	var err error
+	batch := &pgx.Batch{}
+	for _, record := range records {
+		dto := O(&record)
+		for _, set := range b.stmt.SetList {
+			if set.Value == nil {
+				set.Value, err = dto.GetArg(set.Key)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		args := make([]any, 0, len(b.stmt.SetList)+1) // pre-allocate provided values to set + 1 where clause
+		query := ast.Render(b.stmt, &args)
+		batch.Queue(query, args...)
+	}
+
+	var br pgx.BatchResults
+	if b.tx != nil {
+		br = b.tx.SendBatch(ctx, batch)
+	} else {
+		br = b.pool.SendBatch(ctx, batch)
+	}
+	defer br.Close()
+
+	// Scan returned PKs (if any) back into records
+	if len(b.stmt.Returning) > 0 {
+		for _, record := range records {
+			dto := O(&record)
+			if err := dto.ScanInto(br.QueryRow().(pgx.Rows), b.stmt); err != nil {
+				return fmt.Errorf("failed to scan batch result %+v: %w", record, err)
+			}
+		}
+	}
+
+	return br.Close()
 }
 
 type DeleteBuilder[T any, O DTO[T]] struct {

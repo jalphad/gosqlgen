@@ -16,22 +16,15 @@ import (
 func InsertUser(pool *pgxpool.Pool) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Insert(
-			users.Email(),
-			users.Username(),
-			users.FullName(),
-			users.IsActive(),
+			users.AllColumns()...,
 		).
-		OnConflict(users.Id()).Do(ast.Update(users.Email()).Where(Lit(true))).
 		Returning(users.Id())
 }
 
 func UpdateUser(pool *pgxpool.Pool, userId uuid.UUID) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Update(
-			users.Email(),
-			users.Username(),
-			users.FullName(),
-			users.IsActive(),
+			users.AllColumns()...,
 		).
 		Where(users.Id().Eq(Lit(userId)))
 }

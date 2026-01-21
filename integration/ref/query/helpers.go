@@ -1,6 +1,8 @@
 package query
 
-import "github.com/jalphad/gosqlgen/integration/ref/ast"
+import (
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
+)
 
 func Lit[T ast.MappedTypes](t T) ast.OfType[T] {
 	return ast.NewSQLType(t)
