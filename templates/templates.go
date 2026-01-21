@@ -8,14 +8,17 @@ import (
 	"text/template"
 )
 
+//go:embed models/table_struct.tmpl
+var tableStructTemplate string
+
+//go:embed query/per_table/table_query_expressions.tmpl
+var tableQueryExpressionsTemplate string
+
 //go:embed query_builder.tmpl
 var queryBuilderTemplate string
 
 //go:embed common.tmpl
 var commonTypesTemplate string
-
-//go:embed table_struct.tmpl
-var tableStructTemplate string
 
 //go:embed field_references.tmpl
 var fieldReferencesTemplate string
@@ -207,6 +210,61 @@ type ManyToManyLoaderField struct {
 	ReferencedPKType      string // "string"
 }
 
+// RenderTableStruct renders the table struct template with the given data
+func RenderTableStruct(data TableStructData) (string, error) {
+	// Create template with custom functions
+	funcMap := template.FuncMap{
+		"isPtr": func(goType string) bool {
+			return strings.HasPrefix(goType, "*")
+		},
+		"hasSuffix":    strings.HasSuffix,
+		"toLower":      strings.ToLower,
+		"toPascalCase": ToPascalCase,
+		"join":         strings.Join,
+		"needsCustomUnmarshal": func(fields []StructField) bool {
+			for _, field := range fields {
+				re := regexp.MustCompile(`(?i)^(date|time(stamp)?)( with(out)? time zone)?$`)
+				if strings.HasSuffix(field.GoType, "time.Time") &&
+					re.MatchString(field.SQLType) {
+					return true
+				}
+			}
+
+			return false
+		},
+	}
+
+	t, err := template.New("tableStruct").Funcs(funcMap).Parse(tableStructTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+func RenderColumnExpressions(data TableStructData) (string, error) {
+	funcMap := template.FuncMap{
+		"toTypeExpression": ToTypeExpression,
+	}
+
+	t, err := template.New("columnExpressions").Funcs(funcMap).Parse(tableQueryExpressionsTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
 // RenderQueryBuilder renders the query builder template with the given data
 func RenderQueryBuilder(data QueryBuilderData) (string, error) {
 	// Create template with custom functions
@@ -237,46 +295,6 @@ func RenderCommonTypes() (string, error) {
 
 	var buf bytes.Buffer
 	if err := t.Execute(&buf, nil); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
-// RenderTableStruct renders the table struct template with the given data
-func RenderTableStruct(data TableStructData) (string, error) {
-	// Create template with custom functions
-	funcMap := template.FuncMap{
-		"isPtr": func(goType string) bool {
-			return strings.HasPrefix(goType, "*")
-		},
-		"hasSuffix":    strings.HasSuffix,
-		"toLower":      strings.ToLower,
-		"toPascalCase": ToPascalCase,
-		"join":         strings.Join,
-		"needsCustomUnmarshal": func(fields []StructField) bool {
-			for _, field := range fields {
-				re := regexp.MustCompile(`(?i)^(date|time(stamp)?)( with(out)? time zone)?$`)
-				if strings.HasSuffix(field.GoType, "time.Time") &&
-					re.MatchString(field.SQLType) {
-					//slices.Contains([]string{"date", "time", "timestamp",
-					//	"time with time zone", "timestamp with time zone",
-					//}, field.SQLType) {
-					return true
-				}
-			}
-
-			return false
-		},
-	}
-
-	t, err := template.New("tableStruct").Funcs(funcMap).Parse(tableStructTemplate)
-	if err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, data); err != nil {
 		return "", err
 	}
 
@@ -357,4 +375,29 @@ func ToPascalCase(s string) string {
 		}
 	}
 	return strings.Join(parts, "")
+}
+
+func ToTypeExpression(goType string) string {
+	switch goType {
+	case "int64":
+		return "IntColumnExpression"
+	case "float64":
+		return "FloatColumnExpression"
+	case "pgtype.Numeric":
+		return "NumericType"
+	case "bool":
+		return "BoolType"
+	case "string":
+		return "StringType"
+	case "time.Time":
+		return "TimeType"
+	case "[]byte":
+		return "BytesType"
+	case "json.Rawmessage":
+		return "JsonType"
+	case "uuid.UUID":
+		return "UUIDType"
+	default:
+		return "<UnknownAstType>"
+	}
 }

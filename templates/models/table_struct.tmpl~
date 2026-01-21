@@ -1,0 +1,258 @@
+// {{ .StructName }} represents the {{ .TableName }} table
+type {{ .StructName }} struct {
+{{- range .Fields }}
+	{{ .FieldName }} {{ .GoType }} {{ .StructTags }}
+{{- end }}
+{{- if .JoinedFields }}
+
+	// Joined relationships (populated when corresponding Join method is called)
+{{- range .JoinedFields }}
+	{{ .FieldName }} {{ .GoType }} `joined:"{{ .ReferencedTable }}" fk:"{{ .FKColumn }}"`
+{{- end }}
+{{- end }}
+{{- if .ReverseRelFields }}
+
+	// One-to-many reverse relationships (populated via LoadXxx methods)
+{{- range .ReverseRelFields }}
+	{{ .FieldName }} {{ .GoType }} `reverse:"{{ .FromTable }}" fk:"{{ .FKColumn }}"`
+{{- end }}
+{{- end }}
+{{- if .ManyToManyFields }}
+
+	// Many-to-many relationships (populated via LoadXxx methods)
+{{- range .ManyToManyFields }}
+	{{ .FieldName }} {{ .GoType }} `manytomany:"{{ .JunctionTable }}"`
+{{- end }}
+{{- end }}
+
+	// FromExpressions stores custom aggregations and expressions not mapped to fields
+	FromExpressions map[string]any `json:"from_expressions,omitempty"`
+}
+
+// TableName returns the table name for {{ .StructName }}
+func ({{ .ReceiverName }} *{{ .StructName }}) TableName() string {
+	return "{{ .TableName }}"
+}
+
+{{- if needsCustomUnmarshal .Fields }}
+func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
+	type {{ .StructName }}_ {{ .StructName }}
+	type DtoWrapper struct {
+		{{ .StructName }}_
+		{{- range .Fields }}
+		{{- if (hasSuffix .GoType "time.Time") }}
+		{{- if eq .SQLType "DATE" }}
+		{{ .FieldName }} DateWrapper {{ .StructTags }}
+		{{- else if or (eq .SQLType "TIME") (eq .SQLType "TIME WITHOUT TIME ZONE") }}
+		{{ .FieldName }} TimeWrapper {{ .StructTags }}
+        {{- else if eq .SQLType "TIME WITH TIME ZONE" }}
+        {{ .FieldName }} TimeWithTZWrapper {{ .StructTags }}
+		{{- else if or (eq .SQLType "TIMESTAMP") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") }}
+		{{ .FieldName }} NoTimezoneWrapper {{ .StructTags }}
+		{{- end }}
+		{{- end }}
+		{{- end }}
+	}
+
+	var wrapper DtoWrapper
+	err := json.Unmarshal(b, &wrapper)
+	if err != nil {
+		return err
+	}
+
+	*{{ $.ReceiverName }} = {{ .StructName }}(wrapper.{{ .StructName }}_)
+    {{- range .Fields }}
+    {{- if (hasSuffix .GoType "time.Time") }}
+    {{- if or (eq .SQLType "DATE") (eq .SQLType "TIME") (eq .SQLType "TIMESTAMP") (eq .SQLType "TIME WITH TIME ZONE")
+        (eq .SQLType "TIME WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") }}
+    {{ $.ReceiverName }}.{{ .FieldName }} = {{ if isPtr .GoType }}&{{ end }}wrapper.{{ .FieldName }}.Time
+    {{- end }}
+    {{- end }}
+    {{- end }}
+
+	return nil
+}
+{{- end }}
+
+// scanInto scans a row into a struct
+func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
+    var scanDest []any
+    var jsonUnmarshalFuncs []func() error
+
+    columns := stmt.Returns()
+    if len(columns) > 0 {
+        // Use selectFields - scan in exact order
+        for _, field := range columns {
+            destPtr, unmarshalFunc := {{ .ReceiverName }}.getScanDestForField(field)
+            scanDest = append(scanDest, destPtr)
+            if unmarshalFunc != nil {
+                jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
+            }
+        }
+    } else {
+        // Default behavior - scan all table columns + joined tables
+        {{- range .Fields }}
+        scanDest = append(scanDest, &{{ $.ReceiverName }}.{{ .FieldName }})
+        {{- end }}
+
+        // Add joined table columns if active
+        {{- range $fk := .JoinedFields }}
+        if slices.Contains(stmt.GetJoinedTables(), "{{ $fk.ReferencedTable }}") {
+            joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
+            {{- range $fk.ReferencedColumns }}
+            scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
+            {{- end }}
+            {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
+        }
+        {{- end }}
+    }
+
+    // Perform scan
+    if err := row.Scan(scanDest...); err != nil {
+        return err
+    }
+
+    // Execute JSON unmarshal functions and collect errors
+    var unmarshalErrors []error
+    for _, fn := range jsonUnmarshalFuncs {
+        if err := fn(); err != nil {
+            unmarshalErrors = append(unmarshalErrors, err)
+        }
+    }
+
+    if len(unmarshalErrors) > 0 {
+        return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
+    }
+
+    return nil
+}
+
+// getScanDestForField returns the appropriate scan destination for a field
+// and optionally a function to unmarshal JSON data after scanning
+func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
+    var refTable string
+    if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
+        refTable = split[0]
+    }
+
+    // Normalize alias for matching (lowercase)
+    aliasLower := strings.ToLower(ref.Name())
+
+    {{- if .ReverseRelFields }}
+    // Check if alias matches a reverse relationship collection field
+    {{- range .ReverseRelFields }}
+    if aliasLower == "{{ .FieldName | toLower }}" {
+        var jsonData []byte
+        unmarshalFunc := func() error {
+            if len(jsonData) > 0 && string(jsonData) != "null" {
+                var items []{{ .StructName }}
+                if err := json.Unmarshal(jsonData, &items); err != nil {
+                    return fmt.Errorf("field {{ .FieldName }}: %w", err)
+                }
+                {{ $.ReceiverName }}.{{ .FieldName }} = items
+            } else {
+                {{ $.ReceiverName }}.{{ .FieldName }} = []{{ .StructName }}{}
+            }
+            return nil
+        }
+        return &jsonData, unmarshalFunc
+    }
+    {{- end }}
+    {{- end }}
+
+    {{- if .ManyToManyFields }}
+    // Check if alias matches a many-to-many collection field
+    {{- range .ManyToManyFields }}
+    if aliasLower == "{{ .FieldName | toLower }}" {
+        var jsonData []byte
+        unmarshalFunc := func() error {
+            if len(jsonData) > 0 && string(jsonData) != "null" {
+                var items []{{ .StructName }}
+                if err := json.Unmarshal(jsonData, &items); err != nil {
+                    return fmt.Errorf("field {{ .FieldName }}: %w", err)
+                }
+                {{ $.ReceiverName }}.{{ .FieldName }} = items
+            } else {
+                {{ $.ReceiverName }}.{{ .FieldName }} = []{{ .StructName }}{}
+            }
+            return nil
+        }
+        return &jsonData, unmarshalFunc
+    }
+    {{- end }}
+    {{- end }}
+
+    // Check if alias matches a regular table column
+    if refTable == "{{ .TableName }}" {
+        {{- range .Fields }}
+        {{ template "ifAliasLower" . }}
+            return &{{ $.ReceiverName }}.{{ .FieldName }}, nil
+        }
+        {{- end }}
+    }
+
+    {{- if .JoinedFields }}
+    // Check if it matches a joined table column
+    {{- range $fk := .JoinedFields }}
+    if refTable == "{{ $fk.ReferencedTable }}" && slices.Contains(stmt.GetJoinedTables(), "{{ $fk.ReferencedTable }}") {
+        if {{ $.ReceiverName }}.{{ $fk.FieldName }} == nil {
+            {{ $.ReceiverName }}.{{ $fk.FieldName }} = &{{ $fk.StructName }}{}
+        }
+        {{- range $fk.ReferencedColumns }}
+        {{ template "ifAliasLower" . }}
+            return {{ $.ReceiverName }}.{{ $fk.FieldName }}.{{ .FieldName }}, nil
+        }
+        {{- end }}
+    }
+    {{- end }}
+    {{- end }}
+
+    // No match - store in FromExpressions as any
+    if {{ .ReceiverName }}.FromExpressions == nil {
+        {{ .ReceiverName }}.FromExpressions = make(map[string]any)
+    }
+    var value any
+    // Store a pointer to value that we'll populate after scan
+    unmarshalFunc := func() error {
+        {{ .ReceiverName }}.FromExpressions[ref.Name()] = value
+        return nil
+    }
+    return &value, unmarshalFunc
+}
+
+// GetArg returns an expression which will be converted to a parameter in the SQL query
+func ({{ .ReceiverName }} *{{ .StructName }}) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
+    // Normalize column name for matching (lowercase)
+    columnLower := strings.ToLower(ref.Name())
+
+    {{- range .Fields }}
+    {{ template "ifColumnLower" . }}
+        {{- if .IsPointer }}
+        if {{ $.ReceiverName }}.{{ .FieldName }} == nil {
+            return ast.NewLiteralExpression(nil), nil
+        }
+        return ast.NewSQLType(*{{ $.ReceiverName }}.{{ .FieldName }}), nil
+        {{- else }}
+        return ast.NewSQLType({{ $.ReceiverName }}.{{ .FieldName }}), nil
+        {{- end }}
+    }
+    {{- end }}
+
+    return nil, errors.New("unknown column")
+}
+
+{{- define "ifAliasLower" }}
+{{- if eq .ColumnName (.FieldName | toLower) }}
+if aliasLower == "{{ .ColumnName }}" {
+{{- else }}
+if aliasLower == "{{ .ColumnName }}" || aliasLower == "{{ .FieldName | toLower }}" {
+{{- end }}
+{{- end }}
+
+{{- define "ifColumnLower" }}
+{{- if eq .ColumnName (.FieldName | toLower) }}
+if columnLower == "{{ .ColumnName }}" {
+{{- else }}
+if columnLower == "{{ .ColumnName }}" || columnLower == "{{ .FieldName | toLower }}" {
+{{- end }}
+{{- end }}

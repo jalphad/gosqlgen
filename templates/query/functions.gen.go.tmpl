@@ -1,0 +1,37 @@
+package query
+
+import (
+	"encoding/json"
+	"strings"
+)
+
+func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) *ast.Function[T] {
+	args := make([]ast.Expression, 0, len(expressions))
+	for _, expression := range expressions {
+		args = append(args, expression)
+	}
+	return ast.NewFunction[T](ast.NewFunctionNode("COALESCE", args, nil))
+}
+
+func JsonAgg(expression ast.Expression) *ast.AggregationFunction[json.RawMessage] {
+	return ast.NewAggregationFunction[json.RawMessage](
+		ast.NewFunctionNode("json_agg", []ast.Expression{expression}, nil))
+}
+
+func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Expression {
+	return ast.NewFunctionNode(
+		"jsonb_build_object",
+		nil,
+		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any) {
+			builder.WriteString(node.Op + "(")
+			for i := 0; i < len(expressions)-1; i++ {
+				builder.WriteString("'" + expressions[i].Name() + "', ")
+				ast.BuildQuery(expressions[i], builder, params)
+				builder.WriteString(", ")
+			}
+			builder.WriteString("'" + expressions[len(expressions)-1].Name() + "', ")
+			ast.BuildQuery(expressions[len(expressions)-1], builder, params)
+			builder.WriteString(")")
+		},
+	)
+}

@@ -1,0 +1,16 @@
+package {{ .TableName }}
+
+import ()
+
+{{ range .Fields }}
+	func {{ .FieldName }}() *ast.{{ toTypeExpression .GoType }} {
+	    return ast.New{{ toTypeExpression .GoType }}("{{ $.TableName }}", "{{ .ColumnName }}")
+{{ end }}
+
+func AllColumns() []ast.NamedExpression {
+    return []ast.NamedExpression{
+    {{- range .Fields }}
+        {{ .FieldName }}(),
+    {{- end }}
+    }
+}

@@ -75,28 +75,30 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 {{- end }}
 
 // scanInto scans a row into a struct
-func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(rows pgx.Rows, stmt *ast.SelectStatement) error {
+func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
     var scanDest []any
     var jsonUnmarshalFuncs []func() error
 
-    if len(stmt.SelectList) > 0 {
+    columns := stmt.Returns()
+    if len(columns) > 0 {
         // Use selectFields - scan in exact order
-        for _, field := range stmt.SelectList {
-            destPtr, unmarshalFunc := {{ .ReceiverName }}.getScanDestForField(field, stmt)
+        for _, field := range columns {
+            destPtr, unmarshalFunc := {{ .ReceiverName }}.getScanDestForField(field)
             scanDest = append(scanDest, destPtr)
             if unmarshalFunc != nil {
                 jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
             }
         }
-    } else {
+    } else if selectStmt, ok := stmt.(*ast.SelectStatement); ok {
         // Default behavior - scan all table columns + joined tables
         {{- range .Fields }}
         scanDest = append(scanDest, &{{ $.ReceiverName }}.{{ .FieldName }})
         {{- end }}
 
+	{{- if .JoinedFields }}
         // Add joined table columns if active
         {{- range $fk := .JoinedFields }}
-        if slices.Contains(stmt.GetJoinedTables(), "{{ $fk.ReferencedTable }}") {
+        if slices.Contains(selectStmt.GetJoinedTables(), "{{ $fk.ReferencedTable }}") {
             joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
             {{- range $fk.ReferencedColumns }}
             scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
@@ -104,10 +106,11 @@ func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(rows pgx.Rows, stmt *ast.
             {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
         }
         {{- end }}
+        {{- end }}
     }
 
     // Perform scan
-    if err := rows.Scan(scanDest...); err != nil {
+    if err := row.Scan(scanDest...); err != nil {
         return err
     }
 
@@ -128,7 +131,7 @@ func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(rows pgx.Rows, stmt *ast.
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedExpression, stmt *ast.SelectStatement) (any, func() error) {
+func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
     var refTable string
     if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
         refTable = split[0]
@@ -193,7 +196,7 @@ func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedE
     {{- if .JoinedFields }}
     // Check if it matches a joined table column
     {{- range $fk := .JoinedFields }}
-    if refTable == "{{ $fk.ReferencedTable }}" && slices.Contains(stmt.GetJoinedTables(), "{{ $fk.ReferencedTable }}") {
+    if refTable == "{{ $fk.ReferencedTable }}" {
         if {{ $.ReceiverName }}.{{ $fk.FieldName }} == nil {
             {{ $.ReceiverName }}.{{ $fk.FieldName }} = &{{ $fk.StructName }}{}
         }
@@ -220,19 +223,19 @@ func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedE
 }
 
 // GetArg returns an expression which will be converted to a parameter in the SQL query
-func ({{ .ReceiverName }} *{{ .StructName }}) PrepareInsert() (ast.Expression, error) {
+func ({{ .ReceiverName }} *{{ .StructName }}) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
     // Normalize column name for matching (lowercase)
     columnLower := strings.ToLower(ref.Name())
 
     {{- range .Fields }}
-    {{ template "ifAliasLower" . }}
+    {{ template "ifColumnLower" . }}
         {{- if .IsPointer }}
         if {{ $.ReceiverName }}.{{ .FieldName }} == nil {
             return ast.NewLiteralExpression(nil), nil
         }
-        return ast.NewSQLType(*{{ $.ReceiverName }}.{{ .FieldName }}, nil
+        return ast.NewSQLType(*{{ $.ReceiverName }}.{{ .FieldName }}), nil
         {{- else }}
-        return ast.NewSQLType({{ $.ReceiverName }}.{{ .FieldName }}, nil
+        return ast.NewSQLType({{ $.ReceiverName }}.{{ .FieldName }}), nil
         {{- end }}
     }
     {{- end }}
@@ -245,5 +248,13 @@ func ({{ .ReceiverName }} *{{ .StructName }}) PrepareInsert() (ast.Expression, e
 if aliasLower == "{{ .ColumnName }}" {
 {{- else }}
 if aliasLower == "{{ .ColumnName }}" || aliasLower == "{{ .FieldName | toLower }}" {
+{{- end }}
+{{- end }}
+
+{{- define "ifColumnLower" }}
+{{- if eq .ColumnName (.FieldName | toLower) }}
+if columnLower == "{{ .ColumnName }}" {
+{{- else }}
+if columnLower == "{{ .ColumnName }}" || columnLower == "{{ .FieldName | toLower }}" {
 {{- end }}
 {{- end }}

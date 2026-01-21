@@ -5,7 +5,7 @@ func ({{ $.ReceiverName }} *{{ $.StructName }}) Load{{ .FieldName }}(ctx context
 	if {{ $.ReceiverName }}.{{ $.PrimaryKeyField }} == nil {
 		return nil
 	}
-	results, err := db.{{ .FromTableMethod }}().Where({{ .FromTable }}.{{ .FKFieldName }}().Eq(ast.NewSQLType(*{{ $.ReceiverName }}.{{ $.PrimaryKeyField }}))).Find(ctx)
+	results, err := db.{{ .FromTableMethod }}().Select().Where({{ .FromTable }}.{{ .FKFieldName }}().Eq(ast.NewSQLType(*{{ $.ReceiverName }}.{{ $.PrimaryKeyField }}))).Find(ctx)
 	if err != nil {
 		return err
 	}
