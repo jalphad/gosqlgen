@@ -46,6 +46,7 @@ func (g *Generator) SetPackageName(name string) {
 // GenerateFiles generates Go code for all parsed tables as separate files
 // Returns a map of filename to file content
 func (g *Generator) GenerateFiles() (map[string]string, error) {
+	var err error
 	files := make(map[string]string)
 
 	// Generate common.gen.go with utility types
@@ -60,11 +61,11 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		return nil, err
 	}
 
-	formatted, err := g.format("common.gen.go", commonBuf.Bytes())
-	if err != nil {
-		return nil, err
-	}
-	files["common.gen.go"] = string(formatted)
+	//formatted, err := g.format("common.gen.go", commonBuf.Bytes())
+	//if err != nil {
+	//	return nil, err
+	//}
+	//files["common.gen.go"] = string(formatted)
 
 	// Generate a file for each table
 	for _, table := range g.parser.GetTables() {
@@ -102,7 +103,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 
 		// Format the generated code
 		filename := fmt.Sprintf("%s.gen.go", table.Name)
-		formatted, err = g.format(filename, tableBuf.Bytes())
+		formatted, err := g.format(filename, tableBuf.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +122,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		return nil, err
 	}
 
-	formatted, err = g.format("db.gen.go", dbBuf.Bytes())
+	formatted, err := g.format("db.gen.go", dbBuf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -745,6 +746,10 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 			FromPKField: fromPKField,
 		})
 	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].FieldName < ret[j].FieldName
+	})
 
 	return ret
 }
