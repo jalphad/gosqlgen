@@ -132,6 +132,20 @@ func (e *IntColumnExpression) Name() string {
 	return e.intType.sqlType.expression.(*ColumnNode).Column.Column
 }
 
+type FloatColumnExpression struct {
+	*floatType
+}
+
+func NewFloatColumnExpression(table, column string) *FloatColumnExpression {
+	return &FloatColumnExpression{
+		Float(NewColumnNode(table, column)),
+	}
+}
+
+func (e *FloatColumnExpression) Name() string {
+	return e.floatType.sqlType.expression.(*ColumnNode).Column.Column
+}
+
 type BoolColumnExpression struct {
 	*boolType
 }

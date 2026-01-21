@@ -10,7 +10,7 @@ import (
 
 type ArrayTypes interface {
 	[]float64 | []int | []int64 | []string |
-		[]time.Time | []uuid.UUID
+		[]time.Time | []uuid.UUID | []pgtype.Numeric
 }
 
 type MappedTypes interface {
@@ -121,6 +121,98 @@ func (t *IntType) In(expr OfType[[]int64]) *BoolType {
 }
 
 func (t *IntType) Between(start, end OfType[int64]) *BoolType {
+	return Bool(&UnaryNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			&BinaryNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			},
+		},
+	})
+}
+
+func Float(e Expression) *FloatType {
+	return &FloatType{SQLType[float64]{e}}
+}
+
+// FloatType represents an floating point expression
+type FloatType struct {
+	sqlType[float64]
+}
+
+func (t *FloatType) Eq(expr OfType[float64]) *BoolType {
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *FloatType) Gt(expr OfType[float64]) *BoolType {
+	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
+}
+
+func (t *FloatType) Lt(expr OfType[float64]) *BoolType {
+	return Bool(&BinaryNode{Op: "<", Args: []Expression{t, expr}})
+}
+
+func (t *FloatType) Gte(expr OfType[float64]) *BoolType {
+	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t, expr}})
+}
+
+func (t *FloatType) Lte(expr OfType[float64]) *BoolType {
+	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
+}
+
+func (t *FloatType) In(expr OfType[[]float64]) *BoolType {
+	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+}
+
+func (t *FloatType) Between(start, end OfType[float64]) *BoolType {
+	return Bool(&UnaryNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			&BinaryNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			},
+		},
+	})
+}
+
+// NumericType represents an integer expression
+type NumericType struct {
+	sqlType[pgtype.Numeric]
+}
+
+func (t *NumericType) Eq(expr OfType[pgtype.Numeric]) *BoolType {
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *NumericType) Gt(expr OfType[pgtype.Numeric]) *BoolType {
+	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
+}
+
+func (t *NumericType) Lt(expr OfType[pgtype.Numeric]) *BoolType {
+	return Bool(&BinaryNode{Op: "<", Args: []Expression{t, expr}})
+}
+
+func (t *NumericType) Gte(expr OfType[pgtype.Numeric]) *BoolType {
+	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t, expr}})
+}
+
+func (t *NumericType) Lte(expr OfType[pgtype.Numeric]) *BoolType {
+	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
+}
+
+func (t *NumericType) In(expr OfType[[]pgtype.Numeric]) *BoolType {
+	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+}
+
+func (t *NumericType) Between(start, end OfType[pgtype.Numeric]) *BoolType {
 	return Bool(&UnaryNode{
 		Op: "BETWEEN",
 		Args: []Expression{
@@ -283,12 +375,14 @@ type JsonType struct {
 }
 
 type (
-	stringType = StringType
-	intType    = IntType
-	boolType   = BoolType
-	timeType   = TimeType
-	dateType   = DateType
-	uuidType   = UUIDType
-	bytesType  = BytesType
-	jsonType   = JsonType
+	stringType  = StringType
+	intType     = IntType
+	floatType   = FloatType
+	numericType = NumericType
+	boolType    = BoolType
+	timeType    = TimeType
+	dateType    = DateType
+	uuidType    = UUIDType
+	bytesType   = BytesType
+	jsonType    = JsonType
 )
