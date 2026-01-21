@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -28,11 +29,6 @@ type CommentsDto struct {
 
 	// FromExpressions stores custom aggregations and expressions not mapped to fields
 	FromExpressions map[string]any `json:"from_expressions,omitempty"`
-}
-
-func (p *CommentsDto) GetArgs(expressions []ast.NamedExpression) []any {
-	//TODO implement me
-	panic("implement me")
 }
 
 // TableName returns the table name for CommentsDto
@@ -68,7 +64,7 @@ func (c *CommentsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	if len(columns) > 0 {
 		// Use selectFields - scan in exact order
 		for _, field := range columns {
-			destPtr, unmarshalFunc := c.getScanDestForField(field, stmt)
+			destPtr, unmarshalFunc := c.getScanDestForField(field)
 			scanDest = append(scanDest, destPtr)
 			if unmarshalFunc != nil {
 				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
@@ -85,8 +81,7 @@ func (c *CommentsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 		scanDest = append(scanDest, &c.TestDate)
 
 		// Add joined table columns if active
-		selectStmt, ok := stmt.(*ast.SelectStatement)
-		if ok && slices.Contains(selectStmt.GetJoinedTables(), "posts") {
+		if slices.Contains(stmt.GetJoinedTables(), "posts") {
 			joinedPost := &PostsDto{}
 			scanDest = append(scanDest, &joinedPost.Id)
 			scanDest = append(scanDest, &joinedPost.UserId)
@@ -99,7 +94,7 @@ func (c *CommentsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 			scanDest = append(scanDest, &joinedPost.UpdatedAt)
 			c.Post = joinedPost
 		}
-		if ok && slices.Contains(selectStmt.GetJoinedTables(), "users") {
+		if slices.Contains(stmt.GetJoinedTables(), "users") {
 			joinedUser := &UsersDto{}
 			scanDest = append(scanDest, &joinedUser.Id)
 			scanDest = append(scanDest, &joinedUser.Username)
@@ -134,7 +129,7 @@ func (c *CommentsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStatement) (any, func() error) {
+func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SelectStatement) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
@@ -175,8 +170,7 @@ func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlS
 		}
 	}
 	// Check if it matches a joined table column
-	selectStmt, ok := stmt.(*ast.SelectStatement)
-	if ok && refTable == "posts" && slices.Contains(selectStmt.GetJoinedTables(), "posts") {
+	if refTable == "posts" && slices.Contains(stmt.GetJoinedTables(), "posts") {
 		if c.Post == nil {
 			c.Post = &PostsDto{}
 		}
@@ -217,7 +211,7 @@ func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlS
 			return c.Post.UpdatedAt, nil
 		}
 	}
-	if ok && refTable == "users" && slices.Contains(selectStmt.GetJoinedTables(), "users") {
+	if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
 		if c.User == nil {
 			c.User = &UsersDto{}
 		}
@@ -264,57 +258,50 @@ func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlS
 	return &value, unmarshalFunc
 }
 
-// PrepareInsert returns the data about the columns to be inserted
-// Fields with nil values (defaults/sequences) are omitted, database handles them
+// GetArg returns an expression which will be converted to a parameter in the SQL query
 func (c *CommentsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
-	var columns []string
-	var placeholders []string
-	var args []any
-	argIdx := 1
+	// Normalize column name for matching (lowercase)
+	columnLower := strings.ToLower(ref.Name())
 
-	// Dynamically build column list based on non-nil values
-	// Required field (not nullable, no default)
-	columns = append(columns, "post_id")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, c.PostId)
-	argIdx++
-
-	// Required field (not nullable, no default)
-	columns = append(columns, "user_id")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, c.UserId)
-	argIdx++
-
-	// Required field (not nullable, no default)
-	columns = append(columns, "content")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, c.Content)
-	argIdx++
-
-	if c.IsApproved != nil {
-		columns = append(columns, "is_approved")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, c.IsApproved)
-		argIdx++
+	if columnLower == "id" {
+		if c.Id == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*c.Id), nil
 	}
 
-	if c.CreatedAt != nil {
-		columns = append(columns, "created_at")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, c.CreatedAt)
-		argIdx++
+	if columnLower == "post_id" || columnLower == "postid" {
+		return ast.NewSQLType(c.PostId), nil
 	}
 
-	if c.TestDate != nil {
-		columns = append(columns, "test_date")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, c.TestDate)
-		argIdx++
+	if columnLower == "user_id" || columnLower == "userid" {
+		return ast.NewSQLType(c.UserId), nil
 	}
 
-	_ = fmt.Sprintf("INSERT INTO comments (%s) VALUES (%s) RETURNING id",
-		strings.Join(columns, ", "),
-		strings.Join(placeholders, ", "))
+	if columnLower == "content" {
+		return ast.NewSQLType(c.Content), nil
+	}
 
-	return nil, nil
+	if columnLower == "is_approved" || columnLower == "isapproved" {
+		if c.IsApproved == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*c.IsApproved), nil
+	}
+
+	if columnLower == "created_at" || columnLower == "createdat" {
+		if c.CreatedAt == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*c.CreatedAt), nil
+	}
+
+	if columnLower == "test_date" || columnLower == "testdate" {
+		if c.TestDate == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*c.TestDate), nil
+	}
+
+	return nil, errors.New("unknown column")
 }

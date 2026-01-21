@@ -224,10 +224,16 @@ func (u *UsersDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 	}
 
 	if columnLower == "created_at" || columnLower == "createdat" {
+		if u.CreatedAt == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
 		return ast.NewSQLType(*u.CreatedAt), nil
 	}
 
 	if columnLower == "updated_at" || columnLower == "updatedat" {
+		if u.UpdatedAt == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
 		return ast.NewSQLType(*u.UpdatedAt), nil
 	}
 

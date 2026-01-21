@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -24,11 +25,6 @@ type TagsDto struct {
 	FromExpressions map[string]any `json:"from_expressions,omitempty"`
 }
 
-func (p *TagsDto) GetArgs(expressions []ast.NamedExpression) []any {
-	//TODO implement me
-	panic("implement me")
-}
-
 // TableName returns the table name for TagsDto
 func (t *TagsDto) TableName() string {
 	return "tags"
@@ -43,7 +39,7 @@ func (t *TagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	if len(columns) > 0 {
 		// Use selectFields - scan in exact order
 		for _, field := range columns {
-			destPtr, unmarshalFunc := t.getScanDestForField(field, stmt)
+			destPtr, unmarshalFunc := t.getScanDestForField(field)
 			scanDest = append(scanDest, destPtr)
 			if unmarshalFunc != nil {
 				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
@@ -80,7 +76,7 @@ func (t *TagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (t *TagsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStatement) (any, func() error) {
+func (t *TagsDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
@@ -135,32 +131,27 @@ func (t *TagsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlState
 	return &value, unmarshalFunc
 }
 
-// PrepareInsert returns the data about the columns to be inserted
-// Fields with nil values (defaults/sequences) are omitted, database handles them
+// GetArg returns an expression which will be converted to a parameter in the SQL query
 func (t *TagsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
-	var columns []string
-	var placeholders []string
-	var args []any
-	argIdx := 1
+	// Normalize column name for matching (lowercase)
+	columnLower := strings.ToLower(ref.Name())
 
-	// Dynamically build column list based on non-nil values
-	// Required field (not nullable, no default)
-	columns = append(columns, "name")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, t.Name)
-	argIdx++
+	if columnLower == "id" {
+		if t.Id == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*t.Id), nil
+	}
 
-	// Required field (not nullable, no default)
-	columns = append(columns, "slug")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, t.Slug)
-	argIdx++
+	if columnLower == "name" {
+		return ast.NewSQLType(t.Name), nil
+	}
 
-	_ = fmt.Sprintf("INSERT INTO tags (%s) VALUES (%s) RETURNING id",
-		strings.Join(columns, ", "),
-		strings.Join(placeholders, ", "))
+	if columnLower == "slug" {
+		return ast.NewSQLType(t.Slug), nil
+	}
 
-	return nil, nil
+	return nil, errors.New("unknown column")
 }
 
 // LoadPosts loads associated posts through post_tags
@@ -192,7 +183,7 @@ func (t *TagsDto) LoadPosts(ctx context.Context, db *DB) error {
 		return nil
 	}
 
-	results, err := db.Posts().Select().Where(posts.Id().In(ast.NewSQLType(ids))).Find(ctx)
+	results, err := db.Posts().Where(posts.Id().In(ast.NewSQLType(ids))).Find(ctx)
 	if err != nil {
 		return err
 	}

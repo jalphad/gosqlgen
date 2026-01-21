@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -38,11 +39,6 @@ type PostsDto struct {
 
 	// FromExpressions stores custom aggregations and expressions not mapped to fields
 	FromExpressions map[string]any `json:"from_expressions,omitempty"`
-}
-
-func (p *PostsDto) GetArgs(expressions []ast.NamedExpression) []any {
-	//TODO implement me
-	panic("implement me")
 }
 
 // TableName returns the table name for PostsDto
@@ -82,7 +78,7 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	if len(columns) > 0 {
 		// Use selectFields - scan in exact order
 		for _, field := range columns {
-			destPtr, unmarshalFunc := p.getScanDestForField(field, stmt)
+			destPtr, unmarshalFunc := p.getScanDestForField(field)
 			scanDest = append(scanDest, destPtr)
 			if unmarshalFunc != nil {
 				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
@@ -101,7 +97,7 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 		scanDest = append(scanDest, &p.UpdatedAt)
 
 		// Add joined table columns if active
-		if selectStmt, ok := stmt.(*ast.SelectStatement); ok && slices.Contains(selectStmt.GetJoinedTables(), "users") {
+		if slices.Contains(stmt.GetJoinedTables(), "users") {
 			joinedUser := &UsersDto{}
 			scanDest = append(scanDest, &joinedUser.Id)
 			scanDest = append(scanDest, &joinedUser.Username)
@@ -136,7 +132,7 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (p *PostsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStatement) (any, func() error) {
+func (p *PostsDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
@@ -219,7 +215,7 @@ func (p *PostsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStat
 		}
 	}
 	// Check if it matches a joined table column
-	if selectStmt, ok := stmt.(*ast.SelectStatement); ok && refTable == "users" && slices.Contains(selectStmt.GetJoinedTables(), "users") {
+	if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
 		if p.User == nil {
 			p.User = &UsersDto{}
 		}
@@ -266,74 +262,69 @@ func (p *PostsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStat
 	return &value, unmarshalFunc
 }
 
-// PrepareInsert returns the data about the columns to be inserted
-// Fields with nil values (defaults/sequences) are omitted, database handles them
+// GetArg returns an expression which will be converted to a parameter in the SQL query
 func (p *PostsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
-	var columns []string
-	var placeholders []string
-	var args []any
-	argIdx := 1
+	// Normalize column name for matching (lowercase)
+	columnLower := strings.ToLower(ref.Name())
 
-	// Dynamically build column list based on non-nil values
-	// Required field (not nullable, no default)
-	columns = append(columns, "user_id")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, p.UserId)
-	argIdx++
-
-	// Required field (not nullable, no default)
-	columns = append(columns, "title")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, p.Title)
-	argIdx++
-
-	if p.Content != nil {
-		columns = append(columns, "content")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, p.Content)
-		argIdx++
+	if columnLower == "id" {
+		if p.Id == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.Id), nil
 	}
 
-	if p.Status != nil {
-		columns = append(columns, "status")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, p.Status)
-		argIdx++
+	if columnLower == "user_id" || columnLower == "userid" {
+		return ast.NewSQLType(p.UserId), nil
 	}
 
-	if p.PublishedAt != nil {
-		columns = append(columns, "published_at")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, p.PublishedAt)
-		argIdx++
+	if columnLower == "title" {
+		return ast.NewSQLType(p.Title), nil
 	}
 
-	if p.ViewCount != nil {
-		columns = append(columns, "view_count")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, p.ViewCount)
-		argIdx++
+	if columnLower == "content" {
+		if p.Content == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.Content), nil
 	}
 
-	if p.CreatedAt != nil {
-		columns = append(columns, "created_at")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, p.CreatedAt)
-		argIdx++
+	if columnLower == "status" {
+		if p.Status == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.Status), nil
 	}
 
-	if p.UpdatedAt != nil {
-		columns = append(columns, "updated_at")
-		placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-		args = append(args, p.UpdatedAt)
-		argIdx++
+	if columnLower == "published_at" || columnLower == "publishedat" {
+		if p.PublishedAt == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.PublishedAt), nil
 	}
 
-	_ = fmt.Sprintf("INSERT INTO posts (%s) VALUES (%s) RETURNING id",
-		strings.Join(columns, ", "),
-		strings.Join(placeholders, ", "))
+	if columnLower == "view_count" || columnLower == "viewcount" {
+		if p.ViewCount == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.ViewCount), nil
+	}
 
-	return nil, nil
+	if columnLower == "created_at" || columnLower == "createdat" {
+		if p.CreatedAt == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.CreatedAt), nil
+	}
+
+	if columnLower == "updated_at" || columnLower == "updatedat" {
+		if p.UpdatedAt == nil {
+			return ast.NewLiteralExpression(nil), nil
+		}
+		return ast.NewSQLType(*p.UpdatedAt), nil
+	}
+
+	return nil, errors.New("unknown column")
 }
 
 // LoadComments loads associated comments for this posts
@@ -378,7 +369,7 @@ func (p *PostsDto) LoadTags(ctx context.Context, db *DB) error {
 		return nil
 	}
 
-	results, err := db.Tags().Select().Where(tags.Id().In(ast.NewSQLType(ids))).Find(ctx)
+	results, err := db.Tags().Where(tags.Id().In(ast.NewSQLType(ids))).Find(ctx)
 	if err != nil {
 		return err
 	}

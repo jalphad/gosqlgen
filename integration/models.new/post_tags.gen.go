@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -22,11 +23,6 @@ type PostTagsDto struct {
 	FromExpressions map[string]any `json:"from_expressions,omitempty"`
 }
 
-func (p *PostTagsDto) GetArgs(expressions []ast.NamedExpression) []any {
-	//TODO implement me
-	panic("implement me")
-}
-
 // TableName returns the table name for PostTagsDto
 func (p *PostTagsDto) TableName() string {
 	return "post_tags"
@@ -41,7 +37,7 @@ func (p *PostTagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	if len(columns) > 0 {
 		// Use selectFields - scan in exact order
 		for _, field := range columns {
-			destPtr, unmarshalFunc := p.getScanDestForField(field, stmt)
+			destPtr, unmarshalFunc := p.getScanDestForField(field)
 			scanDest = append(scanDest, destPtr)
 			if unmarshalFunc != nil {
 				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
@@ -53,8 +49,7 @@ func (p *PostTagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 		scanDest = append(scanDest, &p.TagId)
 
 		// Add joined table columns if active
-		selectStmt, ok := stmt.(*ast.SelectStatement)
-		if ok && slices.Contains(selectStmt.GetJoinedTables(), "posts") {
+		if slices.Contains(stmt.GetJoinedTables(), "posts") {
 			joinedPost := &PostsDto{}
 			scanDest = append(scanDest, &joinedPost.Id)
 			scanDest = append(scanDest, &joinedPost.UserId)
@@ -67,7 +62,7 @@ func (p *PostTagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 			scanDest = append(scanDest, &joinedPost.UpdatedAt)
 			p.Post = joinedPost
 		}
-		if ok && slices.Contains(selectStmt.GetJoinedTables(), "tags") {
+		if slices.Contains(stmt.GetJoinedTables(), "tags") {
 			joinedTag := &TagsDto{}
 			scanDest = append(scanDest, &joinedTag.Id)
 			scanDest = append(scanDest, &joinedTag.Name)
@@ -98,7 +93,7 @@ func (p *PostTagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (p *PostTagsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStatement) (any, func() error) {
+func (p *PostTagsDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
@@ -119,8 +114,7 @@ func (p *PostTagsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlS
 		}
 	}
 	// Check if it matches a joined table column
-	selectStmt, ok := stmt.(*ast.SelectStatement)
-	if ok && refTable == "posts" && slices.Contains(selectStmt.GetJoinedTables(), "posts") {
+	if refTable == "posts" && slices.Contains(stmt.GetJoinedTables(), "posts") {
 		if p.Post == nil {
 			p.Post = &PostsDto{}
 		}
@@ -161,7 +155,7 @@ func (p *PostTagsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlS
 			return p.Post.UpdatedAt, nil
 		}
 	}
-	if ok && refTable == "tags" && slices.Contains(selectStmt.GetJoinedTables(), "tags") {
+	if refTable == "tags" && slices.Contains(stmt.GetJoinedTables(), "tags") {
 		if p.Tag == nil {
 			p.Tag = &TagsDto{}
 		}
@@ -192,30 +186,18 @@ func (p *PostTagsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlS
 	return &value, unmarshalFunc
 }
 
-// PrepareInsert returns the data about the columns to be inserted
-// Fields with nil values (defaults/sequences) are omitted, database handles them
+// GetArg returns an expression which will be converted to a parameter in the SQL query
 func (p *PostTagsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
-	var columns []string
-	var placeholders []string
-	var args []any
-	argIdx := 1
+	// Normalize column name for matching (lowercase)
+	columnLower := strings.ToLower(ref.Name())
 
-	// Dynamically build column list based on non-nil values
-	// Required field (not nullable, no default)
-	columns = append(columns, "post_id")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, p.PostId)
-	argIdx++
+	if columnLower == "post_id" || columnLower == "postid" {
+		return ast.NewSQLType(p.PostId), nil
+	}
 
-	// Required field (not nullable, no default)
-	columns = append(columns, "tag_id")
-	placeholders = append(placeholders, fmt.Sprintf("$%d", argIdx))
-	args = append(args, p.TagId)
-	argIdx++
+	if columnLower == "tag_id" || columnLower == "tagid" {
+		return ast.NewSQLType(p.TagId), nil
+	}
 
-	_ = fmt.Sprintf("INSERT INTO post_tags (%s) VALUES (%s) RETURNING post_id, tag_id",
-		strings.Join(columns, ", "),
-		strings.Join(placeholders, ", "))
-
-	return nil, nil
+	return nil, errors.New("unknown column")
 }
