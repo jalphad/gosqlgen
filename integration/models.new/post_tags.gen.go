@@ -3,7 +3,6 @@ package models
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -44,31 +43,31 @@ func (p *PostTagsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 			}
 		}
 	} else {
-		// Default behavior - scan all table columns + joined tables
-		scanDest = append(scanDest, &p.PostId)
-		scanDest = append(scanDest, &p.TagId)
-
-		// Add joined table columns if active
-		if slices.Contains(stmt.GetJoinedTables(), "posts") {
-			joinedPost := &PostsDto{}
-			scanDest = append(scanDest, &joinedPost.Id)
-			scanDest = append(scanDest, &joinedPost.UserId)
-			scanDest = append(scanDest, &joinedPost.Title)
-			scanDest = append(scanDest, &joinedPost.Content)
-			scanDest = append(scanDest, &joinedPost.Status)
-			scanDest = append(scanDest, &joinedPost.PublishedAt)
-			scanDest = append(scanDest, &joinedPost.ViewCount)
-			scanDest = append(scanDest, &joinedPost.CreatedAt)
-			scanDest = append(scanDest, &joinedPost.UpdatedAt)
-			p.Post = joinedPost
-		}
-		if slices.Contains(stmt.GetJoinedTables(), "tags") {
-			joinedTag := &TagsDto{}
-			scanDest = append(scanDest, &joinedTag.Id)
-			scanDest = append(scanDest, &joinedTag.Name)
-			scanDest = append(scanDest, &joinedTag.Slug)
-			p.Tag = joinedTag
-		}
+		//// Default behavior - scan all table columns + joined tables
+		//scanDest = append(scanDest, &p.PostId)
+		//scanDest = append(scanDest, &p.TagId)
+		//
+		//// Add joined table columns if active
+		//if slices.Contains(stmt.GetJoinedTables(), "posts") {
+		//	joinedPost := &PostsDto{}
+		//	scanDest = append(scanDest, &joinedPost.Id)
+		//	scanDest = append(scanDest, &joinedPost.UserId)
+		//	scanDest = append(scanDest, &joinedPost.Title)
+		//	scanDest = append(scanDest, &joinedPost.Content)
+		//	scanDest = append(scanDest, &joinedPost.Status)
+		//	scanDest = append(scanDest, &joinedPost.PublishedAt)
+		//	scanDest = append(scanDest, &joinedPost.ViewCount)
+		//	scanDest = append(scanDest, &joinedPost.CreatedAt)
+		//	scanDest = append(scanDest, &joinedPost.UpdatedAt)
+		//	p.Post = joinedPost
+		//}
+		//if slices.Contains(stmt.GetJoinedTables(), "tags") {
+		//	joinedTag := &TagsDto{}
+		//	scanDest = append(scanDest, &joinedTag.Id)
+		//	scanDest = append(scanDest, &joinedTag.Name)
+		//	scanDest = append(scanDest, &joinedTag.Slug)
+		//	p.Tag = joinedTag
+		//}
 	}
 
 	// Perform scan
@@ -113,65 +112,65 @@ func (p *PostTagsDto) getScanDestForField(ref ast.NamedExpression) (any, func() 
 			return &p.TagId, nil
 		}
 	}
-	// Check if it matches a joined table column
-	if refTable == "posts" && slices.Contains(stmt.GetJoinedTables(), "posts") {
-		if p.Post == nil {
-			p.Post = &PostsDto{}
-		}
-
-		if aliasLower == "id" {
-			return p.Post.Id, nil
-		}
-
-		if aliasLower == "user_id" || aliasLower == "userid" {
-			return p.Post.UserId, nil
-		}
-
-		if aliasLower == "title" {
-			return p.Post.Title, nil
-		}
-
-		if aliasLower == "content" {
-			return p.Post.Content, nil
-		}
-
-		if aliasLower == "status" {
-			return p.Post.Status, nil
-		}
-
-		if aliasLower == "published_at" || aliasLower == "publishedat" {
-			return p.Post.PublishedAt, nil
-		}
-
-		if aliasLower == "view_count" || aliasLower == "viewcount" {
-			return p.Post.ViewCount, nil
-		}
-
-		if aliasLower == "created_at" || aliasLower == "createdat" {
-			return p.Post.CreatedAt, nil
-		}
-
-		if aliasLower == "updated_at" || aliasLower == "updatedat" {
-			return p.Post.UpdatedAt, nil
-		}
-	}
-	if refTable == "tags" && slices.Contains(stmt.GetJoinedTables(), "tags") {
-		if p.Tag == nil {
-			p.Tag = &TagsDto{}
-		}
-
-		if aliasLower == "id" {
-			return p.Tag.Id, nil
-		}
-
-		if aliasLower == "name" {
-			return p.Tag.Name, nil
-		}
-
-		if aliasLower == "slug" {
-			return p.Tag.Slug, nil
-		}
-	}
+	//// Check if it matches a joined table column
+	//if refTable == "posts" && slices.Contains(stmt.GetJoinedTables(), "posts") {
+	//	if p.Post == nil {
+	//		p.Post = &PostsDto{}
+	//	}
+	//
+	//	if aliasLower == "id" {
+	//		return p.Post.Id, nil
+	//	}
+	//
+	//	if aliasLower == "user_id" || aliasLower == "userid" {
+	//		return p.Post.UserId, nil
+	//	}
+	//
+	//	if aliasLower == "title" {
+	//		return p.Post.Title, nil
+	//	}
+	//
+	//	if aliasLower == "content" {
+	//		return p.Post.Content, nil
+	//	}
+	//
+	//	if aliasLower == "status" {
+	//		return p.Post.Status, nil
+	//	}
+	//
+	//	if aliasLower == "published_at" || aliasLower == "publishedat" {
+	//		return p.Post.PublishedAt, nil
+	//	}
+	//
+	//	if aliasLower == "view_count" || aliasLower == "viewcount" {
+	//		return p.Post.ViewCount, nil
+	//	}
+	//
+	//	if aliasLower == "created_at" || aliasLower == "createdat" {
+	//		return p.Post.CreatedAt, nil
+	//	}
+	//
+	//	if aliasLower == "updated_at" || aliasLower == "updatedat" {
+	//		return p.Post.UpdatedAt, nil
+	//	}
+	//}
+	//if refTable == "tags" && slices.Contains(stmt.GetJoinedTables(), "tags") {
+	//	if p.Tag == nil {
+	//		p.Tag = &TagsDto{}
+	//	}
+	//
+	//	if aliasLower == "id" {
+	//		return p.Tag.Id, nil
+	//	}
+	//
+	//	if aliasLower == "name" {
+	//		return p.Tag.Name, nil
+	//	}
+	//
+	//	if aliasLower == "slug" {
+	//		return p.Tag.Slug, nil
+	//	}
+	//}
 
 	// No match - store in FromExpressions as any
 	if p.FromExpressions == nil {

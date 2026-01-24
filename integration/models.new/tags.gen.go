@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
-	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
 )
 
 // TagsDto represents the tags table
@@ -154,39 +152,39 @@ func (t *TagsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 	return nil, errors.New("unknown column")
 }
 
-// LoadPosts loads associated posts through post_tags
-func (t *TagsDto) LoadPosts(ctx context.Context, db *DB) error {
-	if t.Id == nil {
-		return nil
-	}
-
-	// Query junction table to get referenced IDs
-	qry := "SELECT post_id FROM post_tags WHERE tag_id = $1"
-
-	rows, err := db.pool.Query(ctx, qry, *t.Id)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var ids []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return err
-		}
-		ids = append(ids, id)
-	}
-
-	if len(ids) == 0 {
-		t.Posts = []PostsDto{}
-		return nil
-	}
-
-	results, err := db.Posts().Where(posts.Id().In(ast.NewSQLType(ids))).Find(ctx)
-	if err != nil {
-		return err
-	}
-	t.Posts = results
-	return nil
-}
+//// LoadPosts loads associated posts through post_tags
+//func (t *TagsDto) LoadPosts(ctx context.Context, db *DB) error {
+//	if t.Id == nil {
+//		return nil
+//	}
+//
+//	// Query junction table to get referenced IDs
+//	qry := "SELECT post_id FROM post_tags WHERE tag_id = $1"
+//
+//	rows, err := db.pool.Query(ctx, qry, *t.Id)
+//	if err != nil {
+//		return err
+//	}
+//	defer rows.Close()
+//
+//	var ids []int64
+//	for rows.Next() {
+//		var id int64
+//		if err := rows.Scan(&id); err != nil {
+//			return err
+//		}
+//		ids = append(ids, id)
+//	}
+//
+//	if len(ids) == 0 {
+//		t.Posts = []PostsDto{}
+//		return nil
+//	}
+//
+//	results, err := db.Posts().Where(posts.Id().In(ast.NewSQLType(ids))).Find(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	t.Posts = results
+//	return nil
+//}

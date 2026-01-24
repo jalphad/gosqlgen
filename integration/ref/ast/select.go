@@ -88,56 +88,6 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any) {
 	}
 }
 
-// TableSource represents a table or a join in the FROM clause.
-type TableSource struct {
-	Table string      // Base table Name
-	joins []*JoinExpr // Optional joins
-}
-
-func (s *TableSource) toSQL(builder *strings.Builder, params *[]any) string {
-	builder.WriteString(" " + s.Table)
-	for _, join := range s.joins {
-		join.toSQL(builder, params)
-	}
-
-	return builder.String()
-}
-
-func (s *TableSource) Name() string {
-	return s.Table
-}
-
-func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *TableSource {
-	s.joins = append(s.joins, &JoinExpr{
-		Type:      jointype,
-		Right:     &TableSource{Table: table},
-		Condition: on,
-	})
-	return s
-}
-
-// JoinExpr represents a JOIN operation.
-type JoinExpr struct {
-	Type      JoinType     // INNER, LEFT, RIGHT, FULL
-	Right     *TableSource // The table being joined
-	Condition OfType[bool] // ON condition
-}
-
-func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any) {
-	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")
-	j.Condition.toSQL(builder, params)
-}
-
-// JoinType enumerates join types.
-type JoinType string
-
-const (
-	JoinInner JoinType = " INNER"
-	JoinLeft  JoinType = " LEFT"
-	JoinRight JoinType = " RIGHT"
-	JoinFull  JoinType = " FULL"
-)
-
 // OrderByItem represents an ORDER BY element.
 type OrderByItem struct {
 	Field     Expression

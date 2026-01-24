@@ -1,7 +1,6 @@
 package models
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,9 +10,148 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
-	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
-	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
 )
+
+type UsersDtos []*UsersDto
+
+func (u UsersDtos) Id() ast.OfType[[]uuid.UUID] {
+	out := make([]*uuid.UUID, len(u))
+	for idx, dto := range u {
+		out[idx] = dto.Id
+	}
+	return ast.SetType[[]uuid.UUID](ast.NewLiteralExpression(out))
+}
+
+func (u UsersDtos) Username() ast.OfType[[]string] {
+	out := make([]string, len(u))
+	for idx, dto := range u {
+		out[idx] = dto.Username
+	}
+	return ast.NewSQLType(out)
+}
+
+func (u UsersDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
+	im := make([]ast.Expression, 0, len(u)*len(columns))
+	for _, column := range columns {
+		// Normalize column name for matching (lowercase)
+		columnLower := strings.ToLower(column.Name())
+
+		if columnLower == "id" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.Id))
+			}
+		}
+
+		if columnLower == "username" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.Username))
+			}
+		}
+
+		if columnLower == "email" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.Email))
+			}
+		}
+
+		if columnLower == "full_name" || columnLower == "fullname" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.FullName))
+			}
+		}
+
+		if columnLower == "created_at" || columnLower == "createdat" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.CreatedAt))
+			}
+		}
+
+		if columnLower == "updated_at" || columnLower == "updatedat" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.UpdatedAt))
+			}
+		}
+
+		if columnLower == "is_active" || columnLower == "isactive" {
+			for _, dto := range u {
+				im = append(im, ast.NewLiteralExpression(dto.IsActive))
+			}
+		}
+	}
+
+	values := make([]ast.Expression, 0, len(u))
+	grouped := make([]ast.Expression, len(columns))
+	for i := 0; i < len(u); i++ {
+		for j := range columns {
+			grouped[j] = im[j*len(u)+i]
+		}
+
+		values = append(values, ast.NewGroupedExpression(grouped...))
+	}
+
+	return values
+}
+
+// TODO: return an ast.ErrorExpression when implemented
+func (u UsersDtos) GetArgs(column ast.NamedExpression) ast.Expression {
+	// Normalize column name for matching (lowercase)
+	columnLower := strings.ToLower(column.Name())
+
+	if columnLower == "id" {
+		out := u.Id()
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "username" {
+		out := make([]string, len(u))
+		for idx, dto := range u {
+			out[idx] = dto.Username
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "email" {
+		out := make([]string, len(u))
+		for idx, dto := range u {
+			out[idx] = dto.Email
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "full_name" || columnLower == "fullname" {
+		out := make([]*string, len(u))
+		for idx, dto := range u {
+			out[idx] = dto.FullName
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "created_at" || columnLower == "createdat" {
+		out := make([]*time.Time, len(u))
+		for idx, dto := range u {
+			out[idx] = dto.CreatedAt
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "updated_at" || columnLower == "updatedat" {
+		out := make([]*time.Time, len(u))
+		for idx, dto := range u {
+			out[idx] = dto.UpdatedAt
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "is_active" || columnLower == "isactive" {
+		out := make([]*bool, len(u))
+		for idx, dto := range u {
+			out[idx] = dto.IsActive
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	return nil //, errors.New("unknown column")
+}
 
 // UsersDto represents the users table
 type UsersDto struct {
@@ -247,28 +385,28 @@ func (u *UsersDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 	return nil, errors.New("unknown column")
 }
 
-// LoadComments loads associated comments for this users
-func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
-	if u.Id == nil {
-		return nil
-	}
-	results, err := db.Comments().Select().Where(comments.UserId().Eq(ast.NewSQLType(*u.Id))).Find(ctx)
-	if err != nil {
-		return err
-	}
-	u.Comments = results
-	return nil
-}
-
-// LoadPosts loads associated posts for this users
-func (u *UsersDto) LoadPosts(ctx context.Context, db *DB) error {
-	if u.Id == nil {
-		return nil
-	}
-	results, err := db.Posts().Select().Where(posts.UserId().Eq(ast.NewSQLType(*u.Id))).Find(ctx)
-	if err != nil {
-		return err
-	}
-	u.Posts = results
-	return nil
-}
+//// LoadComments loads associated comments for this users
+//func (u *UsersDto) LoadComments(ctx context.Context, db *DB) error {
+//	if u.Id == nil {
+//		return nil
+//	}
+//	results, err := db.Comments().Select().Where(comments.UserId().Eq(ast.NewSQLType(*u.Id))).Find(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	u.Comments = results
+//	return nil
+//}
+//
+//// LoadPosts loads associated posts for this users
+//func (u *UsersDto) LoadPosts(ctx context.Context, db *DB) error {
+//	if u.Id == nil {
+//		return nil
+//	}
+//	results, err := db.Posts().Select().Where(posts.UserId().Eq(ast.NewSQLType(*u.Id))).Find(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	u.Posts = results
+//	return nil
+//}

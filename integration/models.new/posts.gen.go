@@ -1,19 +1,15 @@
 package models
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
-	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
-	"github.com/jalphad/gosqlgen/integration/ref/query/tags"
 )
 
 // PostsDto represents the posts table
@@ -97,17 +93,17 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 		scanDest = append(scanDest, &p.UpdatedAt)
 
 		// Add joined table columns if active
-		if slices.Contains(stmt.GetJoinedTables(), "users") {
-			joinedUser := &UsersDto{}
-			scanDest = append(scanDest, &joinedUser.Id)
-			scanDest = append(scanDest, &joinedUser.Username)
-			scanDest = append(scanDest, &joinedUser.Email)
-			scanDest = append(scanDest, &joinedUser.FullName)
-			scanDest = append(scanDest, &joinedUser.CreatedAt)
-			scanDest = append(scanDest, &joinedUser.UpdatedAt)
-			scanDest = append(scanDest, &joinedUser.IsActive)
-			p.User = joinedUser
-		}
+		//if slices.Contains(stmt.GetJoinedTables(), "users") {
+		//	joinedUser := &UsersDto{}
+		//	scanDest = append(scanDest, &joinedUser.Id)
+		//	scanDest = append(scanDest, &joinedUser.Username)
+		//	scanDest = append(scanDest, &joinedUser.Email)
+		//	scanDest = append(scanDest, &joinedUser.FullName)
+		//	scanDest = append(scanDest, &joinedUser.CreatedAt)
+		//	scanDest = append(scanDest, &joinedUser.UpdatedAt)
+		//	scanDest = append(scanDest, &joinedUser.IsActive)
+		//	p.User = joinedUser
+		//}
 	}
 
 	// Perform scan
@@ -215,39 +211,39 @@ func (p *PostsDto) getScanDestForField(ref ast.NamedExpression) (any, func() err
 		}
 	}
 	// Check if it matches a joined table column
-	if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
-		if p.User == nil {
-			p.User = &UsersDto{}
-		}
-
-		if aliasLower == "id" {
-			return p.User.Id, nil
-		}
-
-		if aliasLower == "username" {
-			return p.User.Username, nil
-		}
-
-		if aliasLower == "email" {
-			return p.User.Email, nil
-		}
-
-		if aliasLower == "full_name" || aliasLower == "fullname" {
-			return p.User.FullName, nil
-		}
-
-		if aliasLower == "created_at" || aliasLower == "createdat" {
-			return p.User.CreatedAt, nil
-		}
-
-		if aliasLower == "updated_at" || aliasLower == "updatedat" {
-			return p.User.UpdatedAt, nil
-		}
-
-		if aliasLower == "is_active" || aliasLower == "isactive" {
-			return p.User.IsActive, nil
-		}
-	}
+	//if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
+	//	if p.User == nil {
+	//		p.User = &UsersDto{}
+	//	}
+	//
+	//	if aliasLower == "id" {
+	//		return p.User.Id, nil
+	//	}
+	//
+	//	if aliasLower == "username" {
+	//		return p.User.Username, nil
+	//	}
+	//
+	//	if aliasLower == "email" {
+	//		return p.User.Email, nil
+	//	}
+	//
+	//	if aliasLower == "full_name" || aliasLower == "fullname" {
+	//		return p.User.FullName, nil
+	//	}
+	//
+	//	if aliasLower == "created_at" || aliasLower == "createdat" {
+	//		return p.User.CreatedAt, nil
+	//	}
+	//
+	//	if aliasLower == "updated_at" || aliasLower == "updatedat" {
+	//		return p.User.UpdatedAt, nil
+	//	}
+	//
+	//	if aliasLower == "is_active" || aliasLower == "isactive" {
+	//		return p.User.IsActive, nil
+	//	}
+	//}
 
 	// No match - store in FromExpressions as any
 	if p.FromExpressions == nil {
@@ -328,51 +324,51 @@ func (p *PostsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 }
 
 // LoadComments loads associated comments for this posts
-func (p *PostsDto) LoadComments(ctx context.Context, db *DB) error {
-	if p.Id == nil {
-		return nil
-	}
-	results, err := db.Comments().Select().Where(comments.PostId().Eq(ast.NewSQLType(*p.Id))).Find(ctx)
-	if err != nil {
-		return err
-	}
-	p.Comments = results
-	return nil
-}
-
-// LoadTags loads associated tags through post_tags
-func (p *PostsDto) LoadTags(ctx context.Context, db *DB) error {
-	if p.Id == nil {
-		return nil
-	}
-
-	// Query junction table to get referenced IDs
-	qry := "SELECT tag_id FROM post_tags WHERE post_id = $1"
-
-	rows, err := db.pool.Query(ctx, qry, *p.Id)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var ids []int64
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return err
-		}
-		ids = append(ids, id)
-	}
-
-	if len(ids) == 0 {
-		p.Tags = []TagsDto{}
-		return nil
-	}
-
-	results, err := db.Tags().Where(tags.Id().In(ast.NewSQLType(ids))).Find(ctx)
-	if err != nil {
-		return err
-	}
-	p.Tags = results
-	return nil
-}
+//func (p *PostsDto) LoadComments(ctx context.Context, db *DB) error {
+//	if p.Id == nil {
+//		return nil
+//	}
+//	results, err := db.Comments().Select().Where(comments.PostId().Eq(ast.NewSQLType(*p.Id))).Find(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	p.Comments = results
+//	return nil
+//}
+//
+//// LoadTags loads associated tags through post_tags
+//func (p *PostsDto) LoadTags(ctx context.Context, db *DB) error {
+//	if p.Id == nil {
+//		return nil
+//	}
+//
+//	// Query junction table to get referenced IDs
+//	qry := "SELECT tag_id FROM post_tags WHERE post_id = $1"
+//
+//	rows, err := db.pool.Query(ctx, qry, *p.Id)
+//	if err != nil {
+//		return err
+//	}
+//	defer rows.Close()
+//
+//	var ids []int64
+//	for rows.Next() {
+//		var id int64
+//		if err := rows.Scan(&id); err != nil {
+//			return err
+//		}
+//		ids = append(ids, id)
+//	}
+//
+//	if len(ids) == 0 {
+//		p.Tags = []TagsDto{}
+//		return nil
+//	}
+//
+//	results, err := db.Tags().Where(tags.Id().In(ast.NewSQLType(ids))).Find(ctx)
+//	if err != nil {
+//		return err
+//	}
+//	p.Tags = results
+//	return nil
+//}

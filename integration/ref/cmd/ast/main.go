@@ -16,9 +16,9 @@ func main() {
 			users.Email()).
 		Where(users.Email().Like("%@corp.com").
 			And(users.IsActive().IsTrue()).
-			And(users.Username().Eq(query.Lit("foo")))).
+			And(users.Username().Eq(query.Val("foo")))).
 		GroupBy().
-		Having(query.Lit(true)).
+		Having(query.Val(true)).
 		OrderBy(
 			query.Asc(users.Id()),
 			query.Desc(users.Username())).

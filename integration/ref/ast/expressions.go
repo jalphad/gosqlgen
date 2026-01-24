@@ -17,6 +17,7 @@ func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
 
 // Expression represents any SQL Expression (binary, unary, function, literal).
 type Expression interface {
+	// TODO: refactor to allow returning an error
 	toSQL(builder *strings.Builder, params *[]any)
 }
 
@@ -28,6 +29,16 @@ type AliasedExpression interface {
 type NamedExpression interface {
 	Expression
 	Name() string
+}
+
+type NamedTableExpression interface {
+	TableExpression
+	NamedExpression
+}
+
+type TableExpression interface {
+	Expression
+	isTableExpression()
 }
 
 type AsExpression[T MappedTypes] struct {
@@ -71,16 +82,20 @@ func (e *NamedExpressionWrapper[T]) Name() string {
 
 // GroupedExpression represents an expression surrounded by parentheses
 type GroupedExpression struct {
-	expression
+	expressions []expression
 }
 
-func NewGroupedExpression(e Expression) *GroupedExpression {
+func NewGroupedExpression(e ...Expression) *GroupedExpression {
 	return &GroupedExpression{e}
 }
 
 func (e *GroupedExpression) toSQL(builder *strings.Builder, params *[]any) {
 	builder.WriteString("(")
-	e.expression.toSQL(builder, params)
+	for i := 0; i < len(e.expressions)-1; i++ {
+		e.expressions[i].toSQL(builder, params)
+		builder.WriteString(", ")
+	}
+	e.expressions[len(e.expressions)-1].toSQL(builder, params)
 	builder.WriteString(")")
 }
 
@@ -97,6 +112,7 @@ func NewKeywordExpression(op string, expressions ...Expression) *KeywordExpressi
 }
 
 func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString(e.node.Op + " ")
 	for i := 0; i < len(e.node.Args)-1; i++ {
 		e.node.Args[i].toSQL(builder, params)
 		builder.WriteString(", ")
@@ -176,4 +192,54 @@ func (e *UUIDColumnExpression) Name() string {
 
 type (
 	expression = Expression
+)
+
+// TableSource represents a table or a join in the FROM clause.
+type TableSource struct {
+	Table string      // Base table Name
+	joins []*JoinExpr // Optional joins
+}
+
+func (s *TableSource) isTableExpression() {}
+
+func (s *TableSource) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString(" " + s.Table)
+	for _, join := range s.joins {
+		join.toSQL(builder, params)
+	}
+}
+
+func (s *TableSource) Name() string {
+	return s.Table
+}
+
+func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *TableSource {
+	s.joins = append(s.joins, &JoinExpr{
+		Type:      jointype,
+		Right:     &TableSource{Table: table},
+		Condition: on,
+	})
+	return s
+}
+
+// JoinExpr represents a JOIN operation.
+type JoinExpr struct {
+	Type      JoinType     // INNER, LEFT, RIGHT, FULL
+	Right     *TableSource // The table being joined
+	Condition OfType[bool] // ON condition
+}
+
+func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")
+	j.Condition.toSQL(builder, params)
+}
+
+// JoinType enumerates join types.
+type JoinType string
+
+const (
+	JoinInner JoinType = " INNER"
+	JoinLeft  JoinType = " LEFT"
+	JoinRight JoinType = " RIGHT"
+	JoinFull  JoinType = " FULL"
 )

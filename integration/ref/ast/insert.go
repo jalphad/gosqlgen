@@ -25,13 +25,12 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any) {
 		columns = append(columns, column.Name())
 	}
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
-	builder.WriteString(" VALUES (")
+	builder.WriteString(" VALUES ")
 	for i := 0; i < len(s.Values)-1; i++ {
 		s.Values[i].toSQL(builder, params)
 		builder.WriteString(", ")
 	}
 	s.Values[len(s.Values)-1].toSQL(builder, params)
-	builder.WriteString(")")
 
 	if s.OnConflict != nil {
 		s.OnConflict.toSQL(builder, params)

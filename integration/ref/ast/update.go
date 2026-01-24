@@ -6,8 +6,8 @@ import (
 
 type UpdateStatement struct {
 	Table     string
-	SetList   []*SetKV
-	From      *TableSource
+	SetList   []UpdateSetExpr
+	From      TableExpression
 	Where     OfType[bool]
 	Returning []NamedExpression
 }
@@ -20,18 +20,14 @@ func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any) {
 	builder.WriteString("UPDATE " + s.Table + " SET ")
 
 	for i := 0; i < len(s.SetList)-1; i++ {
-		builder.WriteString(s.SetList[i].Key.Name() + " = ")
-		s.SetList[i].Value.toSQL(builder, params)
+		s.SetList[i].toSQL(builder, params)
 		builder.WriteString(", ")
 	}
-	builder.WriteString(s.SetList[len(s.SetList)-1].Key.Name() + " = ")
-	s.SetList[len(s.SetList)-1].Value.toSQL(builder, params)
+	s.SetList[len(s.SetList)-1].toSQL(builder, params)
 
 	if s.From != nil {
-		builder.WriteString(" FROM " + s.From.Table)
-		for _, join := range s.From.joins {
-			join.toSQL(builder, params)
-		}
+		builder.WriteString(" FROM ")
+		s.From.toSQL(builder, params)
 	}
 
 	// Add WHERE conditions
@@ -49,7 +45,19 @@ func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any) {
 	}
 }
 
-type SetKV struct {
+type UpdateSet struct {
 	Key   NamedExpression
 	Value Expression
+}
+
+func (s UpdateSet) toSQL(builder *strings.Builder, params *[]any) {
+	builder.WriteString(s.Key.Name() + " = ")
+	s.Value.toSQL(builder, params)
+}
+
+func (s UpdateSet) forUpdate() {}
+
+type UpdateSetExpr interface {
+	expression
+	forUpdate()
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -80,31 +79,31 @@ func (c *CommentsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 		scanDest = append(scanDest, &c.CreatedAt)
 		scanDest = append(scanDest, &c.TestDate)
 
-		// Add joined table columns if active
-		if slices.Contains(stmt.GetJoinedTables(), "posts") {
-			joinedPost := &PostsDto{}
-			scanDest = append(scanDest, &joinedPost.Id)
-			scanDest = append(scanDest, &joinedPost.UserId)
-			scanDest = append(scanDest, &joinedPost.Title)
-			scanDest = append(scanDest, &joinedPost.Content)
-			scanDest = append(scanDest, &joinedPost.Status)
-			scanDest = append(scanDest, &joinedPost.PublishedAt)
-			scanDest = append(scanDest, &joinedPost.ViewCount)
-			scanDest = append(scanDest, &joinedPost.CreatedAt)
-			scanDest = append(scanDest, &joinedPost.UpdatedAt)
-			c.Post = joinedPost
-		}
-		if slices.Contains(stmt.GetJoinedTables(), "users") {
-			joinedUser := &UsersDto{}
-			scanDest = append(scanDest, &joinedUser.Id)
-			scanDest = append(scanDest, &joinedUser.Username)
-			scanDest = append(scanDest, &joinedUser.Email)
-			scanDest = append(scanDest, &joinedUser.FullName)
-			scanDest = append(scanDest, &joinedUser.CreatedAt)
-			scanDest = append(scanDest, &joinedUser.UpdatedAt)
-			scanDest = append(scanDest, &joinedUser.IsActive)
-			c.User = joinedUser
-		}
+		//// Add joined table columns if active
+		//if slices.Contains(stmt.GetJoinedTables(), "posts") {
+		//	joinedPost := &PostsDto{}
+		//	scanDest = append(scanDest, &joinedPost.Id)
+		//	scanDest = append(scanDest, &joinedPost.UserId)
+		//	scanDest = append(scanDest, &joinedPost.Title)
+		//	scanDest = append(scanDest, &joinedPost.Content)
+		//	scanDest = append(scanDest, &joinedPost.Status)
+		//	scanDest = append(scanDest, &joinedPost.PublishedAt)
+		//	scanDest = append(scanDest, &joinedPost.ViewCount)
+		//	scanDest = append(scanDest, &joinedPost.CreatedAt)
+		//	scanDest = append(scanDest, &joinedPost.UpdatedAt)
+		//	c.Post = joinedPost
+		//}
+		//if slices.Contains(stmt.GetJoinedTables(), "users") {
+		//	joinedUser := &UsersDto{}
+		//	scanDest = append(scanDest, &joinedUser.Id)
+		//	scanDest = append(scanDest, &joinedUser.Username)
+		//	scanDest = append(scanDest, &joinedUser.Email)
+		//	scanDest = append(scanDest, &joinedUser.FullName)
+		//	scanDest = append(scanDest, &joinedUser.CreatedAt)
+		//	scanDest = append(scanDest, &joinedUser.UpdatedAt)
+		//	scanDest = append(scanDest, &joinedUser.IsActive)
+		//	c.User = joinedUser
+		//}
 	}
 
 	// Perform scan
@@ -129,7 +128,7 @@ func (c *CommentsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SelectStatement) (any, func() error) {
+func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
@@ -169,81 +168,81 @@ func (c *CommentsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.Sele
 			return &c.TestDate, nil
 		}
 	}
-	// Check if it matches a joined table column
-	if refTable == "posts" && slices.Contains(stmt.GetJoinedTables(), "posts") {
-		if c.Post == nil {
-			c.Post = &PostsDto{}
-		}
-
-		if aliasLower == "id" {
-			return c.Post.Id, nil
-		}
-
-		if aliasLower == "user_id" || aliasLower == "userid" {
-			return c.Post.UserId, nil
-		}
-
-		if aliasLower == "title" {
-			return c.Post.Title, nil
-		}
-
-		if aliasLower == "content" {
-			return c.Post.Content, nil
-		}
-
-		if aliasLower == "status" {
-			return c.Post.Status, nil
-		}
-
-		if aliasLower == "published_at" || aliasLower == "publishedat" {
-			return c.Post.PublishedAt, nil
-		}
-
-		if aliasLower == "view_count" || aliasLower == "viewcount" {
-			return c.Post.ViewCount, nil
-		}
-
-		if aliasLower == "created_at" || aliasLower == "createdat" {
-			return c.Post.CreatedAt, nil
-		}
-
-		if aliasLower == "updated_at" || aliasLower == "updatedat" {
-			return c.Post.UpdatedAt, nil
-		}
-	}
-	if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
-		if c.User == nil {
-			c.User = &UsersDto{}
-		}
-
-		if aliasLower == "id" {
-			return c.User.Id, nil
-		}
-
-		if aliasLower == "username" {
-			return c.User.Username, nil
-		}
-
-		if aliasLower == "email" {
-			return c.User.Email, nil
-		}
-
-		if aliasLower == "full_name" || aliasLower == "fullname" {
-			return c.User.FullName, nil
-		}
-
-		if aliasLower == "created_at" || aliasLower == "createdat" {
-			return c.User.CreatedAt, nil
-		}
-
-		if aliasLower == "updated_at" || aliasLower == "updatedat" {
-			return c.User.UpdatedAt, nil
-		}
-
-		if aliasLower == "is_active" || aliasLower == "isactive" {
-			return c.User.IsActive, nil
-		}
-	}
+	//// Check if it matches a joined table column
+	//if refTable == "posts" && slices.Contains(stmt.GetJoinedTables(), "posts") {
+	//	if c.Post == nil {
+	//		c.Post = &PostsDto{}
+	//	}
+	//
+	//	if aliasLower == "id" {
+	//		return c.Post.Id, nil
+	//	}
+	//
+	//	if aliasLower == "user_id" || aliasLower == "userid" {
+	//		return c.Post.UserId, nil
+	//	}
+	//
+	//	if aliasLower == "title" {
+	//		return c.Post.Title, nil
+	//	}
+	//
+	//	if aliasLower == "content" {
+	//		return c.Post.Content, nil
+	//	}
+	//
+	//	if aliasLower == "status" {
+	//		return c.Post.Status, nil
+	//	}
+	//
+	//	if aliasLower == "published_at" || aliasLower == "publishedat" {
+	//		return c.Post.PublishedAt, nil
+	//	}
+	//
+	//	if aliasLower == "view_count" || aliasLower == "viewcount" {
+	//		return c.Post.ViewCount, nil
+	//	}
+	//
+	//	if aliasLower == "created_at" || aliasLower == "createdat" {
+	//		return c.Post.CreatedAt, nil
+	//	}
+	//
+	//	if aliasLower == "updated_at" || aliasLower == "updatedat" {
+	//		return c.Post.UpdatedAt, nil
+	//	}
+	//}
+	//if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
+	//	if c.User == nil {
+	//		c.User = &UsersDto{}
+	//	}
+	//
+	//	if aliasLower == "id" {
+	//		return c.User.Id, nil
+	//	}
+	//
+	//	if aliasLower == "username" {
+	//		return c.User.Username, nil
+	//	}
+	//
+	//	if aliasLower == "email" {
+	//		return c.User.Email, nil
+	//	}
+	//
+	//	if aliasLower == "full_name" || aliasLower == "fullname" {
+	//		return c.User.FullName, nil
+	//	}
+	//
+	//	if aliasLower == "created_at" || aliasLower == "createdat" {
+	//		return c.User.CreatedAt, nil
+	//	}
+	//
+	//	if aliasLower == "updated_at" || aliasLower == "updatedat" {
+	//		return c.User.UpdatedAt, nil
+	//	}
+	//
+	//	if aliasLower == "is_active" || aliasLower == "isactive" {
+	//		return c.User.IsActive, nil
+	//	}
+	//}
 
 	// No match - store in FromExpressions as any
 	if c.FromExpressions == nil {

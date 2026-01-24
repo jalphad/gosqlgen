@@ -9,8 +9,13 @@ import (
 )
 
 type ArrayTypes interface {
-	[]float64 | []int | []int64 | []string |
-		[]time.Time | []uuid.UUID | []pgtype.Numeric
+	[]float64 | []int | []int64 | []string | []bool |
+		[]time.Time | []uuid.UUID | []pgtype.Numeric |
+		[]json.RawMessage | []any
+}
+
+type NullableMappedTypes[T MappedTypes] interface {
+	*T
 }
 
 type MappedTypes interface {
@@ -28,13 +33,15 @@ type OfType[T MappedTypes] interface {
 	isOfType(_ T)
 }
 
+func SetType[T MappedTypes](e Expression) OfType[T] {
+	return &SQLType[T]{e}
+}
+
 func NewSQLType[T MappedTypes](t T) OfType[T] {
 	return &SQLType[T]{NewLiteralExpression(t)}
 }
 
 // SQLType is the underlying type for interacting with SQL types through queries
-//
-// 2025-12-1: [T any] necessary because Go cannot infer ArrayType[[]T]
 type SQLType[T MappedTypes] struct {
 	expression
 }
@@ -358,8 +365,12 @@ func (t *UUIDType) IsNotNull() *BoolType {
 	})
 }
 
+func Array[T ArrayTypes](t T) *ArrayType[T] {
+	return &ArrayType[T]{NewSQLType(t)}
+}
+
 type ArrayType[T ArrayTypes] struct {
-	sqlType[T]
+	ofType[T]
 }
 
 type BytesType struct {

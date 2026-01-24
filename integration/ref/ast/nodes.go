@@ -90,14 +90,6 @@ type ColumnRef struct {
 	Column string // Column Name
 }
 
-type (
-	columnNode   = ColumnNode
-	literalNode  = LiteralNode
-	unaryNode    = UnaryNode
-	binaryNode   = BinaryNode
-	functionNode = FunctionNode
-)
-
 type RenderFunc func(ExpressionNode, *strings.Builder, *[]any)
 
 func FunctionDefaultRender(node ExpressionNode, builder *strings.Builder, params *[]any) {

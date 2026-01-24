@@ -72,21 +72,25 @@ type InsertOnConflictDoQuery[T any, O DTO[T]] interface {
 }
 
 type InsertReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) InsertFinalizeQuery[T, O]
-	InsertFinalizeQuery[T, O]
+	Returning(columns ...ast.NamedExpression) InsertValuesQuery[T, O]
+	InsertValuesQuery[T, O]
+}
+
+type InsertValuesQuery[T any, O DTO[T]] interface {
+	Values(values ...O) InsertFinalizeQuery[T, O]
 }
 
 type InsertFinalizeQuery[T any, O DTO[T]] interface {
-	Exec(context.Context, O) error
+	Exec(context.Context) error
 	ToSql() string
 }
 
 type UpdateQuery[T any, O DTO[T]] interface {
-	Update(columns ...ast.NamedExpression) UpdateFromQuery[T, O]
+	Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T, O]
 }
 
 type UpdateFromQuery[T any, O DTO[T]] interface {
-	From(table *ast.TableSource) UpdateWhereQuery[T, O]
+	From(table ast.NamedTableExpression) UpdateWhereQuery[T, O]
 	UpdateWhereQuery[T, O]
 }
 
@@ -106,7 +110,7 @@ type UpdateReturningQuery[T any, O DTO[T]] interface {
 }
 
 type UpdateFinalizeQuery[T any, O DTO[T]] interface {
-	Exec(context.Context, O) (int64, []T, error)
+	Exec(context.Context) (int64, []T, error)
 	ToSql() string
 }
 
@@ -138,8 +142,8 @@ type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 	ToSql() string
 }
 
-type KnownTableStartQuery[T any, O DTO[T]] interface {
-	WithTx(tx pgx.Tx) KnownTableStartQuery[T, O]
+type KnownTableStartQuery[S DTOs[T, O], T any, O DTO[T]] interface {
+	WithTx(tx pgx.Tx) KnownTableStartQuery[S, T, O]
 	KnownTableSelectQuery[T]
 	KnownTableDeleteQuery[T, O]
 	InsertQuery[T, O]
