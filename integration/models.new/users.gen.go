@@ -30,6 +30,22 @@ func (u UsersDtos) Username() ast.OfType[[]string] {
 	return ast.NewSQLType(out)
 }
 
+func (u UsersDtos) Email() ast.OfType[[]string] {
+	out := make([]string, len(u))
+	for idx, dto := range u {
+		out[idx] = dto.Email
+	}
+	return ast.NewSQLType(out)
+}
+
+func (u UsersDtos) FullName() ast.OfType[[]string] {
+	out := make([]*string, len(u))
+	for idx, dto := range u {
+		out[idx] = dto.FullName
+	}
+	return ast.SetType[[]string](ast.NewLiteralExpression(out))
+}
+
 func (u UsersDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
 	im := make([]ast.Expression, 0, len(u)*len(columns))
 	for _, column := range columns {
@@ -80,8 +96,8 @@ func (u UsersDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
 	}
 
 	values := make([]ast.Expression, 0, len(u))
-	grouped := make([]ast.Expression, len(columns))
 	for i := 0; i < len(u); i++ {
+		grouped := make([]ast.Expression, len(columns))
 		for j := range columns {
 			grouped[j] = im[j*len(u)+i]
 		}
