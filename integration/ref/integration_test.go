@@ -151,6 +151,38 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.NotEmpty(t, *user.Id, "expected user ID to be set after insert")
 	})
 
+	t.Run("Create Users", func(t *testing.T) {
+		// Arrange
+		user := &models.UsersDto{
+			Username:  "johndoe",
+			Email:     "john@example.com",
+			FullName:  strPtr("John Doe"),
+			IsActive:  boolPtr(true),
+			CreatedAt: timePtr(time.Now()),
+			UpdatedAt: timePtr(time.Now()),
+		}
+
+		user2 := &models.UsersDto{
+			Username:  "2",
+			Email:     "john2@example.com",
+			FullName:  strPtr("John Doe 2"),
+			IsActive:  boolPtr(true),
+			CreatedAt: timePtr(time.Now()),
+			UpdatedAt: timePtr(time.Now()),
+		}
+
+		// Act
+		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
+		//err := testDB.Users().Insert(context.Background(), user)
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNil(t, user.Id, "expected user ID to be set after insert")
+		assert.NotEmpty(t, *user.Id, "expected user ID to be set after insert")
+		require.NotNil(t, user2.Id, "expected user ID to be set after insert")
+		assert.NotEmpty(t, *user2.Id, "expected user ID to be set after insert")
+	})
+
 	t.Run("Find User by ID", func(t *testing.T) {
 		// Arrange
 		user := &models.UsersDto{
@@ -203,6 +235,49 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.Equal(t, int64(1), affected)
 		assert.Equal(t, user.Email, found.Email)
 		assert.Equal(t, user.FullName, found.FullName)
+	})
+
+	t.Run("Update Users", func(t *testing.T) {
+		// Arrange
+		user := &models.UsersDto{
+			Username: "updateme",
+			Email:    "update@example.com",
+		}
+		user2 := &models.UsersDto{
+			Username: "updateme2",
+			Email:    "update2@example.com",
+		}
+		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
+		require.NoError(t, err)
+
+		user.Email = "updated@example.com"
+		user.FullName = strPtr("Updated Name")
+		user2.Email = "updated2@example.com"
+		user2.FullName = strPtr("Updated Name 2")
+
+		// Act
+		affected, _, err := query.UpdateUsers(testDB.pool, user, user2).Exec(context.Background())
+
+		//err = testDB.Users().Update(context.Background(), user)
+		require.NoError(t, err)
+		found, err := models.NewUsersQuery(testDB.pool).
+			Select(users.AllColumns()...).
+			Where(
+				users.Id().Eq(query.Val(*user.Id))).
+			FindOne(context.Background())
+		found2, err := models.NewUsersQuery(testDB.pool).
+			Select(users.AllColumns()...).
+			Where(
+				users.Id().Eq(query.Val(*user2.Id))).
+			FindOne(context.Background())
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, int64(2), affected)
+		assert.Equal(t, user.Email, found.Email)
+		assert.Equal(t, user.FullName, found.FullName)
+		assert.Equal(t, user2.Email, found2.Email)
+		assert.Equal(t, user2.FullName, found2.FullName)
 	})
 
 	t.Run("Delete User", func(t *testing.T) {
