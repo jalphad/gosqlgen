@@ -41,6 +41,12 @@ type NamedSetReturningFunction struct {
 	relation *Relation
 }
 
+func (n NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any) {
+	n.srf.toSQL(builder, params)
+	builder.WriteString(" AS ")
+	n.relation.toSQL(builder, params)
+}
+
 func (n NamedSetReturningFunction) Name() string {
 	return n.relation.alias
 }
