@@ -45,22 +45,29 @@ func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalize
 		).Where(users.Id().Eq(Val(*dto.Id)))
 }
 
-func UpdateUsers(pool *pgxpool.Pool, dtos models.UsersDtos) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
+func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	//UPDATE users
 	//SET username = v.u
 	//FROM UNNEST ($1::int[], $2::text[]) AS v(id,u)
 	//WHERE users.id = v.id;
 
+	dtos := models.UsersDtos(in)
 	v := ast.NewRelation("v")
 	return models.NewUsersQuery(pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
-		).From(
-		Unnest(
-			Cast(dtos.Id()).AsUUIDArray(),
-			Cast(dtos.Username()).AsTextArray(),
-		).As(v, users.Id(), users.Username()),
-	).Where(users.Id().Eq(Rel(v, users.Id())))
+			Set(users.Email()).To(Rel(v, users.Email())),
+			Set(users.FullName()).To(Rel(v, users.FullName())),
+		).
+		From(
+			Unnest(
+				Cast(dtos.Id()).AsUUIDArray(),
+				Cast(dtos.Username()).AsTextArray(),
+				Cast(dtos.Email()).AsTextArray(),
+				Cast(dtos.FullName()).AsTextArray(),
+			).As(v, users.Id(), users.Username(), users.Email(), users.FullName()),
+		).
+		Where(users.Id().Eq(Rel(v, users.Id())))
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {

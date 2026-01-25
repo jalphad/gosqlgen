@@ -167,5 +167,6 @@ func toCastExpression[T ast.MappedTypes](expr ast.Expression, sqlType string) as
 			ast.BuildQuery(expr, builder, params)
 			builder.WriteString(" AS ")
 			builder.WriteString(sqlType)
+			builder.WriteString(")")
 		}))
 }

@@ -306,19 +306,15 @@ func (b *InsertBuilder[S, T, O]) query(records []O) func(ctx context.Context) (i
 		}
 		defer rows.Close()
 
-		if int64(len(records)) != rows.CommandTag().RowsAffected() {
-			return rows.CommandTag().RowsAffected(), fmt.Errorf("expected %d rows affected, got %d", len(records), rows.CommandTag().RowsAffected())
-		}
-
 		for _, record := range records {
 			rows.Next()
 			err = record.ScanInto(rows, b.stmt)
 			if err != nil {
-				return rows.CommandTag().RowsAffected(), err
+				return int64(len(records)), err
 			}
 		}
 
-		return rows.CommandTag().RowsAffected(), nil
+		return int64(len(records)), nil
 	}
 }
 
