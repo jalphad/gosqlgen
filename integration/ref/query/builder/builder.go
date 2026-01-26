@@ -150,12 +150,18 @@ func (b *SelectBuilder[T, O]) Offset(offset int) SelectPagingQuery[T] {
 }
 
 func (b *SelectBuilder[T, O]) ToSql() string {
-	return ast.Render(b.stmt, &b.params)
+	return ast.RenderWithContext(b.stmt, &b.params, &ast.QueryContext{PrimaryTable: b.stmt.From.Table})
 }
 
 func (b *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
-	query := b.ToSql()
-	args := b.params
+	// Create query context with primary table info
+	queryCtx := &ast.QueryContext{
+		PrimaryTable: b.stmt.From.Table,
+	}
+
+	// Generate SQL with context
+	args := make([]any, 0)
+	query := ast.RenderWithContext(b.stmt, &args, queryCtx)
 
 	var rows pgx.Rows
 	var err error
@@ -268,7 +274,10 @@ func (b *InsertBuilder[S, T, O]) exec() func(ctx context.Context) (int64, error)
 func (b *InsertBuilder[S, T, O]) queryRow(record O) func(ctx context.Context) (int64, error) {
 	return func(ctx context.Context) (int64, error) {
 		args := make([]any, 0)
-		qry := ast.Render(b.stmt, &args)
+		queryCtx := &ast.QueryContext{
+			PrimaryTable: b.stmt.Table,
+		}
+		qry := ast.RenderWithContext(b.stmt, &args, queryCtx)
 
 		var row pgx.Row
 		if b.tx != nil {
@@ -291,7 +300,10 @@ func (b *InsertBuilder[S, T, O]) queryRow(record O) func(ctx context.Context) (i
 func (b *InsertBuilder[S, T, O]) query(records []O) func(ctx context.Context) (int64, error) {
 	return func(ctx context.Context) (int64, error) {
 		args := make([]any, 0)
-		qry := ast.Render(b.stmt, &args)
+		queryCtx := &ast.QueryContext{
+			PrimaryTable: b.stmt.Table,
+		}
+		qry := ast.RenderWithContext(b.stmt, &args, queryCtx)
 
 		var rows pgx.Rows
 		var err error
@@ -410,7 +422,10 @@ func (b *UpdateBuilder[S, T, O]) Returning(columns ...ast.NamedExpression) Updat
 func (b *UpdateBuilder[S, T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	var err error
 	args := make([]any, 0, len(b.stmt.SetList)+1) // pre-allocate provided values to set + 1 where clause
-	query := ast.Render(b.stmt, &args)
+	queryCtx := &ast.QueryContext{
+		PrimaryTable: b.stmt.Table,
+	}
+	query := ast.RenderWithContext(b.stmt, &args, queryCtx)
 	if len(b.stmt.Returning) == 0 {
 		var tag pgconn.CommandTag
 		if b.tx != nil {
@@ -532,7 +547,8 @@ func (b *DeleteBuilder[T, O]) Returning(columns ...ast.NamedExpression) DeleteFi
 func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	var err error
 	args := make([]any, 0)
-	query := ast.Render(b.stmt, &args)
+	queryCtx := &ast.QueryContext{}
+	query := ast.RenderWithContext(b.stmt, &args, queryCtx)
 	if len(b.stmt.Returning) == 0 {
 		var tag pgconn.CommandTag
 		if b.tx != nil {

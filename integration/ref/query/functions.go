@@ -27,7 +27,7 @@ func JsonbBuildObject(expressions ...ast.NamedExpression) *ast.Function[json.Raw
 	return ast.NewFunction[json.RawMessage](ast.NewFunctionNode(
 		"jsonb_build_object",
 		nil,
-		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any) {
+		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any, ctx *ast.QueryContext) {
 			builder.WriteString(node.Op + "(")
 			for i := 0; i < len(expressions)-1; i++ {
 				builder.WriteString("'" + expressions[i].Name() + "', ")
@@ -162,7 +162,7 @@ func toCastExpression[T ast.MappedTypes](expr ast.Expression, sqlType string) as
 	return ast.SetType[T](ast.NewFunctionNode(
 		"CAST",
 		nil,
-		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any) {
+		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any, ctx *ast.QueryContext) {
 			builder.WriteString(node.Op + "(")
 			ast.BuildQuery(expr, builder, params)
 			builder.WriteString(" AS ")

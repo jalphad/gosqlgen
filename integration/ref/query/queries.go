@@ -7,6 +7,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
+	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
@@ -32,6 +33,28 @@ func InsertUsers(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFin
 		).
 		Returning(users.Id()).
 		Values(dtos...)
+}
+
+func InsertPost(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto, *models.PostsDto] {
+	return models.NewPostsQuery(pool).
+		Insert(
+			posts.UserId(),
+			posts.Title(),
+			posts.Content(),
+		).
+		Returning(posts.Id()).
+		Values(dto)
+}
+
+func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto, *models.CommentsDto] {
+	return models.NewCommentsQuery(pool).
+		Insert(
+			comments.PostId(),
+			comments.UserId(),
+			comments.Content(),
+		).
+		Returning(comments.Id()).
+		Values(dto)
 }
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {

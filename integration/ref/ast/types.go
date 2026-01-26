@@ -274,8 +274,8 @@ type TimestampType struct {
 	sqlType[time.Time]
 }
 
-func Timestamp(e sqlType[time.Time]) *TimestampType {
-	return &TimestampType{e}
+func Timestamp(e expression) *TimestampType {
+	return &TimestampType{sqlType[time.Time]{e}}
 }
 
 func (t *TimestampType) isOfType(_ time.Time) {}
@@ -284,8 +284,8 @@ type DateType struct {
 	sqlType[time.Time]
 }
 
-func Date(e sqlType[time.Time]) *DateType {
-	return &DateType{e}
+func Date(e expression) *DateType {
+	return &DateType{sqlType[time.Time]{e}}
 }
 
 func (d *DateType) isOfType(_ time.Time) {}
@@ -295,8 +295,8 @@ type TimeType struct {
 	sqlType[time.Time]
 }
 
-func Time(e sqlType[time.Time]) *TimeType {
-	return &TimeType{e}
+func Time(e expression) *TimeType {
+	return &TimeType{sqlType[time.Time]{e}}
 }
 
 func (t *TimeType) Eq(expr OfType[time.Time]) *BoolType {

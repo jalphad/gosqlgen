@@ -24,6 +24,7 @@ type Expression interface {
 	// TODO: refactor to allow returning an error
 	toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext)
 }
+type expression = Expression
 
 type AliasedExpression interface {
 	NamedExpression
@@ -209,9 +210,56 @@ func (e *UUIDColumnExpression) Name() string {
 	return ""
 }
 
-type (
-	expression = Expression
-)
+type TimestampColumnExpression struct {
+	*TimestampType
+}
+
+func NewTimestampColumnExpression(table, column string) *TimestampColumnExpression {
+	return &TimestampColumnExpression{
+		Timestamp(NewColumnNode(table, column)),
+	}
+}
+
+func (e *TimestampColumnExpression) Name() string {
+	if colNode, ok := e.TimestampType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
+}
+
+type DateColumnExpression struct {
+	*dateType
+}
+
+func NewDateColumnExpression(table, column string) *DateColumnExpression {
+	return &DateColumnExpression{
+		Date(NewColumnNode(table, column)),
+	}
+}
+
+func (e *DateColumnExpression) Name() string {
+	if colNode, ok := e.dateType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
+}
+
+type TimeColumnExpression struct {
+	*timeType
+}
+
+func NewTimeColumnExpression(table, column string) *TimeColumnExpression {
+	return &TimeColumnExpression{
+		Time(NewColumnNode(table, column)),
+	}
+}
+
+func (e *TimeColumnExpression) Name() string {
+	if colNode, ok := e.timeType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
+}
 
 func contains(slice []string, item string) bool {
 	for _, s := range slice {

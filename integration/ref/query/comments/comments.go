@@ -20,10 +20,16 @@ func PostId() *ast.IntColumnExpression {
 	return ast.NewIntColumnExpression("comments", "post_id")
 }
 
+func IsApproved() *ast.BoolColumnExpression {
+	return ast.NewBoolColumnExpression("comments", "is_approved")
+}
+
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
 		Content(),
 		UserId(),
+		PostId(),
+		IsApproved(),
 	}
 }

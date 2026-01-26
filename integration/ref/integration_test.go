@@ -14,6 +14,8 @@ import (
 	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query"
+	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
+	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -154,8 +156,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	t.Run("Create Users", func(t *testing.T) {
 		// Arrange
 		user := &models.UsersDto{
-			Username:  "johndoe",
-			Email:     "john@example.com",
+			Username:  "johndoe1",
+			Email:     "john1@example.com",
 			FullName:  strPtr("John Doe"),
 			IsActive:  boolPtr(true),
 			CreatedAt: timePtr(time.Now()),
@@ -163,7 +165,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		}
 
 		user2 := &models.UsersDto{
-			Username:  "2",
+			Username:  "johndoe2",
 			Email:     "john2@example.com",
 			FullName:  strPtr("John Doe 2"),
 			IsActive:  boolPtr(true),
@@ -240,7 +242,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	t.Run("Update Users", func(t *testing.T) {
 		// Arrange
 		user := &models.UsersDto{
-			Username: "updateme",
+			Username: "updateme1",
 			Email:    "update@example.com",
 		}
 		user2 := &models.UsersDto{
@@ -250,7 +252,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
 		require.NoError(t, err)
 
-		user.Email = "updated@example.com"
+		user.Email = "updated1@example.com"
 		user.FullName = strPtr("Updated Name")
 		user2.Email = "updated2@example.com"
 		user2.FullName = strPtr("Updated Name 2")
@@ -1085,4 +1087,296 @@ func timePtr(t time.Time) *time.Time {
 
 func int64Ptr(i int64) *int64 {
 	return &i
+}
+
+// TestContextTracking tests that QueryContext properly tracks joins during SQL generation
+func TestContextTracking(t *testing.T) {
+	t.Run("Simple select without joins", func(t *testing.T) {
+		selectStmt := &ast.SelectStatement{
+			SelectList: []ast.NamedExpression{
+				users.Id(),
+				users.Username(),
+			},
+			From: &ast.TableSource{Table: "users"},
+		}
+
+		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+
+		assert.Contains(t, sql, "SELECT")
+		assert.Contains(t, sql, "FROM users")
+		assert.Equal(t, "users", ctx.PrimaryTable)
+		assert.Nil(t, ctx.JoinedTables, "expected no joined tables")
+		assert.Equal(t, []string{"users"}, ctx.AllTables)
+		assert.Len(t, ctx.ColumnReferences, 2, "expected 2 column references")
+	})
+
+	t.Run("Select with LEFT JOIN", func(t *testing.T) {
+		selectStmt := &ast.SelectStatement{
+			SelectList: []ast.NamedExpression{
+				users.Username(),
+				posts.Title(),
+			},
+			From: &ast.TableSource{Table: "users"},
+		}
+		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
+
+		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+
+		assert.Contains(t, sql, "SELECT")
+		assert.Contains(t, sql, "FROM users")
+		assert.Contains(t, sql, "LEFT JOIN posts")
+		assert.Contains(t, sql, "ON")
+		assert.Equal(t, "users", ctx.PrimaryTable)
+		assert.NotNil(t, ctx.JoinedTables, "expected joined tables map")
+		assert.Len(t, ctx.JoinedTables, 1, "expected 1 joined table")
+		assert.Contains(t, ctx.JoinedTables, "posts", "expected posts in joined tables")
+		assert.Equal(t, ast.JoinLeft, ctx.JoinedTables["posts"])
+		assert.Len(t, ctx.AllTables, 2, "expected 2 tables total")
+	})
+
+	t.Run("Select with multiple JOINs", func(t *testing.T) {
+		selectStmt := &ast.SelectStatement{
+			SelectList: []ast.NamedExpression{
+				users.Username(),
+				posts.Title(),
+				comments.Content(),
+			},
+			From: &ast.TableSource{Table: "users"},
+		}
+		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
+		selectStmt.From.Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id()))
+
+		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+
+		assert.Contains(t, sql, "SELECT")
+		assert.Contains(t, sql, "FROM users")
+		assert.Contains(t, sql, "LEFT JOIN posts")
+		assert.Contains(t, sql, "LEFT JOIN comments")
+		assert.Equal(t, "users", ctx.PrimaryTable)
+		assert.NotNil(t, ctx.JoinedTables, "expected joined tables map")
+		assert.Len(t, ctx.JoinedTables, 2, "expected 2 joined tables")
+		assert.Contains(t, ctx.JoinedTables, "posts")
+		assert.Contains(t, ctx.JoinedTables, "comments")
+		assert.Len(t, ctx.AllTables, 3, "expected 3 tables total")
+	})
+
+	t.Run("Verify SQL includes proper table prefixes based on context", func(t *testing.T) {
+		selectStmt := &ast.SelectStatement{
+			SelectList: []ast.NamedExpression{
+				users.Username(),
+				posts.Title(),
+			},
+			From: &ast.TableSource{Table: "users"},
+		}
+		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
+
+		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+
+		// The SELECT list should have proper prefixes
+		assert.Contains(t, sql, "SELECT username", "expected username without table prefix (primary table)")
+		assert.Contains(t, sql, "posts.title", "expected posts.title with table prefix (joined table)")
+
+		// Verify context tracking
+		assert.Equal(t, "users", ctx.PrimaryTable)
+		assert.Len(t, ctx.JoinedTables, 1)
+		assert.Contains(t, ctx.JoinedTables, "posts")
+	})
+
+	t.Run("Execute query with JOIN and verify joined data", func(t *testing.T) {
+		cleanupTables(t)
+
+		// Arrange - Create user
+		user := &models.UsersDto{
+			Username: "joinuser",
+			Email:    "join@example.com",
+			IsActive: boolPtr(true),
+		}
+		err := models.NewUsersQuery(testDB.pool).
+			Insert(
+				users.Username(),
+				users.Email(),
+				users.FullName(),
+				users.IsActive(),
+			).
+			Returning(users.Id()).
+			Values(user).
+			Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, user.Id)
+		t.Logf("User ID after insert: %v", user.Id)
+
+		// Create post
+		post := &models.PostsDto{
+			UserId:  *user.Id,
+			Title:   "Test Post",
+			Content: strPtr("Test Content"),
+		}
+		err = models.NewQuery(testDB.pool, models.PostsDtos{}).
+			Insert(
+				posts.UserId(),
+				posts.Title(),
+				posts.Content(),
+			).
+			Returning(posts.Id()).
+			Values(post).
+			Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, post.Id)
+
+		// Act - Select posts with a JOIN to users (use Select() without args to get all columns including joined ones)
+		results, err := models.NewQuery(testDB.pool, models.PostsDtos{}).
+			Select().
+			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
+			Where(posts.Id().Eq(query.Val(*post.Id))).
+			Find(context.Background())
+
+		// Assert
+		require.NoError(t, err)
+		require.Len(t, results, 1, "expected 1 result")
+
+		postResult := results[0]
+		assert.Equal(t, *post.Id, *postResult.Id)
+		assert.Equal(t, "Test Post", postResult.Title)
+		assert.NotNil(t, postResult.User, "expected User to be populated via join")
+		assert.Equal(t, "joinuser", postResult.User.Username)
+		assert.Equal(t, "join@example.com", postResult.User.Email)
+	})
+
+	t.Run("Execute query with multiple JOINs", func(t *testing.T) {
+		cleanupTables(t)
+
+		// Arrange - Create user using new API
+		user := &models.UsersDto{
+			Username: "multijoinuser",
+			Email:    "multi@example.com",
+			IsActive: boolPtr(true),
+		}
+		err := models.NewUsersQuery(testDB.pool).
+			Insert(
+				users.Username(),
+				users.Email(),
+				users.FullName(),
+				users.IsActive(),
+			).
+			Returning(users.Id()).
+			Values(user).
+			Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, user.Id)
+
+		post := &models.PostsDto{
+			UserId:  *user.Id,
+			Title:   "Multi Join Post",
+			Content: strPtr("Multi Join Content"),
+		}
+		err = models.NewPostsQuery(testDB.pool).
+			Insert(
+				posts.UserId(),
+				posts.Title(),
+				posts.Content(),
+			).
+			Returning(posts.Id()).
+			Values(post).
+			Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, post.Id)
+
+		// Create comment using builder API
+		comment := &models.CommentsDto{
+			UserId:  *user.Id,
+			PostId:  *post.Id,
+			Content: "Test Comment",
+		}
+		err = models.NewCommentsQuery(testDB.pool).
+			Insert(
+				comments.PostId(),
+				comments.UserId(),
+				comments.Content(),
+			).
+			Returning(comments.Id()).
+			Values(comment).
+			Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, comment.Id)
+
+		// Act - Select comments with JOINs to both posts and users
+		results, err := models.NewQuery(testDB.pool, models.CommentsDtos{}).
+			Select().
+			Join(ast.JoinLeft, "posts", comments.PostId().Eq(posts.Id())).
+			Join(ast.JoinLeft, "users", comments.UserId().Eq(users.Id())).
+			Where(comments.Id().Eq(query.Val(*comment.Id))).
+			Find(context.Background())
+
+		// Assert
+		require.NoError(t, err)
+		require.Len(t, results, 1, "expected 1 result")
+
+		commentResult := results[0]
+		assert.Equal(t, *comment.Id, *commentResult.Id)
+		assert.Equal(t, "Test Comment", commentResult.Content)
+
+		// Verify Post joined data
+		assert.NotNil(t, commentResult.Post, "expected Post to be populated via join")
+		assert.Equal(t, "Multi Join Post", commentResult.Post.Title)
+		assert.Equal(t, *user.Id, commentResult.Post.UserId)
+
+		// Verify User joined data
+		assert.NotNil(t, commentResult.User, "expected User to be populated via join")
+		assert.Equal(t, "multijoinuser", commentResult.User.Username)
+		assert.Equal(t, "multi@example.com", commentResult.User.Email)
+	})
+
+	t.Run("Verify SQL generation with actual query", func(t *testing.T) {
+		// Arrange
+		user := &models.UsersDto{
+			Username: "sqlverify",
+			Email:    "sqlverify@example.com",
+		}
+		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, user.Id)
+
+		post := &models.PostsDto{
+			UserId: *user.Id,
+			Title:  "SQL Verify Post",
+		}
+		err = models.NewQuery(testDB.pool, models.PostsDtos{}).
+			Insert(
+				posts.UserId(),
+				posts.Title(),
+			).
+			Returning(posts.Id()).
+			Values(post).
+			Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, post.Id)
+
+		// Act - Build query and get SQL
+		queryBuilder := models.NewQuery(testDB.pool, models.PostsDtos{}).
+			Select(posts.Title(), users.Username()).
+			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
+			Where(posts.Id().Eq(query.Val(*post.Id)))
+
+		sql := queryBuilder.ToSql()
+
+		// Assert
+		assert.Contains(t, sql, "SELECT")
+		assert.Contains(t, sql, "FROM posts")
+		assert.Contains(t, sql, "LEFT JOIN users")
+		assert.Contains(t, sql, "posts.title", "expected posts.title with table prefix")
+		assert.Contains(t, sql, "username", "expected username without table prefix (primary table of users)")
+		assert.Contains(t, sql, "ON posts.user_id = users.id")
+
+		// Verify it actually executes
+		results, err := queryBuilder.Find(context.Background())
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.Equal(t, "SQL Verify Post", results[0].Title)
+		assert.NotNil(t, results[0].User)
+		assert.Equal(t, "sqlverify", results[0].User.Username)
+	})
 }
