@@ -149,7 +149,7 @@ func (b *SelectBuilder[T, O]) Offset(offset int) SelectPagingQuery[T] {
 	return b
 }
 
-func (b *SelectBuilder[T, O]) ToSql() string {
+func (b *SelectBuilder[T, O]) ToSql() (string, error) {
 	return ast.RenderWithContext(b.stmt, &b.params, &ast.QueryContext{PrimaryTable: b.stmt.From.Table})
 }
 
@@ -161,10 +161,12 @@ func (b *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
 
 	// Generate SQL with context
 	args := make([]any, 0)
-	query := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	query, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	if err != nil {
+		return nil, err
+	}
 
 	var rows pgx.Rows
-	var err error
 	if b.tx != nil {
 		rows, err = b.tx.Query(ctx, query, args...)
 	} else {
@@ -277,7 +279,10 @@ func (b *InsertBuilder[S, T, O]) queryRow(record O) func(ctx context.Context) (i
 		queryCtx := &ast.QueryContext{
 			PrimaryTable: b.stmt.Table,
 		}
-		qry := ast.RenderWithContext(b.stmt, &args, queryCtx)
+		qry, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+		if err != nil {
+			return -1, err
+		}
 
 		var row pgx.Row
 		if b.tx != nil {
@@ -286,7 +291,6 @@ func (b *InsertBuilder[S, T, O]) queryRow(record O) func(ctx context.Context) (i
 			row = b.pool.QueryRow(ctx, qry, args...)
 		}
 
-		var err error
 		if len(b.stmt.Returning) > 0 {
 			if err = record.ScanInto(row, b.stmt); err != nil {
 				return -1, err
@@ -303,10 +307,12 @@ func (b *InsertBuilder[S, T, O]) query(records []O) func(ctx context.Context) (i
 		queryCtx := &ast.QueryContext{
 			PrimaryTable: b.stmt.Table,
 		}
-		qry := ast.RenderWithContext(b.stmt, &args, queryCtx)
+		qry, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+		if err != nil {
+			return -1, err
+		}
 
 		var rows pgx.Rows
-		var err error
 		if b.tx != nil {
 			rows, err = b.tx.Query(ctx, qry, args...)
 		} else {
@@ -330,9 +336,9 @@ func (b *InsertBuilder[S, T, O]) query(records []O) func(ctx context.Context) (i
 	}
 }
 
-func (b *InsertBuilder[S, T, O]) ToSql() string {
+func (b *InsertBuilder[S, T, O]) ToSql() (string, error) {
 	args := make([]any, 0)
-	return ast.Render(b.stmt, &args)
+	return ast.RenderWithContext(b.stmt, &args, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 }
 
 // ExecBatch inserts multiple records efficiently using pgx batch
@@ -420,12 +426,14 @@ func (b *UpdateBuilder[S, T, O]) Returning(columns ...ast.NamedExpression) Updat
 // Note that it's possible to affect multiple rows in a single query. In this case,
 // values provided through 'update' are applied to all rows.
 func (b *UpdateBuilder[S, T, O]) Exec(ctx context.Context) (int64, []T, error) {
-	var err error
 	args := make([]any, 0, len(b.stmt.SetList)+1) // pre-allocate provided values to set + 1 where clause
 	queryCtx := &ast.QueryContext{
 		PrimaryTable: b.stmt.Table,
 	}
-	query := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	query, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	if err != nil {
+		return 0, nil, err
+	}
 	if len(b.stmt.Returning) == 0 {
 		var tag pgconn.CommandTag
 		if b.tx != nil {
@@ -461,9 +469,9 @@ func (b *UpdateBuilder[S, T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
-func (b *UpdateBuilder[S, T, O]) ToSql() string {
+func (b *UpdateBuilder[S, T, O]) ToSql() (string, error) {
 	params := make([]any, 0, len(b.stmt.SetList)+1)
-	return ast.Render(b.stmt, &params)
+	return ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 }
 
 //func (b *UpdateBuilder[S, T, O]) ExecBatch(ctx context.Context, records []T) error {
@@ -545,10 +553,12 @@ func (b *DeleteBuilder[T, O]) Returning(columns ...ast.NamedExpression) DeleteFi
 }
 
 func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
-	var err error
 	args := make([]any, 0)
 	queryCtx := &ast.QueryContext{}
-	query := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	query, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	if err != nil {
+		return 0, nil, err
+	}
 	if len(b.stmt.Returning) == 0 {
 		var tag pgconn.CommandTag
 		if b.tx != nil {
@@ -584,7 +594,7 @@ func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
-func (b *DeleteBuilder[T, O]) ToSql() string {
+func (b *DeleteBuilder[T, O]) ToSql() (string, error) {
 	params := make([]any, 0)
-	return ast.Render(b.stmt, &params)
+	return ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 }

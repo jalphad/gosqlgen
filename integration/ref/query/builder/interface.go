@@ -54,7 +54,7 @@ type SelectPagingQuery[O any] interface {
 type SelectFinalizeQuery[O any] interface {
 	Find(ctx context.Context) ([]O, error)
 	FindOne(ctx context.Context) (O, error)
-	ToSql() string
+	ToSql() (string, error)
 }
 
 type InsertQuery[T any, O DTO[T]] interface {
@@ -82,7 +82,7 @@ type InsertValuesQuery[T any, O DTO[T]] interface {
 
 type InsertFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) error
-	ToSql() string
+	ToSql() (string, error)
 }
 
 type UpdateQuery[T any, O DTO[T]] interface {
@@ -111,7 +111,7 @@ type UpdateReturningQuery[T any, O DTO[T]] interface {
 
 type UpdateFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) (int64, []T, error)
-	ToSql() string
+	ToSql() (string, error)
 }
 
 type DeleteQuery[T any, O DTO[T]] interface {
@@ -139,7 +139,7 @@ type DeleteReturningQuery[T any, O DTO[T]] interface {
 
 type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(ctx context.Context) (int64, []T, error)
-	ToSql() string
+	ToSql() (string, error)
 }
 
 type KnownTableStartQuery[S DTOs[T, O], T any, O DTO[T]] interface {
