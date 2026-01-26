@@ -12,6 +12,209 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
+type PostsDtos []*PostsDto
+
+func (p PostsDtos) Id() ast.OfType[[]int64] {
+	out := make([]*int64, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.Id
+	}
+	return ast.SetType[[]int64](ast.NewLiteralExpression(out))
+}
+
+func (p PostsDtos) UserId() ast.OfType[[]uuid.UUID] {
+	out := make([]uuid.UUID, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.UserId
+	}
+	return ast.NewSQLType(out)
+}
+
+func (p PostsDtos) Title() ast.OfType[[]string] {
+	out := make([]string, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.Title
+	}
+	return ast.NewSQLType(out)
+}
+
+func (p PostsDtos) Content() ast.OfType[[]string] {
+	out := make([]*string, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.Content
+	}
+	return ast.SetType[[]string](ast.NewLiteralExpression(out))
+}
+
+func (p PostsDtos) Status() ast.OfType[[]string] {
+	out := make([]*string, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.Status
+	}
+	return ast.SetType[[]string](ast.NewLiteralExpression(out))
+}
+
+func (p PostsDtos) PublishedAt() ast.OfType[[]time.Time] {
+	out := make([]*time.Time, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.PublishedAt
+	}
+	return ast.SetType[[]time.Time](ast.NewLiteralExpression(out))
+}
+
+func (p PostsDtos) ViewCount() ast.OfType[[]int64] {
+	out := make([]*int64, len(p))
+	for idx, dto := range p {
+		out[idx] = dto.ViewCount
+	}
+	return ast.SetType[[]int64](ast.NewLiteralExpression(out))
+}
+
+func (p PostsDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
+	im := make([]ast.Expression, 0, len(p)*len(columns))
+	for _, column := range columns {
+		columnLower := strings.ToLower(column.Name())
+
+		if columnLower == "id" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.Id))
+			}
+		}
+
+		if columnLower == "user_id" || columnLower == "userid" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.UserId))
+			}
+		}
+
+		if columnLower == "title" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.Title))
+			}
+		}
+
+		if columnLower == "content" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.Content))
+			}
+		}
+
+		if columnLower == "status" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.Status))
+			}
+		}
+
+		if columnLower == "published_at" || columnLower == "publishedat" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.PublishedAt))
+			}
+		}
+
+		if columnLower == "view_count" || columnLower == "viewcount" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.ViewCount))
+			}
+		}
+
+		if columnLower == "created_at" || columnLower == "createdat" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.CreatedAt))
+			}
+		}
+
+		if columnLower == "updated_at" || columnLower == "updatedat" {
+			for _, dto := range p {
+				im = append(im, ast.NewLiteralExpression(dto.UpdatedAt))
+			}
+		}
+	}
+
+	values := make([]ast.Expression, 0, len(p))
+	for i := 0; i < len(p); i++ {
+		grouped := make([]ast.Expression, len(columns))
+		for j := range columns {
+			grouped[j] = im[j*len(p)+i]
+		}
+
+		values = append(values, ast.NewGroupedExpression(grouped...))
+	}
+
+	return values
+}
+
+func (p PostsDtos) GetArgs(column ast.NamedExpression) ast.Expression {
+	columnLower := strings.ToLower(column.Name())
+
+	if columnLower == "id" {
+		out := p.Id()
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "user_id" || columnLower == "userid" {
+		out := p.UserId()
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "title" {
+		out := make([]string, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.Title
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "content" {
+		out := make([]*string, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.Content
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "status" {
+		out := make([]*string, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.Status
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "published_at" || columnLower == "publishedat" {
+		out := make([]*time.Time, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.PublishedAt
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "view_count" || columnLower == "viewcount" {
+		out := make([]*int64, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.ViewCount
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "created_at" || columnLower == "createdat" {
+		out := make([]*time.Time, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.CreatedAt
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	if columnLower == "updated_at" || columnLower == "updatedat" {
+		out := make([]*time.Time, len(p))
+		for idx, dto := range p {
+			out[idx] = dto.UpdatedAt
+		}
+		return ast.NewLiteralExpression(out)
+	}
+
+	return nil
+}
+
 // PostsDto represents the posts table
 type PostsDto struct {
 	Id          *int64     `db:"id" json:"id"`
@@ -74,7 +277,7 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 	if len(columns) > 0 {
 		// Use selectFields - scan in exact order
 		for _, field := range columns {
-			destPtr, unmarshalFunc := p.getScanDestForField(field)
+			destPtr, unmarshalFunc := p.getScanDestForField(field, stmt)
 			scanDest = append(scanDest, destPtr)
 			if unmarshalFunc != nil {
 				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
@@ -92,18 +295,21 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 		scanDest = append(scanDest, &p.CreatedAt)
 		scanDest = append(scanDest, &p.UpdatedAt)
 
-		// Add joined table columns if active
-		//if slices.Contains(stmt.GetJoinedTables(), "users") {
-		//	joinedUser := &UsersDto{}
-		//	scanDest = append(scanDest, &joinedUser.Id)
-		//	scanDest = append(scanDest, &joinedUser.Username)
-		//	scanDest = append(scanDest, &joinedUser.Email)
-		//	scanDest = append(scanDest, &joinedUser.FullName)
-		//	scanDest = append(scanDest, &joinedUser.CreatedAt)
-		//	scanDest = append(scanDest, &joinedUser.UpdatedAt)
-		//	scanDest = append(scanDest, &joinedUser.IsActive)
-		//	p.User = joinedUser
-		//}
+		// Add joined table columns if active (using context)
+		ctx := stmt.GetQueryContext()
+		if ctx != nil && ctx.JoinedTables != nil {
+			if _, hasUsers := ctx.JoinedTables["users"]; hasUsers {
+				joinedUser := &UsersDto{}
+				scanDest = append(scanDest, &joinedUser.Id)
+				scanDest = append(scanDest, &joinedUser.Username)
+				scanDest = append(scanDest, &joinedUser.Email)
+				scanDest = append(scanDest, &joinedUser.FullName)
+				scanDest = append(scanDest, &joinedUser.CreatedAt)
+				scanDest = append(scanDest, &joinedUser.UpdatedAt)
+				scanDest = append(scanDest, &joinedUser.IsActive)
+				p.User = joinedUser
+			}
+		}
 	}
 
 	// Perform scan
@@ -128,11 +334,13 @@ func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
 
 // getScanDestForField returns the appropriate scan destination for a field
 // and optionally a function to unmarshal JSON data after scanning
-func (p *PostsDto) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
+func (p *PostsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStatement) (any, func() error) {
 	var refTable string
 	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
 		refTable = split[0]
 	}
+
+	ctx := stmt.GetQueryContext()
 
 	// Normalize alias for matching (lowercase)
 	aliasLower := strings.ToLower(ref.Name())
@@ -210,40 +418,43 @@ func (p *PostsDto) getScanDestForField(ref ast.NamedExpression) (any, func() err
 			return &p.UpdatedAt, nil
 		}
 	}
-	// Check if it matches a joined table column
-	//if refTable == "users" && slices.Contains(stmt.GetJoinedTables(), "users") {
-	//	if p.User == nil {
-	//		p.User = &UsersDto{}
-	//	}
-	//
-	//	if aliasLower == "id" {
-	//		return p.User.Id, nil
-	//	}
-	//
-	//	if aliasLower == "username" {
-	//		return p.User.Username, nil
-	//	}
-	//
-	//	if aliasLower == "email" {
-	//		return p.User.Email, nil
-	//	}
-	//
-	//	if aliasLower == "full_name" || aliasLower == "fullname" {
-	//		return p.User.FullName, nil
-	//	}
-	//
-	//	if aliasLower == "created_at" || aliasLower == "createdat" {
-	//		return p.User.CreatedAt, nil
-	//	}
-	//
-	//	if aliasLower == "updated_at" || aliasLower == "updatedat" {
-	//		return p.User.UpdatedAt, nil
-	//	}
-	//
-	//	if aliasLower == "is_active" || aliasLower == "isactive" {
-	//		return p.User.IsActive, nil
-	//	}
-	//}
+	// Check if it matches a joined table column (using context)
+	if refTable == "users" {
+		if ctx != nil && ctx.JoinedTables != nil {
+			_, hasUsers := ctx.JoinedTables["users"]
+			if hasUsers && p.User == nil {
+				p.User = &UsersDto{}
+			}
+
+			if hasUsers && aliasLower == "id" {
+				return &p.User.Id, nil
+			}
+
+			if hasUsers && aliasLower == "username" {
+				return &p.User.Username, nil
+			}
+
+			if hasUsers && aliasLower == "email" {
+				return &p.User.Email, nil
+			}
+
+			if hasUsers && aliasLower == "full_name" || aliasLower == "fullname" {
+				return &p.User.FullName, nil
+			}
+
+			if hasUsers && aliasLower == "created_at" || aliasLower == "createdat" {
+				return &p.User.CreatedAt, nil
+			}
+
+			if hasUsers && aliasLower == "updated_at" || aliasLower == "updatedat" {
+				return &p.User.UpdatedAt, nil
+			}
+
+			if hasUsers && aliasLower == "is_active" || aliasLower == "isactive" {
+				return &p.User.IsActive, nil
+			}
+		}
+	}
 
 	// No match - store in FromExpressions as any
 	if p.FromExpressions == nil {
