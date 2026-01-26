@@ -61,11 +61,11 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		return nil, err
 	}
 
-	//formatted, err := g.format("common.gen.go", commonBuf.Bytes())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//files["common.gen.go"] = string(formatted)
+	formatted, err := g.format("common.gen.go", commonBuf.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	files["common.gen.go"] = string(formatted)
 
 	// Generate a file for each table
 	for _, table := range g.parser.GetTables() {
@@ -122,7 +122,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		return nil, err
 	}
 
-	formatted, err := g.format("db.gen.go", dbBuf.Bytes())
+	formatted, err = g.format("db.gen.go", dbBuf.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +131,15 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	// Generate table query packages
 	if err := g.generateTableQueryPackages(files); err != nil {
 		return nil, err
+	}
+
+	// Generate AST package
+	astFiles, err := templates.RenderASTPackage()
+	if err != nil {
+		return nil, err
+	}
+	for filename, content := range astFiles {
+		files[filename] = content
 	}
 
 	return files, nil

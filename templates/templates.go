@@ -2,7 +2,9 @@ package templates
 
 import (
 	"bytes"
-	_ "embed"
+	"embed"
+	"fmt"
+	"path"
 	"regexp"
 	"strings"
 	"text/template"
@@ -17,7 +19,7 @@ var tableQueryExpressionsTemplate string
 //go:embed query_builder.tmpl
 var queryBuilderTemplate string
 
-//go:embed common.tmpl
+//go:embed models/common.tmpl
 var commonTypesTemplate string
 
 //go:embed field_references.tmpl
@@ -31,6 +33,9 @@ var dbWrapperTemplate string
 
 //go:embed collection_loaders.tmpl
 var collectionLoadersTemplate string
+
+//go:embed query/ast
+var astTemplates embed.FS
 
 // QueryBuilderData contains data for rendering to query builder template
 type QueryBuilderData struct {
@@ -98,7 +103,7 @@ type JoinedField struct {
 	ReferencedTable   string   // e.g., "users"
 	FKColumn          string   // e.g., "user_id"
 	ReferencedColumn  string   // e.g., "id"
-	ReferencedColumns []Column // columns in referenced table
+	ReferencedColumns []Column // columns in the referenced table
 }
 
 // ReverseRelLoaderField contains data for reverse relationship loader
@@ -398,9 +403,10 @@ func ToTypeExpression(goType, sqlType string) string {
 			return "TimestampColumnExpression"
 		} else if strings.Contains(upperSQLType, "DATE") {
 			return "DateColumnExpression"
-		} else {
-			return "TimeColumnExpression" // default fallback
+		} else if strings.Contains(upperSQLType, "TIME") {
+			return "TimeColumnExpression"
 		}
+		return "TimeColumnExpression" // default fallback
 	case "[]byte":
 		return "BytesColumnExpression"
 	case "json.Rawmessage":
@@ -410,4 +416,27 @@ func ToTypeExpression(goType, sqlType string) string {
 	default:
 		return "<UnknownAstType>"
 	}
+}
+
+// RenderASTPackage renders all AST package files
+func RenderASTPackage() (map[string]string, error) {
+	files := make(map[string]string)
+
+	basedir := "query/ast"
+	dirEntries, err := astTemplates.ReadDir(basedir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range dirEntries {
+		filename := entry.Name()
+		content, err := astTemplates.ReadFile(path.Join(basedir, filename))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ast file %s: %w", filename, err)
+		}
+
+		files[fmt.Sprintf("query/ast/%s.gen.go", strings.TrimSuffix(filename, ".tmpl"))] = string(content)
+	}
+
+	return files, nil
 }
