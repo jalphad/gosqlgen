@@ -5,23 +5,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 )
-
-// DTOs represents a slice of DTOs
-type DTOs[T any, O any] interface {
-	~[]O
-}
-
-// DTO represents a DTO pointer
-type DTO[T any] interface {
-	*T
-	ScanInto(row pgx.Row, stmt ast.SqlStatement) error
-	GetArg(column ast.NamedExpression) (ast.Expression, error)
-	TableName() string
-	GetValues(columns ...ast.NamedExpression) []ast.Expression
-}
 
 // DB wraps the database connection pool
 type DB struct {

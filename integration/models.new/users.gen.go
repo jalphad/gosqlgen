@@ -306,7 +306,7 @@ func (u *UsersDto) getScanDestForField(ref ast.NamedExpression) (any, func() err
 	}
 
 	// Check if alias matches a regular table column
-	if refTable == "users" {
+	if refTable == "users" || refTable == "" {
 
 		if aliasLower == "id" {
 			return &u.Id, nil
