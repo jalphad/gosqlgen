@@ -11,13 +11,19 @@ type InsertStatement struct {
 	Values     []Expression
 	OnConflict *Conflict
 	Returning  []NamedExpression
+	context    *QueryContext
 }
 
 func (s *InsertStatement) Returns() []NamedExpression {
 	return s.Returning
 }
 
-func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any) {
+func (s *InsertStatement) GetQueryContext() *QueryContext {
+	return s.context
+}
+
+func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	s.context = ctx
 	builder.WriteString("INSERT INTO " + s.Table)
 
 	columns := make([]string, 0, len(s.Into))
@@ -27,13 +33,13 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any) {
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
 	builder.WriteString(" VALUES ")
 	for i := 0; i < len(s.Values)-1; i++ {
-		s.Values[i].toSQL(builder, params)
+		s.Values[i].toSQL(builder, params, ctx)
 		builder.WriteString(", ")
 	}
-	s.Values[len(s.Values)-1].toSQL(builder, params)
+	s.Values[len(s.Values)-1].toSQL(builder, params, ctx)
 
 	if s.OnConflict != nil {
-		s.OnConflict.toSQL(builder, params)
+		s.OnConflict.toSQL(builder, params, ctx)
 	}
 
 	if len(s.Returning) > 0 {
@@ -50,7 +56,7 @@ type Conflict struct {
 	Action  OnConflictDoExpression
 }
 
-func (c *Conflict) toSQL(builder *strings.Builder, params *[]any) {
+func (c *Conflict) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	columns := make([]string, 0, len(c.Columns))
 	for _, column := range c.Columns {
 		columns = append(columns, column.Name())
@@ -87,7 +93,7 @@ func (a *ConflictAction) Where(expr OfType[bool]) OnConflictDoExpression {
 	return a
 }
 
-func (a *ConflictAction) toSQL(builder *strings.Builder, params *[]any) {
+func (a *ConflictAction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	builder.WriteString(a.Do)
 	if len(a.Set) > 0 {
 		var elems []string

@@ -41,10 +41,10 @@ type NamedSetReturningFunction struct {
 	relation *Relation
 }
 
-func (n NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any) {
-	n.srf.toSQL(builder, params)
+func (n NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	n.srf.toSQL(builder, params, ctx)
 	builder.WriteString(" AS ")
-	n.relation.toSQL(builder, params)
+	n.relation.toSQL(builder, params, ctx)
 }
 
 func (n NamedSetReturningFunction) Name() string {
@@ -76,7 +76,7 @@ type Relation struct {
 	columns []NamedExpression
 }
 
-func (r Relation) toSQL(builder *strings.Builder, _ *[]any) {
+func (r Relation) toSQL(builder *strings.Builder, _ *[]any, _ *QueryContext) {
 	builder.WriteString(r.alias + "(")
 	for i := 0; i < len(r.columns)-1; i++ {
 		builder.WriteString(r.columns[i].Name() + ", ")

@@ -7,28 +7,34 @@ type DeleteStatement struct {
 	Using     []NamedExpression
 	Where     OfType[bool]
 	Returning []NamedExpression
+	context   *QueryContext
 }
 
 func (s *DeleteStatement) Returns() []NamedExpression {
 	return s.Returning
 }
 
-func (s *DeleteStatement) toSQL(builder *strings.Builder, params *[]any) {
+func (s *DeleteStatement) GetQueryContext() *QueryContext {
+	return s.context
+}
+
+func (s *DeleteStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	s.context = ctx
 	builder.WriteString("DELETE FROM " + s.Table)
 
 	if len(s.Using) > 0 {
 		builder.WriteString(" USING ")
 		for i := 0; i < len(s.Using)-1; i++ {
-			s.Using[i].toSQL(builder, params)
+			s.Using[i].toSQL(builder, params, ctx)
 			builder.WriteString(", ")
 		}
-		s.Using[len(s.Using)-1].toSQL(builder, params)
+		s.Using[len(s.Using)-1].toSQL(builder, params, ctx)
 	}
 
 	// Add WHERE conditions
 	if s.Where != nil {
 		builder.WriteString(" WHERE ")
-		s.Where.toSQL(builder, params)
+		s.Where.toSQL(builder, params, ctx)
 	}
 
 	if len(s.Returning) > 0 {

@@ -5,20 +5,24 @@ import (
 )
 
 func Render(e Expression, params *[]any) string {
+	return RenderWithContext(e, params, &QueryContext{})
+}
+
+func RenderWithContext(e Expression, params *[]any, ctx *QueryContext) string {
 	var query strings.Builder
-	e.toSQL(&query, params)
+	e.toSQL(&query, params, ctx)
 
 	return query.String()
 }
 
 func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
-	e.toSQL(builder, params)
+	e.toSQL(builder, params, &QueryContext{})
 }
 
 // Expression represents any SQL Expression (binary, unary, function, literal).
 type Expression interface {
 	// TODO: refactor to allow returning an error
-	toSQL(builder *strings.Builder, params *[]any)
+	toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext)
 }
 
 type AliasedExpression interface {
@@ -59,8 +63,8 @@ func (a *AsExpression[T]) Name() string {
 
 func (a *AsExpression[T]) hasAlias() {}
 
-func (a *AsExpression[T]) toSQL(builder *strings.Builder, params *[]any) {
-	a.ofType.toSQL(builder, params)
+func (a *AsExpression[T]) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	a.ofType.toSQL(builder, params, ctx)
 	builder.WriteString(" AS " + a.alias)
 }
 
@@ -89,13 +93,13 @@ func NewGroupedExpression(e ...Expression) *GroupedExpression {
 	return &GroupedExpression{e}
 }
 
-func (e *GroupedExpression) toSQL(builder *strings.Builder, params *[]any) {
+func (e *GroupedExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	builder.WriteString("(")
 	for i := 0; i < len(e.expressions)-1; i++ {
-		e.expressions[i].toSQL(builder, params)
+		e.expressions[i].toSQL(builder, params, ctx)
 		builder.WriteString(", ")
 	}
-	e.expressions[len(e.expressions)-1].toSQL(builder, params)
+	e.expressions[len(e.expressions)-1].toSQL(builder, params, ctx)
 	builder.WriteString(")")
 }
 
@@ -111,13 +115,13 @@ func NewKeywordExpression(op string, expressions ...Expression) *KeywordExpressi
 	}}
 }
 
-func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any) {
+func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	builder.WriteString(e.node.Op + " ")
 	for i := 0; i < len(e.node.Args)-1; i++ {
-		e.node.Args[i].toSQL(builder, params)
+		e.node.Args[i].toSQL(builder, params, ctx)
 		builder.WriteString(", ")
 	}
-	e.node.Args[len(e.node.Args)-1].toSQL(builder, params)
+	e.node.Args[len(e.node.Args)-1].toSQL(builder, params, ctx)
 }
 
 type StringColumnExpression struct {
@@ -131,7 +135,10 @@ func NewStringColumnExpression(table, column string) *StringColumnExpression {
 }
 
 func (e *StringColumnExpression) Name() string {
-	return e.stringType.sqlType.expression.(*ColumnNode).Column.Column
+	if colNode, ok := e.stringType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
 }
 
 type IntColumnExpression struct {
@@ -145,7 +152,10 @@ func NewIntColumnExpression(table, column string) *IntColumnExpression {
 }
 
 func (e *IntColumnExpression) Name() string {
-	return e.intType.sqlType.expression.(*ColumnNode).Column.Column
+	if colNode, ok := e.intType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
 }
 
 type FloatColumnExpression struct {
@@ -159,7 +169,10 @@ func NewFloatColumnExpression(table, column string) *FloatColumnExpression {
 }
 
 func (e *FloatColumnExpression) Name() string {
-	return e.floatType.sqlType.expression.(*ColumnNode).Column.Column
+	if colNode, ok := e.floatType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
 }
 
 type BoolColumnExpression struct {
@@ -173,7 +186,10 @@ func NewBoolColumnExpression(table, column string) *BoolColumnExpression {
 }
 
 func (e *BoolColumnExpression) Name() string {
-	return e.boolType.sqlType.expression.(*ColumnNode).Column.Column
+	if colNode, ok := e.boolType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
 }
 
 type UUIDColumnExpression struct {
@@ -187,12 +203,24 @@ func NewUUIDColumnExpression(table, column string) *UUIDColumnExpression {
 }
 
 func (e *UUIDColumnExpression) Name() string {
-	return e.uuidType.sqlType.expression.(*ColumnNode).Column.Column
+	if colNode, ok := e.uuidType.sqlType.expression.(*ColumnNode); ok {
+		return colNode.Column.Column
+	}
+	return ""
 }
 
 type (
 	expression = Expression
 )
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
@@ -202,10 +230,23 @@ type TableSource struct {
 
 func (s *TableSource) isTableExpression() {}
 
-func (s *TableSource) toSQL(builder *strings.Builder, params *[]any) {
+func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	// Track primary table
+	if ctx != nil {
+		if ctx.PrimaryTable == "" {
+			ctx.PrimaryTable = s.Table
+		}
+		// Add to AllTables if not already there
+		if ctx.AllTables == nil {
+			ctx.AllTables = []string{s.Table}
+		} else if !contains(ctx.AllTables, s.Table) {
+			ctx.AllTables = append(ctx.AllTables, s.Table)
+		}
+	}
+
 	builder.WriteString(" " + s.Table)
 	for _, join := range s.joins {
-		join.toSQL(builder, params)
+		join.toSQL(builder, params, ctx)
 	}
 }
 
@@ -229,9 +270,20 @@ type JoinExpr struct {
 	Condition OfType[bool] // ON condition
 }
 
-func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any) {
+func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	// Track joined table in context
+	if ctx != nil {
+		if ctx.JoinedTables == nil {
+			ctx.JoinedTables = make(map[string]JoinType)
+		}
+		ctx.JoinedTables[j.Right.Table] = j.Type
+		if !contains(ctx.AllTables, j.Right.Table) {
+			ctx.AllTables = append(ctx.AllTables, j.Right.Table)
+		}
+	}
+
 	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")
-	j.Condition.toSQL(builder, params)
+	j.Condition.toSQL(builder, params, ctx)
 }
 
 // JoinType enumerates join types.

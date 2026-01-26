@@ -10,30 +10,36 @@ type UpdateStatement struct {
 	From      TableExpression
 	Where     OfType[bool]
 	Returning []NamedExpression
+	context   *QueryContext
 }
 
 func (s *UpdateStatement) Returns() []NamedExpression {
 	return s.Returning
 }
 
-func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any) {
+func (s *UpdateStatement) GetQueryContext() *QueryContext {
+	return s.context
+}
+
+func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	s.context = ctx
 	builder.WriteString("UPDATE " + s.Table + " SET ")
 
 	for i := 0; i < len(s.SetList)-1; i++ {
-		s.SetList[i].toSQL(builder, params)
+		s.SetList[i].toSQL(builder, params, ctx)
 		builder.WriteString(", ")
 	}
-	s.SetList[len(s.SetList)-1].toSQL(builder, params)
+	s.SetList[len(s.SetList)-1].toSQL(builder, params, ctx)
 
 	if s.From != nil {
 		builder.WriteString(" FROM ")
-		s.From.toSQL(builder, params)
+		s.From.toSQL(builder, params, ctx)
 	}
 
 	// Add WHERE conditions
 	if s.Where != nil {
 		builder.WriteString(" WHERE ")
-		s.Where.toSQL(builder, params)
+		s.Where.toSQL(builder, params, ctx)
 	}
 
 	if len(s.Returning) > 0 {
@@ -50,9 +56,9 @@ type UpdateSet struct {
 	Value Expression
 }
 
-func (s UpdateSet) toSQL(builder *strings.Builder, params *[]any) {
+func (s UpdateSet) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	builder.WriteString(s.Key.Name() + " = ")
-	s.Value.toSQL(builder, params)
+	s.Value.toSQL(builder, params, ctx)
 }
 
 func (s UpdateSet) forUpdate() {}
