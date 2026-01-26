@@ -1093,7 +1093,8 @@ func TestContextTracking(t *testing.T) {
 		}
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
-		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		require.NoError(t, err)
 
 		assert.Contains(t, sql, "SELECT")
 		assert.Contains(t, sql, "FROM users")
@@ -1114,7 +1115,8 @@ func TestContextTracking(t *testing.T) {
 		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
-		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		require.NoError(t, err)
 
 		assert.Contains(t, sql, "SELECT")
 		assert.Contains(t, sql, "FROM users")
@@ -1141,7 +1143,8 @@ func TestContextTracking(t *testing.T) {
 		selectStmt.From.Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id()))
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
-		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		require.NoError(t, err)
 
 		assert.Contains(t, sql, "SELECT")
 		assert.Contains(t, sql, "FROM users")
@@ -1166,10 +1169,11 @@ func TestContextTracking(t *testing.T) {
 		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
-		sql := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
+		require.NoError(t, err)
 
-		// The SELECT list should have proper prefixes
-		assert.Contains(t, sql, "SELECT username", "expected username without table prefix (primary table)")
+		// The SELECT list should have proper prefixes (both primary and joined)
+		assert.Contains(t, sql, "users.username", "expected users.username with table prefix")
 		assert.Contains(t, sql, "posts.title", "expected posts.title with table prefix (joined table)")
 
 		// Verify context tracking
