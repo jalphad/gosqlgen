@@ -10,7 +10,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
-func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) *ast.Function[T] {
+func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) ast.Function[T] {
 	args := make([]ast.Expression, 0, len(expressions))
 	for _, expression := range expressions {
 		args = append(args, expression)
@@ -23,7 +23,7 @@ func JsonAgg(expression ast.Expression) *ast.AggregationFunction[json.RawMessage
 		ast.NewFunctionNode("json_agg", []ast.Expression{expression}, nil))
 }
 
-func JsonbBuildObject(expressions ...ast.NamedExpression) *ast.Function[json.RawMessage] {
+func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Function[json.RawMessage] {
 	return ast.NewFunction[json.RawMessage](ast.NewFunctionNode(
 		"jsonb_build_object",
 		nil,

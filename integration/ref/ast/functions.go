@@ -1,23 +1,56 @@
 package ast
 
 import (
-	"fmt"
 	"strings"
 )
 
-type function[T MappedTypes] = Function[T]
-type Function[T MappedTypes] struct {
+type AliasedFunction[T MappedTypes] interface {
+	ofType[T]
+	NamedExpression
+	isFunction()
+}
+
+type Function[T MappedTypes] interface {
+	ofType[T]
+	As(r *Alias) AliasedFunction[T]
+	isFunction()
+}
+type function[T MappedTypes] struct {
 	sqlType[T]
 }
 
-func NewFunction[T MappedTypes](node *FunctionNode) *Function[T] {
-	return &Function[T]{sqlType[T]{node}}
+func NewFunction[T MappedTypes](node *FunctionNode) Function[T] {
+	return &function[T]{sqlType: sqlType[T]{node}}
 }
 
-type AggregationFunction[T MappedTypes] Function[T]
+func (f function[T]) As(alias *Alias) AliasedFunction[T] {
+	return &aliasedFunction[T]{function: f, alias: alias}
+}
+
+func (f function[T]) isFunction() {}
+
+type aliasedFunction[T MappedTypes] struct {
+	function[T]
+	alias *Alias
+}
+
+func (n *aliasedFunction[T]) Name() string {
+	return n.alias.name
+}
+
+func (n *aliasedFunction[T]) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	n.function.toSQL(builder, params, ctx)
+	builder.WriteString(" AS ")
+	n.alias.toSQL(builder, params, ctx)
+}
+
+type AggregationFunction[T MappedTypes] function[T]
 
 func NewAggregationFunction[T MappedTypes](node *FunctionNode) *AggregationFunction[T] {
-	return &AggregationFunction[T]{sqlType[T]{node}}
+	return &AggregationFunction[T]{sqlType: sqlType[T]{node}}
 }
 
 func (f *AggregationFunction[T]) Filter(filter OfType[bool]) Expression {
@@ -38,71 +71,61 @@ func (f *AggregationFunction[T]) Filter(filter OfType[bool]) Expression {
 }
 
 type NamedSetReturningFunction struct {
-	srf
-	relation *Relation
+	aliasedFunction[[]any]
 }
 
-func (n NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	if ctx != nil && ctx.Error != nil {
-		return
-	}
-	n.srf.toSQL(builder, params, ctx)
-	builder.WriteString(" AS ")
-	n.relation.toSQL(builder, params, ctx)
-}
-
-func (n NamedSetReturningFunction) Name() string {
-	return n.relation.alias
-}
+func (f *NamedSetReturningFunction) isTableExpression() {}
 
 type SetReturningFunction struct {
 	function[[]any]
 }
-type srf = SetReturningFunction
 
 func NewSetReturningFunction(node *FunctionNode) *SetReturningFunction {
 	return &SetReturningFunction{function: function[[]any]{sqlType[[]any]{node}}}
 }
 
-func (f *SetReturningFunction) As(r *Relation, columns ...NamedExpression) *NamedSetReturningFunction {
+func (f *SetReturningFunction) As(r *Alias, columns ...NamedExpression) *NamedSetReturningFunction {
 	if f == nil {
 		return nil
 	}
 	r.columns = columns
 
-	return &NamedSetReturningFunction{srf: *f, relation: r}
+	return &NamedSetReturningFunction{
+		aliasedFunction: aliasedFunction[[]any]{
+			function: f.function,
+			alias:    r,
+		},
+	}
 }
 
 func (f *SetReturningFunction) isTableExpression() {}
 
-type Relation struct {
-	alias   string
+type Alias struct {
+	name    string
 	columns []NamedExpression
 }
 
-func (r Relation) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+func (r Alias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
 	if ctx != nil && ctx.Error != nil {
 		return
 	}
+	builder.WriteString(r.name)
 	if len(r.columns) == 0 {
-		if ctx != nil && ctx.Error == nil {
-			ctx.Error = fmt.Errorf("Relation %q has no columns", r.alias)
-		}
 		return
 	}
-	builder.WriteString(r.alias + "(")
+	builder.WriteString("(")
 	for i := 0; i < len(r.columns)-1; i++ {
 		builder.WriteString(r.columns[i].Name() + ", ")
 	}
 	builder.WriteString(r.columns[len(r.columns)-1].Name() + ")")
 }
 
-func (r Relation) Name() string {
-	return r.alias
+func (r Alias) Name() string {
+	return r.name
 }
 
-func NewRelation(alias string) *Relation {
-	return &Relation{alias: alias}
+func NewAlias(alias string) *Alias {
+	return &Alias{name: alias}
 }
 
 type NamedAndTyped[T MappedTypes] interface {

@@ -72,7 +72,7 @@ func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalize
 
 func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	dtos := models.UsersDtos(in)
-	v := ast.NewRelation("v")
+	v := ast.NewAlias("v")
 	return models.NewUsersQuery(pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
@@ -97,10 +97,11 @@ func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuer
 }
 
 func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
+	c := ast.NewAlias("comments")
 	return models.NewQuery(pool, models.UsersDtos{}).
 		Select(
 			users.Id(),
-			As("comments", Coalesce(
+			Coalesce(
 				JsonAgg(
 					Distinct(JsonbBuildObject(
 						comments.Id(),
@@ -109,8 +110,7 @@ func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFi
 						comments.CreatedAt(),
 					)),
 				),
-			)),
-		).
+			).As(c)).
 		Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
 		Where(users.Id().Eq(Val(id))).
 		GroupBy(users.Id())

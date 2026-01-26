@@ -41,8 +41,8 @@ func TestErrorExpression(t *testing.T) {
 		}
 	})
 
-	t.Run("Relation with no columns sets error", func(t *testing.T) {
-		relation := NewRelation("test")
+	t.Run("Alias with no columns sets error", func(t *testing.T) {
+		relation := NewAlias("test")
 		ctx := &QueryContext{}
 
 		var builder strings.Builder
@@ -51,9 +51,9 @@ func TestErrorExpression(t *testing.T) {
 		relation.toSQL(&builder, &params, ctx)
 
 		if ctx.Error == nil {
-			t.Fatal("expected error for Relation with no columns")
+			t.Fatal("expected error for Alias with no columns")
 		}
-		if ctx.Error.Error() != `Relation "test" has no columns` {
+		if ctx.Error.Error() != `Alias "test" has no columns` {
 			t.Errorf("unexpected error message: %v", ctx.Error.Error())
 		}
 	})

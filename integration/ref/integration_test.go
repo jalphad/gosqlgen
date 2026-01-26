@@ -1357,9 +1357,10 @@ func TestContextTracking(t *testing.T) {
 			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id)))
 
-		sql := queryBuilder.ToSql()
+		sql, err := queryBuilder.ToSql()
 
 		// Assert
+		require.NoError(t, err)
 		assert.Contains(t, sql, "SELECT")
 		assert.Contains(t, sql, "FROM posts")
 		assert.Contains(t, sql, "LEFT JOIN users")

@@ -46,9 +46,13 @@ type Expression interface {
 }
 type expression = Expression
 
-type AliasedExpression interface {
-	NamedExpression
-	hasAlias()
+type AsExprConstraint[T MappedTypes] interface {
+	AliasedFunction[T]
+}
+
+type AsExpression[T MappedTypes, C AsExprConstraint[T]] interface {
+	Expression
+	As(alias *Alias) C
 }
 
 type NamedExpression interface {
@@ -64,32 +68,6 @@ type NamedTableExpression interface {
 type TableExpression interface {
 	Expression
 	isTableExpression()
-}
-
-type AsExpression[T MappedTypes] struct {
-	ofType[T]
-	alias string
-}
-
-func NewAsExpression[T MappedTypes](expression OfType[T], alias string) *AsExpression[T] {
-	return &AsExpression[T]{
-		ofType: expression,
-		alias:  alias,
-	}
-}
-
-func (a *AsExpression[T]) Name() string {
-	return a.alias
-}
-
-func (a *AsExpression[T]) hasAlias() {}
-
-func (a *AsExpression[T]) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	if ctx != nil && ctx.Error != nil {
-		return
-	}
-	a.ofType.toSQL(builder, params, ctx)
-	builder.WriteString(" AS " + a.alias)
 }
 
 func NewNamedExpression[T MappedTypes](name string, expression OfType[T]) *NamedExpressionWrapper[T] {
