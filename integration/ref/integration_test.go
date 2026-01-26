@@ -884,14 +884,6 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 		// Act
 		user, err := query.RetrieveUserWithComments(*user1.Id, testDB.pool).FindOne(context.Background())
 
-		//user, err := testDB.Users().
-		//Select(
-		//	append(UsersTable.AllFields(), UsersTable.AggregateComments())...,
-		//).JoinOn(LeftJoin, (&CommentsDto{}).TableName(), CommentsTable.UserId(), UsersTable.Id()).
-		//Where(
-		//	UsersClause().Id.Eq(uuid.MustParse(*user1.Id)),
-		//).GroupBy(UsersTable.AllFields()...).FindOne(context.Background())
-
 		// Assert
 		require.NoError(t, err)
 		assert.Len(t, user.Comments, 1)

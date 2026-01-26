@@ -24,6 +24,10 @@ func IsApproved() *ast.BoolColumnExpression {
 	return ast.NewBoolColumnExpression("comments", "is_approved")
 }
 
+func CreatedAt() *ast.TimestampColumnExpression {
+	return ast.NewTimestampColumnExpression("comments", "created_at")
+}
+
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),

@@ -7,7 +7,9 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
+	"github.com/jalphad/gosqlgen/integration/ref/query/post_tags"
 	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
+	"github.com/jalphad/gosqlgen/integration/ref/query/tags"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
@@ -109,6 +111,7 @@ func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFi
 						comments.Id(),
 						comments.UserId(),
 						comments.Content(),
+						comments.CreatedAt(),
 					)),
 				),
 			)),
@@ -118,23 +121,23 @@ func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFi
 		GroupBy(users.Id())
 }
 
-//func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {
-//	return models.NewPostsQuery(pool).
-//		Select(
-//			posts.Id(),
-//			posts.Title(),
-//			posts.UserId(),
-//			As("tags", Coalesce(
-//				JsonAgg(
-//					Distinct(JsonbBuildObject(
-//						tags.Id(),
-//						tags.Name(),
-//						tags.Slug(),
-//					)),
-//				),
-//			))).
-//		Join(ast.JoinLeft, "post_tags", post_tags.PostId().Eq(posts.Id())).
-//		Join(ast.JoinLeft, "tags", tags.Id().Eq(post_tags.TagId())).
-//		Where(posts.Id().Eq(Val(id))).
-//		GroupBy(posts.Id(), posts.Title(), posts.UserId())
-//}
+func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {
+	return models.NewPostsQuery(pool).
+		Select(
+			posts.Id(),
+			posts.Title(),
+			posts.UserId(),
+			As("tags", Coalesce(
+				JsonAgg(
+					Distinct(JsonbBuildObject(
+						tags.Id(),
+						tags.Name(),
+						tags.Slug(),
+					)),
+				),
+			))).
+		Join(ast.JoinLeft, "post_tags", post_tags.PostId().Eq(posts.Id())).
+		Join(ast.JoinLeft, "tags", tags.Id().Eq(post_tags.TagId())).
+		Where(posts.Id().Eq(Val(id))).
+		GroupBy(posts.Id(), posts.Title(), posts.UserId())
+}
