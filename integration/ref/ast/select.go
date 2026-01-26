@@ -44,7 +44,14 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		return
 	}
 	s.context = ctx
+	if ctx != nil {
+		ctx.Type = QueryTypeSelect
+	}
+
 	builder.WriteString("SELECT ")
+	if ctx != nil {
+		ctx.CurrentPart = QueryPartSelectList
+	}
 	if len(s.SelectList) > 0 {
 		for i := 0; i < len(s.SelectList)-1; i++ {
 			s.SelectList[i].toSQL(builder, params, ctx)
@@ -55,15 +62,24 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		builder.WriteString("*")
 	}
 
+	if ctx != nil {
+		ctx.CurrentPart = QueryPartFrom
+	}
 	builder.WriteString(" FROM")
 	s.From.toSQL(builder, params, ctx)
 
 	if s.Where != nil {
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartWhere
+		}
 		builder.WriteString(" WHERE ")
 		s.Where.toSQL(builder, params, ctx)
 	}
 
 	if len(s.GroupBy) > 0 {
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartGroupBy
+		}
 		builder.WriteString(" GROUP BY ")
 		for i := 0; i < len(s.GroupBy)-1; i++ {
 			s.GroupBy[i].toSQL(builder, params, ctx)
@@ -73,11 +89,17 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	}
 
 	if s.Having != nil {
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartHaving
+		}
 		builder.WriteString(" HAVING ")
 		s.Having.toSQL(builder, params, ctx)
 	}
 
 	if len(s.OrderBy) > 0 {
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartOrderBy
+		}
 		builder.WriteString(" ORDER BY ")
 		for i := 0; i < len(s.OrderBy)-1; i++ {
 			s.OrderBy[i].Field.toSQL(builder, params, ctx)
@@ -89,6 +111,9 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	}
 
 	if s.Limit != nil {
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartLimit
+		}
 		if s.Limit.Limit > 0 {
 			builder.WriteString(fmt.Sprintf(" LIMIT %d", s.Limit.Limit))
 		}

@@ -353,6 +353,7 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 		if !contains(ctx.AllTables, j.Right.Table) {
 			ctx.AllTables = append(ctx.AllTables, j.Right.Table)
 		}
+		ctx.CurrentPart = QueryPartJoin
 	}
 
 	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")

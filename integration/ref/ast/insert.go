@@ -27,13 +27,24 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		return
 	}
 	s.context = ctx
+	if ctx != nil {
+		ctx.Type = QueryTypeInsert
+	}
+
 	builder.WriteString("INSERT INTO " + s.Table)
 
+	if ctx != nil {
+		ctx.CurrentPart = QueryPartInto
+	}
 	columns := make([]string, 0, len(s.Into))
 	for _, column := range s.Into {
 		columns = append(columns, column.Name())
 	}
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
+
+	if ctx != nil {
+		ctx.CurrentPart = QueryPartValues
+	}
 	builder.WriteString(" VALUES ")
 	for i := 0; i < len(s.Values)-1; i++ {
 		s.Values[i].toSQL(builder, params, ctx)
@@ -46,6 +57,9 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	}
 
 	if len(s.Returning) > 0 {
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartReturning
+		}
 		returning := make([]string, 0, len(s.Returning))
 		for _, val := range s.Returning {
 			returning = append(returning, val.Name())

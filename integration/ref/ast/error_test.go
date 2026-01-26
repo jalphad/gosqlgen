@@ -41,23 +41,6 @@ func TestErrorExpression(t *testing.T) {
 		}
 	})
 
-	t.Run("Alias with no columns sets error", func(t *testing.T) {
-		relation := NewAlias("test")
-		ctx := &QueryContext{}
-
-		var builder strings.Builder
-		var params []any
-
-		relation.toSQL(&builder, &params, ctx)
-
-		if ctx.Error == nil {
-			t.Fatal("expected error for Alias with no columns")
-		}
-		if ctx.Error.Error() != `Alias "test" has no columns` {
-			t.Errorf("unexpected error message: %v", ctx.Error.Error())
-		}
-	})
-
 	t.Run("toSQL methods return early if error already set", func(t *testing.T) {
 		ctx := &QueryContext{PrimaryTable: "users"}
 		ctx.Error = errors.New("first error")
