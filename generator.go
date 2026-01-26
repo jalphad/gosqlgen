@@ -101,7 +101,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		//	return nil, err
 		//}
 
-		// Format the generated code
+		// Format to generated code
 		filename := fmt.Sprintf("%s.gen.go", table.Name)
 		formatted, err := g.format(filename, tableBuf.Bytes())
 		if err != nil {
@@ -112,7 +112,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 
 	// Generate db.gen.go for database wrapper
 	dbBuf := bytes.Buffer{}
-	if _, err = fmt.Fprintf(&dbBuf, "package %s\n\n", g.packageName); err != nil {
+	if _, err := fmt.Fprintf(&dbBuf, "package %s\n\n", g.packageName); err != nil {
 		return nil, err
 	}
 	if err = g.writeImports(&dbBuf); err != nil {
@@ -128,7 +128,46 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	}
 	files["db.gen.go"] = string(formatted)
 
+	// Generate table query packages
+	if err := g.generateTableQueryPackages(files); err != nil {
+		return nil, err
+	}
+
 	return files, nil
+}
+
+// generateTableQueryPackages generates per-table query packages
+func (g *Generator) generateTableQueryPackages(files map[string]string) error {
+	for _, table := range g.parser.GetTables() {
+		// Prepare template data
+		fields := make([]templates.StructField, 0, len(table.Columns))
+		for _, col := range table.Columns {
+			fieldName := templates.ToPascalCase(col.Name)
+			fields = append(fields, templates.StructField{
+				FieldName:  fieldName,
+				ColumnName: col.Name,
+				GoType:     col.GoType,
+				SQLType:    col.SQLType,
+			})
+		}
+
+		data := templates.TableStructData{
+			TableName: table.Name,
+			Fields:    fields,
+		}
+
+		// Render template
+		content, err := templates.RenderColumnExpressions(data)
+		if err != nil {
+			return fmt.Errorf("failed to render column expressions for table %s: %w", table.Name, err)
+		}
+
+		// Add to files map with query package path
+		filename := fmt.Sprintf("query/%s/%s.go", table.Name, table.Name)
+		files[filename] = content
+	}
+
+	return nil
 }
 
 // Generate generates Go code for all parsed tables (backward compatibility)

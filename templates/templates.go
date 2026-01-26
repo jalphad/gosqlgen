@@ -32,7 +32,7 @@ var dbWrapperTemplate string
 //go:embed collection_loaders.tmpl
 var collectionLoadersTemplate string
 
-// QueryBuilderData contains the data for rendering the query builder template
+// QueryBuilderData contains data for rendering to query builder template
 type QueryBuilderData struct {
 	BaseName           string
 	BuilderName        string
@@ -55,7 +55,7 @@ type Column struct {
 	FieldName  string
 	GoType     string
 	IsNullable bool
-	IsPointer  bool // true if the Go field is a pointer type
+	IsPointer  bool // true if Go field is a pointer type
 }
 
 // ForeignKeyData contains FK information for query building
@@ -66,7 +66,7 @@ type ForeignKeyData struct {
 	ReferencedColumns    []Column // columns in the referenced table
 }
 
-// TableStructData contains the data for rendering the table struct template
+// TableStructData contains data for rendering to table struct template
 type TableStructData struct {
 	StructName         string
 	TableName          string
@@ -80,7 +80,7 @@ type TableStructData struct {
 	PrimaryKeyFields   []string
 }
 
-// StructField represents a field in the generated struct
+// StructField represents a field in generated struct
 type StructField struct {
 	FieldName  string
 	ColumnName string
@@ -98,7 +98,7 @@ type JoinedField struct {
 	ReferencedTable   string   // e.g., "users"
 	FKColumn          string   // e.g., "user_id"
 	ReferencedColumn  string   // e.g., "id"
-	ReferencedColumns []Column // columns in the referenced table
+	ReferencedColumns []Column // columns in referenced table
 }
 
 // ReverseRelLoaderField contains data for reverse relationship loader
@@ -132,7 +132,7 @@ type ManyToManyField struct {
 	ReferencedPKField string // e.g., "Id"
 }
 
-// FieldReferencesData contains the data for rendering field references template
+// FieldReferencesData contains data for rendering to field references template
 type FieldReferencesData struct {
 	BaseName         string
 	StructName       string
@@ -151,7 +151,7 @@ type FieldRefData struct {
 	GoType     string
 }
 
-// JoinBuildersData contains the data for rendering join builders template
+// JoinBuildersData contains data for rendering to join builders template
 type JoinBuildersData struct {
 	BaseName    string
 	BuilderName string
@@ -172,12 +172,12 @@ type JoinData struct {
 	RightFieldName       string
 }
 
-// DBWrapperData contains the data for rendering the DB wrapper template
+// DBWrapperData contains data for rendering to DB wrapper template
 type DBWrapperData struct {
 	Tables []TableMethod
 }
 
-// TableMethod represents a table method in the DB wrapper
+// TableMethod represents a table method in to DB wrapper
 type TableMethod struct {
 	MethodName  string
 	BuilderName string
@@ -185,7 +185,7 @@ type TableMethod struct {
 	StructName  string // "TagsDto
 }
 
-// CollectionLoaderData contains data for rendering collection loader methods
+// CollectionLoaderData contains data for rendering to collection loader methods
 type CollectionLoaderData struct {
 	StructName       string
 	TableName        string
@@ -210,7 +210,7 @@ type ManyToManyLoaderField struct {
 	ReferencedPKType      string // "string"
 }
 
-// RenderTableStruct renders the table struct template with the given data
+// RenderTableStruct renders to table struct template with given data
 func RenderTableStruct(data TableStructData) (string, error) {
 	// Create template with custom functions
 	funcMap := template.FuncMap{
@@ -265,7 +265,7 @@ func RenderColumnExpressions(data TableStructData) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderQueryBuilder renders the query builder template with the given data
+// RenderQueryBuilder renders to query builder template with given data
 func RenderQueryBuilder(data QueryBuilderData) (string, error) {
 	// Create template with custom functions
 	funcMap := template.FuncMap{
@@ -286,7 +286,7 @@ func RenderQueryBuilder(data QueryBuilderData) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderCommonTypes renders the common types template
+// RenderCommonTypes renders to common types template
 func RenderCommonTypes() (string, error) {
 	t, err := template.New("commonTypes").Parse(commonTypesTemplate)
 	if err != nil {
@@ -301,7 +301,7 @@ func RenderCommonTypes() (string, error) {
 	return buf.String(), nil
 }
 
-// RenderFieldReferences renders the field references template with the given data
+// RenderFieldReferences renders to field references template with given data
 func RenderFieldReferences(data FieldReferencesData) (string, error) {
 	// Create template with custom functions
 	funcMap := template.FuncMap{
@@ -322,7 +322,7 @@ func RenderFieldReferences(data FieldReferencesData) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderJoinBuilders renders the join builders template with the given data
+// RenderJoinBuilders renders to join builders template with given data
 func RenderJoinBuilders(data JoinBuildersData) (string, error) {
 	t, err := template.New("joinBuilders").Parse(joinBuildersTemplate)
 	if err != nil {
@@ -337,7 +337,7 @@ func RenderJoinBuilders(data JoinBuildersData) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderDBWrapper renders the DB wrapper template with the given data
+// RenderDBWrapper renders to DB wrapper template with given data
 func RenderDBWrapper(data DBWrapperData) (string, error) {
 	t, err := template.New("dbWrapper").Parse(dbWrapperTemplate)
 	if err != nil {
@@ -352,7 +352,7 @@ func RenderDBWrapper(data DBWrapperData) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderCollectionLoaders renders the collection loaders template with the given data
+// RenderCollectionLoaders renders to collection loader template with given data
 func RenderCollectionLoaders(data CollectionLoaderData) (string, error) {
 	t, err := template.New("collectionLoaders").Parse(collectionLoadersTemplate)
 	if err != nil {
@@ -377,26 +377,36 @@ func ToPascalCase(s string) string {
 	return strings.Join(parts, "")
 }
 
-func ToTypeExpression(goType string) string {
+func ToTypeExpression(goType, sqlType string) string {
+	// Normalize SQL type to uppercase for case-insensitive matching
+	upperSQLType := strings.ToUpper(sqlType)
+
 	switch goType {
 	case "int64":
 		return "IntColumnExpression"
 	case "float64":
 		return "FloatColumnExpression"
 	case "pgtype.Numeric":
-		return "NumericType"
+		return "NumericColumnExpression"
 	case "bool":
-		return "BoolType"
+		return "BoolColumnExpression"
 	case "string":
-		return "StringType"
+		return "StringColumnExpression"
 	case "time.Time":
-		return "TimeType"
+		// Handle different date/time types based on SQL type
+		if strings.Contains(upperSQLType, "TIMESTAMP") {
+			return "TimestampColumnExpression"
+		} else if strings.Contains(upperSQLType, "DATE") {
+			return "DateColumnExpression"
+		} else {
+			return "TimeColumnExpression" // default fallback
+		}
 	case "[]byte":
-		return "BytesType"
+		return "BytesColumnExpression"
 	case "json.Rawmessage":
-		return "JsonType"
+		return "JsonColumnExpression"
 	case "uuid.UUID":
-		return "UUIDType"
+		return "UUIDColumnExpression"
 	default:
 		return "<UnknownAstType>"
 	}
