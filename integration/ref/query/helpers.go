@@ -39,16 +39,6 @@ func (s *SetPart[T]) To(val ast.OfType[T]) ast.UpdateSet {
 	}
 }
 
-func Pair[T ast.MappedTypes](name string, expression ast.OfType[T]) *ast.NamedExpressionWrapper[T] {
-	return ast.NewNamedExpression(name, expression)
-}
-
-// expression helpers
-func Column[T ast.MappedTypes](table, col string) *ast.NamedExpressionWrapper[T] {
-	//return ast.NewNamedExpression(col, ast.NewNewColumnNode(table, col))
-	panic("not implemented")
-}
-
 func Asc(column ast.Expression) *ast.OrderByItem {
 	return &ast.OrderByItem{
 		Field:     column,
