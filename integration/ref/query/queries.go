@@ -71,11 +71,6 @@ func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalize
 }
 
 func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	//UPDATE users
-	//SET username = v.u
-	//FROM UNNEST ($1::int[], $2::text[]) AS v(id,u)
-	//WHERE users.id = v.id;
-
 	dtos := models.UsersDtos(in)
 	v := ast.NewRelation("v")
 	return models.NewUsersQuery(pool).
