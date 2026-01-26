@@ -1,7 +1,7 @@
 package {{ .TableName }}
 
 import (
-	"github.com/jalphad/gosqlgen/integration/ref/ast"
+	"{{ .ImportPath }}/ast"
 )
 
 {{ range .Fields }}

@@ -142,6 +142,11 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = content
 	}
 
+	// Generate DTOs package
+	if err := g.generateDtosPackage(files); err != nil {
+		return nil, err
+	}
+
 	return files, nil
 }
 
@@ -165,6 +170,10 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 			Fields:    fields,
 		}
 
+		// Set import path for AST package
+		// For integration test, we use: github.com/jalphad/gosqlgen/integration/output/query/ast
+		data.ImportPath = "github.com/jalphad/gosqlgen/integration/output/query/ast"
+
 		// Render template
 		content, err := templates.RenderColumnExpressions(data)
 		if err != nil {
@@ -173,6 +182,66 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 
 		// Add to files map with query package path
 		filename := fmt.Sprintf("query/%s/%s.go", table.Name, table.Name)
+		files[filename] = content
+	}
+
+	return nil
+}
+
+// generateDtosPackage generates the DTOs package file
+func (g *Generator) generateDtosPackage(files map[string]string) error {
+	// Prepare table data for DTOs
+	tables := make([]templates.DtosTableData, 0, len(g.parser.GetTables()))
+
+	for _, table := range g.parser.GetTables() {
+		baseName := templates.ToPascalCase(table.Name)
+		structName := baseName + "Dto"
+
+		// Prepare columns data
+		columns := make([]templates.DtosColumnData, 0, len(table.Columns))
+		for _, col := range table.Columns {
+			fieldName := templates.ToPascalCase(col.Name)
+			goType := col.GoType
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
+
+			// Remove pointer suffix for collection type
+			if isPointer && strings.HasPrefix(goType, "*") {
+				goType = strings.TrimPrefix(goType, "*")
+			}
+
+			columns = append(columns, templates.DtosColumnData{
+				FieldName: fieldName,
+				GoType:    goType,
+				IsPointer: isPointer,
+			})
+		}
+
+		tables = append(tables, templates.DtosTableData{
+			StructName: structName,
+			TableName:  table.Name,
+			Columns:    columns,
+		})
+	}
+
+	// Prepare template data
+	// The import path needs to be the base module path (without /ast)
+	// For integration test, we use: github.com/jalphad/gosqlgen/integration/output/query
+	importPath := "github.com/jalphad/gosqlgen/integration/output/query"
+	dtoPackagePath := "github.com/jalphad/gosqlgen/integration/output"
+	data := templates.DtosPackageData{
+		ImportPath:     importPath,
+		DtoPackagePath: dtoPackagePath,
+		Tables:         tables,
+	}
+
+	// Render template
+	dtosFiles, err := templates.RenderDtosPackage(data)
+	if err != nil {
+		return fmt.Errorf("failed to render dtos package: %w", err)
+	}
+
+	// Add generated files to map
+	for filename, content := range dtosFiles {
 		files[filename] = content
 	}
 

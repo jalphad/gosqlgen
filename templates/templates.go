@@ -37,6 +37,30 @@ var collectionLoadersTemplate string
 //go:embed query/ast
 var astTemplates embed.FS
 
+//go:embed query/dtos/gen_dtos.tmpl
+var genDtosTemplate string
+
+// DtosPackageData contains data for rendering DTOs package
+type DtosPackageData struct {
+	ImportPath     string
+	DtoPackagePath string
+	Tables         []DtosTableData
+}
+
+// DtosTableData contains data for a single DTOs collection
+type DtosTableData struct {
+	StructName string
+	TableName  string
+	Columns    []DtosColumnData
+}
+
+// DtosColumnData contains data for a column in DTOs
+type DtosColumnData struct {
+	FieldName string
+	GoType    string
+	IsPointer bool
+}
+
 // QueryBuilderData contains data for rendering to query builder template
 type QueryBuilderData struct {
 	BaseName           string
@@ -83,6 +107,7 @@ type TableStructData struct {
 	NonSequenceColumns []StructField
 	PrimaryKeys        []string
 	PrimaryKeyFields   []string
+	ImportPath         string
 }
 
 // StructField represents a field in generated struct
@@ -437,6 +462,24 @@ func RenderASTPackage() (map[string]string, error) {
 
 		files[fmt.Sprintf("query/ast/%s.gen.go", strings.TrimSuffix(filename, ".tmpl"))] = string(content)
 	}
+
+	return files, nil
+}
+
+// RenderDtosPackage renders the DTOs package file
+func RenderDtosPackage(data DtosPackageData) (map[string]string, error) {
+	t, err := template.New("dtos").Parse(genDtosTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dtos template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute dtos template: %w", err)
+	}
+
+	files := make(map[string]string)
+	files["query/dtos/dtos.gen.go"] = buf.String()
 
 	return files, nil
 }

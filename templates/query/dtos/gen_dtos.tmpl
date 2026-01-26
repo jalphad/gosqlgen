@@ -1,0 +1,33 @@
+package dtos
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	database "{{ .DtoPackagePath }}"
+	"{{ .ImportPath }}/ast"
+)
+
+{{ range .Tables }}
+// {{ .StructName }}Dtos is a collection of {{ .StructName }} DTOs used for bulk operations
+type {{ .StructName }}Dtos []*database.{{ .StructName }}
+
+{{ $structName := .StructName }}
+{{ range .Columns }}
+// {{ .FieldName }} returns a slice of all {{ .FieldName }} values from the collection
+func (d {{ $structName }}Dtos) {{ .FieldName }}() ast.OfType[[]{{ .GoType }}] {
+	if len(d) == 0 {
+		return nil
+	}
+
+	values := make([]ast.Expression, 0, len(d))
+	for _, dto := range d {
+		if dto.{{ .FieldName }} != nil {
+			values = append(values, ast.NewSQLType(*dto.{{ .FieldName }}))
+		}
+	}
+	return ast.NewGroupedExpression(values...)
+}
+
+{{ end }}
+{{ end }}
