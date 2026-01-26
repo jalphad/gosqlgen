@@ -22,6 +22,9 @@ func (s *UpdateStatement) GetQueryContext() *QueryContext {
 }
 
 func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	s.context = ctx
 	builder.WriteString("UPDATE " + s.Table + " SET ")
 
@@ -57,6 +60,9 @@ type UpdateSet struct {
 }
 
 func (s UpdateSet) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	builder.WriteString(s.Key.Name() + " = ")
 	s.Value.toSQL(builder, params, ctx)
 }

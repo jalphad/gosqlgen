@@ -23,6 +23,9 @@ func (s *InsertStatement) GetQueryContext() *QueryContext {
 }
 
 func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	s.context = ctx
 	builder.WriteString("INSERT INTO " + s.Table)
 
@@ -57,6 +60,9 @@ type Conflict struct {
 }
 
 func (c *Conflict) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	columns := make([]string, 0, len(c.Columns))
 	for _, column := range c.Columns {
 		columns = append(columns, column.Name())
@@ -94,6 +100,9 @@ func (a *ConflictAction) Where(expr OfType[bool]) OnConflictDoExpression {
 }
 
 func (a *ConflictAction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	builder.WriteString(a.Do)
 	if len(a.Set) > 0 {
 		var elems []string

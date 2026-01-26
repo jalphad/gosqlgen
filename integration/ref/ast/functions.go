@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -42,6 +43,9 @@ type NamedSetReturningFunction struct {
 }
 
 func (n NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	n.srf.toSQL(builder, params, ctx)
 	builder.WriteString(" AS ")
 	n.relation.toSQL(builder, params, ctx)
@@ -76,7 +80,16 @@ type Relation struct {
 	columns []NamedExpression
 }
 
-func (r Relation) toSQL(builder *strings.Builder, _ *[]any, _ *QueryContext) {
+func (r Relation) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(r.columns) == 0 {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("Relation %q has no columns", r.alias)
+		}
+		return
+	}
 	builder.WriteString(r.alias + "(")
 	for i := 0; i < len(r.columns)-1; i++ {
 		builder.WriteString(r.columns[i].Name() + ", ")

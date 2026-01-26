@@ -1,22 +1,42 @@
 package ast
 
 import (
+	"fmt"
 	"strings"
 )
 
 func Render(e Expression, params *[]any) string {
-	return RenderWithContext(e, params, &QueryContext{})
+	query, _ := RenderWithContext(e, params, &QueryContext{})
+	return query
 }
 
-func RenderWithContext(e Expression, params *[]any, ctx *QueryContext) string {
+func RenderWithContext(e Expression, params *[]any, ctx *QueryContext) (string, error) {
 	var query strings.Builder
 	e.toSQL(&query, params, ctx)
 
-	return query.String()
+	if ctx != nil && ctx.Error != nil {
+		return query.String(), ctx.Error
+	}
+	return query.String(), nil
 }
 
 func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
 	e.toSQL(builder, params, &QueryContext{})
+}
+
+// ErrorExpression represents an expression that sets an error in the context during rendering
+type ErrorExpression struct {
+	err error
+}
+
+func NewErrorExpression(err error) *ErrorExpression {
+	return &ErrorExpression{err: err}
+}
+
+func (e *ErrorExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error == nil {
+		ctx.Error = e.err
+	}
 }
 
 // Expression represents any SQL Expression (binary, unary, function, literal).
@@ -65,6 +85,9 @@ func (a *AsExpression[T]) Name() string {
 func (a *AsExpression[T]) hasAlias() {}
 
 func (a *AsExpression[T]) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	a.ofType.toSQL(builder, params, ctx)
 	builder.WriteString(" AS " + a.alias)
 }
@@ -95,6 +118,15 @@ func NewGroupedExpression(e ...Expression) *GroupedExpression {
 }
 
 func (e *GroupedExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(e.expressions) == 0 {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("GroupedExpression has no expressions")
+		}
+		return
+	}
 	builder.WriteString("(")
 	for i := 0; i < len(e.expressions)-1; i++ {
 		e.expressions[i].toSQL(builder, params, ctx)
@@ -117,6 +149,15 @@ func NewKeywordExpression(op string, expressions ...Expression) *KeywordExpressi
 }
 
 func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(e.node.Args) == 0 {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("KeywordExpression %q has no arguments", e.node.Op)
+		}
+		return
+	}
 	builder.WriteString(e.node.Op + " ")
 	for i := 0; i < len(e.node.Args)-1; i++ {
 		e.node.Args[i].toSQL(builder, params, ctx)
@@ -279,6 +320,9 @@ type TableSource struct {
 func (s *TableSource) isTableExpression() {}
 
 func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	// Track primary table
 	if ctx != nil {
 		if ctx.PrimaryTable == "" {
@@ -319,6 +363,9 @@ type JoinExpr struct {
 }
 
 func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	// Track joined table in context
 	if ctx != nil {
 		if ctx.JoinedTables == nil {

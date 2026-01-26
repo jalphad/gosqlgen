@@ -40,6 +40,9 @@ func (s *SelectStatement) GetJoinedTables() []string {
 }
 
 func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	s.context = ctx
 	builder.WriteString("SELECT ")
 	if len(s.SelectList) > 0 {

@@ -12,6 +12,9 @@ type QueryContext struct {
 
 	// ColumnReferences tracks all column references
 	ColumnReferences []ColumnReference
+
+	// Error tracks any errors that occur during SQL generation
+	Error error
 }
 
 type ColumnReference struct {

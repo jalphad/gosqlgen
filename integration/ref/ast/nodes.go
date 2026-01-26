@@ -17,6 +17,9 @@ func NewColumnNode(table, column string) *ColumnNode {
 }
 
 func (n *ColumnNode) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	// Track column reference in context
 	if ctx != nil {
 		ctx.ColumnReferences = append(ctx.ColumnReferences, ColumnReference{
@@ -37,6 +40,9 @@ func NewLiteralExpression(val any) *LiteralNode {
 type LiteralNode ExpressionNode
 
 func (n *LiteralNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	*params = append(*params, n.Literal)
 	builder.WriteString(fmt.Sprintf("$%d", len(*params)))
 }
@@ -44,6 +50,9 @@ func (n *LiteralNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 type UnaryNode ExpressionNode
 
 func (n *UnaryNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	builder.WriteString(n.Op + " ")
 	n.Args[0].toSQL(builder, params, ctx)
 }
@@ -51,6 +60,9 @@ func (n *UnaryNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCon
 type BinaryNode ExpressionNode
 
 func (n *BinaryNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	left := n.Args[0]
 	right := n.Args[1]
 	if _, ok := right.(*BinaryNode); ok {
@@ -78,6 +90,9 @@ func NewFunctionNode(op string, args []Expression, fn RenderFunc) *FunctionNode 
 }
 
 func (n *FunctionNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
 	if n.renderFn == nil {
 		n.renderFn = FunctionDefaultRender
 	}
@@ -100,6 +115,15 @@ type ColumnRef struct {
 type RenderFunc func(ExpressionNode, *strings.Builder, *[]any, *QueryContext)
 
 func FunctionDefaultRender(node ExpressionNode, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(node.Args) == 0 {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("function %q has no arguments", node.Op)
+		}
+		return
+	}
 	builder.WriteString(node.Op + "(")
 	for i := 0; i < len(node.Args)-1; i++ {
 		node.Args[i].toSQL(builder, params, ctx)
