@@ -24,7 +24,7 @@ func main() {
 			query.Desc(users.Username())).
 		Limit(20).Offset(20)
 
-	sql := qry.ToSql()
+	sql, _ := qry.ToSql()
 	fmt.Println(sql) // SELECT users.id, users.username FROM users AS users WHERE users.email LIKE $1 AND users.is_active = $2
 	//fmt.Println(params) // [%@corp.com true]
 
