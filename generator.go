@@ -181,7 +181,7 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 
 		// Set import path for AST package
 		// For integration test, we use: github.com/jalphad/gosqlgen/integration/output/query/ast
-		data.ImportPath = "github.com/jalphad/gosqlgen/integration/output/query/ast"
+		data.PackagePath = "github.com/jalphad/gosqlgen/integration/output"
 
 		// Render template
 		content, err := templates.RenderColumnExpressions(data)

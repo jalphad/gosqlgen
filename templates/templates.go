@@ -110,7 +110,7 @@ type TableStructData struct {
 	NonSequenceColumns []StructField
 	PrimaryKeys        []string
 	PrimaryKeyFields   []string
-	ImportPath         string
+	PackagePath        string
 }
 
 // StructField represents a field in generated struct
