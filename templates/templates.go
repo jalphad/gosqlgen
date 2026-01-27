@@ -37,14 +37,16 @@ var collectionLoadersTemplate string
 //go:embed query/ast
 var astTemplates embed.FS
 
-//go:embed query/dtos/gen_dtos.tmpl
+//go:embed query/builder
+var builderTemplates embed.FS
+
+//go:embed query/dtos/dtos.tmpl
 var genDtosTemplate string
 
 // DtosPackageData contains data for rendering DTOs package
 type DtosPackageData struct {
-	ImportPath     string
 	DtoPackagePath string
-	Tables         []DtosTableData
+	Table          DtosTableData
 }
 
 // DtosTableData contains data for a single DTOs collection
@@ -56,9 +58,10 @@ type DtosTableData struct {
 
 // DtosColumnData contains data for a column in DTOs
 type DtosColumnData struct {
-	FieldName string
-	GoType    string
-	IsPointer bool
+	FieldName  string
+	ColumnName string
+	GoType     string
+	IsPointer  bool
 }
 
 // QueryBuilderData contains data for rendering to query builder template
@@ -460,26 +463,45 @@ func RenderASTPackage() (map[string]string, error) {
 			return nil, fmt.Errorf("failed to read ast file %s: %w", filename, err)
 		}
 
-		files[fmt.Sprintf("query/ast/%s.gen.go", strings.TrimSuffix(filename, ".tmpl"))] = string(content)
+		files[fmt.Sprintf("%s/%s.gen.go", basedir, strings.TrimSuffix(filename, ".tmpl"))] = string(content)
+	}
+
+	return files, nil
+}
+
+// RenderQueryBuilderPackage renders all AST package files
+func RenderQueryBuilderPackage() (map[string]string, error) {
+	files := make(map[string]string)
+
+	basedir := "query/builder"
+	dirEntries, err := builderTemplates.ReadDir(basedir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range dirEntries {
+		filename := entry.Name()
+		content, err := builderTemplates.ReadFile(path.Join(basedir, filename))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ast file %s: %w", filename, err)
+		}
+
+		files[fmt.Sprintf("%s/%s.gen.go", basedir, strings.TrimSuffix(filename, ".tmpl"))] = string(content)
 	}
 
 	return files, nil
 }
 
 // RenderDtosPackage renders the DTOs package file
-func RenderDtosPackage(data DtosPackageData) (map[string]string, error) {
+func RenderDtosPackage(buf *bytes.Buffer, data DtosPackageData) error {
 	t, err := template.New("dtos").Parse(genDtosTemplate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse dtos template: %w", err)
+		return fmt.Errorf("failed to parse dtos template: %w", err)
 	}
 
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("failed to execute dtos template: %w", err)
+	if err := t.Execute(buf, data); err != nil {
+		return fmt.Errorf("failed to execute dtos template: %w", err)
 	}
 
-	files := make(map[string]string)
-	files["query/dtos/dtos.gen.go"] = buf.String()
-
-	return files, nil
+	return nil
 }

@@ -142,6 +142,15 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = content
 	}
 
+	// Generate query Builder package
+	builderFiles, err := templates.RenderQueryBuilderPackage()
+	if err != nil {
+		return nil, err
+	}
+	for filename, content := range builderFiles {
+		files[filename] = content
+	}
+
 	// Generate DTOs package
 	if err := g.generateDtosPackage(files); err != nil {
 		return nil, err
@@ -210,9 +219,10 @@ func (g *Generator) generateDtosPackage(files map[string]string) error {
 			}
 
 			columns = append(columns, templates.DtosColumnData{
-				FieldName: fieldName,
-				GoType:    goType,
-				IsPointer: isPointer,
+				FieldName:  fieldName,
+				ColumnName: col.Name,
+				GoType:     goType,
+				IsPointer:  isPointer,
 			})
 		}
 
@@ -226,23 +236,25 @@ func (g *Generator) generateDtosPackage(files map[string]string) error {
 	// Prepare template data
 	// The import path needs to be the base module path (without /ast)
 	// For integration test, we use: github.com/jalphad/gosqlgen/integration/output/query
-	importPath := "github.com/jalphad/gosqlgen/integration/output/query"
-	dtoPackagePath := "github.com/jalphad/gosqlgen/integration/output"
-	data := templates.DtosPackageData{
-		ImportPath:     importPath,
-		DtoPackagePath: dtoPackagePath,
-		Tables:         tables,
-	}
+	dtoPackagePath := "github.com/jalphad/gosqlgen/output"
 
 	// Render template
-	dtosFiles, err := templates.RenderDtosPackage(data)
-	if err != nil {
-		return fmt.Errorf("failed to render dtos package: %w", err)
-	}
-
-	// Add generated files to map
-	for filename, content := range dtosFiles {
-		files[filename] = content
+	for _, table := range tables {
+		data := templates.DtosPackageData{
+			DtoPackagePath: dtoPackagePath,
+			Table:          table,
+		}
+		var buf bytes.Buffer
+		err := templates.RenderDtosPackage(&buf, data)
+		if err != nil {
+			return fmt.Errorf("failed to render dtos package: %w", err)
+		}
+		filename := fmt.Sprintf("query/dtos/%s.gen.go", table.TableName)
+		formatted, err := g.format(filename, buf.Bytes())
+		if err != nil {
+			return fmt.Errorf("failed to format dtos package: %w", err)
+		}
+		files[filename] = string(formatted)
 	}
 
 	return nil
