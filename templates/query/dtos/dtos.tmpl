@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	database "{{ .DtoPackagePath }}"
-	"{{ .DtoPackagePath }}/query/ast"
+	"{{ .PackagePath }}/models"
+	"{{ .PackagePath }}/query/ast"
 )
 {{ with .Table }}
 // {{ .StructName }}s is a collection of {{ .StructName }} DTOs used for bulk operations
-type {{ .StructName }}s []*database.{{ .StructName }}
+type {{ .StructName }}s []*models.{{ .StructName }}
 {{ $structName := .StructName }}
 {{- range .Columns }}
 // {{ .FieldName }} returns a slice of all {{ .FieldName }} values from the collection

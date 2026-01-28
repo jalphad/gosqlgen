@@ -45,8 +45,8 @@ var genDtosTemplate string
 
 // DtosPackageData contains data for rendering DTOs package
 type DtosPackageData struct {
-	DtoPackagePath string
-	Table          DtosTableData
+	PackagePath string
+	Table       DtosTableData
 }
 
 // DtosTableData contains data for a single DTOs collection
@@ -207,7 +207,9 @@ type JoinData struct {
 
 // DBWrapperData contains data for rendering to DB wrapper template
 type DBWrapperData struct {
-	Tables []TableMethod
+	Tables      []TableMethod
+	PackagePath string
+	PackageName string
 }
 
 // TableMethod represents a table method in to DB wrapper
@@ -470,7 +472,7 @@ func RenderASTPackage() (map[string]string, error) {
 }
 
 // RenderQueryBuilderPackage renders all AST package files
-func RenderQueryBuilderPackage() (map[string]string, error) {
+func RenderQueryBuilderPackage(packagePath string) (map[string]string, error) {
 	files := make(map[string]string)
 
 	basedir := "query/builder"
@@ -480,13 +482,25 @@ func RenderQueryBuilderPackage() (map[string]string, error) {
 	}
 
 	for _, entry := range dirEntries {
-		filename := entry.Name()
-		content, err := builderTemplates.ReadFile(path.Join(basedir, filename))
+		fileName := entry.Name()
+		filePath := path.Join(basedir, fileName)
+
+		// Parse template and execute with package path
+		tmpl, err := template.New(fileName).ParseFS(builderTemplates, filePath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read ast file %s: %w", filename, err)
+			return nil, fmt.Errorf("failed to parse template %s: %w", fileName, err)
 		}
 
-		files[fmt.Sprintf("%s/%s.gen.go", basedir, strings.TrimSuffix(filename, ".tmpl"))] = string(content)
+		data := map[string]any{
+			"PackagePath": packagePath,
+		}
+
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, data); err != nil {
+			return nil, fmt.Errorf("failed to execute template %s: %w", fileName, err)
+		}
+
+		files[fmt.Sprintf("%s/%s.gen.go", basedir, strings.TrimSuffix(fileName, ".tmpl"))] = buf.String()
 	}
 
 	return files, nil

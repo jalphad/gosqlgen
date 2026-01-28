@@ -14,6 +14,7 @@ type SQLGen struct {
 	generator   *Generator
 	packageName string
 	outputPath  string
+	packagePath string
 }
 
 // New creates a new SQLGen instance
@@ -26,6 +27,7 @@ func New() *SQLGen {
 		generator:   generator,
 		packageName: "models",
 		outputPath:  "./models",
+		packagePath: "example.local/example",
 	}
 }
 
@@ -42,6 +44,13 @@ func (s *SQLGen) WithOutputPath(path string) *SQLGen {
 	return s
 }
 
+// WithPackagePath sets the package path for generated imports
+func (s *SQLGen) WithPackagePath(path string) *SQLGen {
+	s.packagePath = path
+	s.generator.SetPackagePath(path)
+	return s
+}
+
 // ParseFile parses SQL from a file
 func (s *SQLGen) ParseFile(filename string) error {
 	content, err := os.ReadFile(filename)
@@ -55,11 +64,6 @@ func (s *SQLGen) ParseFile(filename string) error {
 // Parse parses SQL statements
 func (s *SQLGen) Parse(sql string) error {
 	return s.parser.Parse(sql)
-}
-
-// Generate generates Go code from parsed SQL and returns it as a string
-func (s *SQLGen) Generate() (string, error) {
-	return s.generator.Generate()
 }
 
 // GenerateFiles generates Go code from parsed SQL as separate files
@@ -80,27 +84,6 @@ func (s *SQLGen) GenerateFiles() error {
 		if err := os.WriteFile(filepath.Join(s.outputPath, filename), []byte(content), 0644); err != nil {
 			return fmt.Errorf("failed to write file %s: %w", filename, err)
 		}
-	}
-
-	return nil
-}
-
-// GenerateToFile generates Go code and writes it to a file
-func (s *SQLGen) GenerateToFile(filename string) error {
-	code, err := s.generator.Generate()
-	if err != nil {
-		return fmt.Errorf("failed to generate code: %w", err)
-	}
-
-	// Create output directory if it doesn't exist
-	dir := filepath.Dir(filename)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
-	}
-
-	// Write generated code to file
-	if err := os.WriteFile(filename, []byte(code), 0644); err != nil {
-		return fmt.Errorf("failed to write file %s: %w", filename, err)
 	}
 
 	return nil

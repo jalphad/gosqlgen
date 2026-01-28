@@ -17,6 +17,7 @@ import (
 type Generator struct {
 	parser      *parser.Parser
 	packageName string
+	packagePath string
 	imports     map[string]bool
 }
 
@@ -25,6 +26,7 @@ func NewGenerator(parser *parser.Parser) *Generator {
 	return &Generator{
 		parser:      parser,
 		packageName: "models",
+		packagePath: "example.local/example",
 		imports: map[string]bool{
 			"context":                         true,
 			"fmt":                             true,
@@ -43,6 +45,11 @@ func (g *Generator) SetPackageName(name string) {
 	g.packageName = name
 }
 
+// SetPackagePath sets the package path for generated imports
+func (g *Generator) SetPackagePath(path string) {
+	g.packagePath = path
+}
+
 // GenerateFiles generates Go code for all parsed tables as separate files
 // Returns a map of filename to file content
 func (g *Generator) GenerateFiles() (map[string]string, error) {
@@ -51,12 +58,6 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 
 	// Generate common.gen.go with utility types
 	commonBuf := bytes.Buffer{}
-	if _, err := fmt.Fprintf(&commonBuf, "package %s\n\n", g.packageName); err != nil {
-		return nil, err
-	}
-	if err := g.writeImports(&commonBuf); err != nil {
-		return nil, err
-	}
 	if err := g.generateCommonTypes(&commonBuf); err != nil {
 		return nil, err
 	}
@@ -65,22 +66,11 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	files["common.gen.go"] = string(formatted)
+	files["models/common.gen.go"] = string(formatted)
 
 	// Generate a file for each table
 	for _, table := range g.parser.GetTables() {
 		tableBuf := bytes.Buffer{}
-
-		// Package declaration
-		if _, err = fmt.Fprintf(&tableBuf, "package %s\n\n", g.packageName); err != nil {
-			return nil, err
-		}
-
-		// Imports for table file
-		if err = g.writeImports(&tableBuf); err != nil {
-			return nil, err
-		}
-
 		// Table struct
 		if err := g.generateTableStruct(&tableBuf, table); err != nil {
 			return nil, err
@@ -102,8 +92,8 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		//}
 
 		// Format to generated code
-		filename := fmt.Sprintf("%s.gen.go", table.Name)
-		formatted, err := g.format(filename, tableBuf.Bytes())
+		filename := fmt.Sprintf("models/%s.gen.go", table.Name)
+		formatted, err = g.format(filename, tableBuf.Bytes())
 		if err != nil {
 			return nil, err
 		}
@@ -112,12 +102,6 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 
 	// Generate db.gen.go for database wrapper
 	dbBuf := bytes.Buffer{}
-	if _, err := fmt.Fprintf(&dbBuf, "package %s\n\n", g.packageName); err != nil {
-		return nil, err
-	}
-	if err = g.writeImports(&dbBuf); err != nil {
-		return nil, err
-	}
 	if err = g.generateDatabaseWrapper(&dbBuf); err != nil {
 		return nil, err
 	}
@@ -143,7 +127,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	}
 
 	// Generate query Builder package
-	builderFiles, err := templates.RenderQueryBuilderPackage()
+	builderFiles, err := templates.RenderQueryBuilderPackage(g.packagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +136,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	}
 
 	// Generate DTOs package
-	if err := g.generateDtosPackage(files); err != nil {
+	if err := g.generateDtosPackage(g.packagePath, files); err != nil {
 		return nil, err
 	}
 
@@ -198,7 +182,7 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 }
 
 // generateDtosPackage generates the DTOs package file
-func (g *Generator) generateDtosPackage(files map[string]string) error {
+func (g *Generator) generateDtosPackage(packagePath string, files map[string]string) error {
 	// Prepare table data for DTOs
 	tables := make([]templates.DtosTableData, 0, len(g.parser.GetTables()))
 
@@ -233,16 +217,11 @@ func (g *Generator) generateDtosPackage(files map[string]string) error {
 		})
 	}
 
-	// Prepare template data
-	// The import path needs to be the base module path (without /ast)
-	// For integration test, we use: github.com/jalphad/gosqlgen/integration/output/query
-	dtoPackagePath := "github.com/jalphad/gosqlgen/output"
-
 	// Render template
 	for _, table := range tables {
 		data := templates.DtosPackageData{
-			DtoPackagePath: dtoPackagePath,
-			Table:          table,
+			PackagePath: packagePath,
+			Table:       table,
 		}
 		var buf bytes.Buffer
 		err := templates.RenderDtosPackage(&buf, data)
@@ -256,82 +235,6 @@ func (g *Generator) generateDtosPackage(files map[string]string) error {
 		}
 		files[filename] = string(formatted)
 	}
-
-	return nil
-}
-
-// Generate generates Go code for all parsed tables (backward compatibility)
-// Returns all code in a single string
-func (g *Generator) Generate() (string, error) {
-	var buf bytes.Buffer
-
-	// Write package declaration
-	if _, err := fmt.Fprintf(&buf, "package %s\n\n", g.packageName); err != nil {
-		return "", err
-	}
-
-	// Write imports
-	if err := g.writeImports(&buf); err != nil {
-		return "", err
-	}
-
-	// Generate common types
-	if err := g.generateCommonTypes(&buf); err != nil {
-		return "", err
-	}
-
-	// Generate structs for each table
-	for _, table := range g.parser.GetTables() {
-		if err := g.generateTableStruct(&buf, table); err != nil {
-			return "", err
-		}
-	}
-
-	// Generate field references for type safety
-	//for _, table := range g.parser.GetTables() {
-	//	if err := g.generateFieldReferences(&buf, table); err != nil {
-	//		return "", err
-	//	}
-	//}
-
-	// Generate query builders with type-safe methods
-	//for _, table := range g.parser.GetTables() {
-	//	if err := g.generateTypeSafeQueryBuilder(&buf, table); err != nil {
-	//		return "", err
-	//	}
-	//}
-
-	// Generate join builders
-	//for _, table := range g.parser.GetTables() {
-	//	if err := g.generateJoinBuilders(&buf, table); err != nil {
-	//		return "", err
-	//	}
-	//}
-
-	// Generate database wrapper
-	if err := g.generateDatabaseWrapper(&buf); err != nil {
-		return "", err
-	}
-
-	// Format the generated code
-	fmtOptions := format.Options{}
-	formatted, err := format.Source(buf.Bytes(), fmtOptions)
-	if err != nil {
-		return "", fmt.Errorf("failed to format generated code: %w", err)
-	}
-
-	return string(formatted), nil
-}
-
-// writeImports writes import statements
-func (g *Generator) writeImports(buf *bytes.Buffer) error {
-	buf.WriteString("import (\n")
-	for imp := range g.imports {
-		if _, err := fmt.Fprintf(buf, "\t\"%s\"\n", imp); err != nil {
-			return err
-		}
-	}
-	buf.WriteString(")\n\n")
 
 	return nil
 }
@@ -364,6 +267,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 		NonSequenceColumns: make([]templates.StructField, 0),
 		PrimaryKeys:        make([]string, 0),
 		PrimaryKeyFields:   make([]string, 0),
+		PackagePath:        g.packagePath,
 	}
 
 	for _, col := range table.Columns {
@@ -780,7 +684,9 @@ func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *parser.Table)
 func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 	// Prepare template data
 	data := templates.DBWrapperData{
-		Tables: make([]templates.TableMethod, 0, len(g.parser.GetTables())),
+		Tables:      make([]templates.TableMethod, 0, len(g.parser.GetTables())),
+		PackagePath: g.packagePath,
+		PackageName: g.packageName,
 	}
 
 	// Generate methods for each table

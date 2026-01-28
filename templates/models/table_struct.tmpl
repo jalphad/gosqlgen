@@ -1,3 +1,18 @@
+package models
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"{{ .PackagePath }}/query/ast"
+)
+
 // {{ .StructName }} represents the {{ .TableName }} table
 type {{ .StructName }} struct {
 {{- range .Fields }}
@@ -89,23 +104,44 @@ func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(row pgx.Row, stmt ast.Sql
                 jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
             }
         }
-    } else if selectStmt, ok := stmt.(*ast.SelectStatement); ok {
+    } else {
         // Default behavior - scan all table columns + joined tables
         {{- range .Fields }}
         scanDest = append(scanDest, &{{ $.ReceiverName }}.{{ .FieldName }})
         {{- end }}
 
-	{{- if .JoinedFields }}
-        // Add joined table columns if active
+	{{- if or .JoinedFields .ReverseRelFields .ManyToManyFields }}
+        // Add joined table columns
+        ctx := stmt.GetQueryContext()
+        if ctx != nil && ctx.JoinedTables != nil {
         {{- range $fk := .JoinedFields }}
-        if slices.Contains(selectStmt.GetJoinedTables(), "{{ $fk.ReferencedTable }}") {
-            joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
-            {{- range $fk.ReferencedColumns }}
-            scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
-            {{- end }}
-            {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
-        }
+            if _, ok := ctx.JoinedTables["{{ .ReferencedTable }}"]; ok {
+                joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
+                {{- range $fk.ReferencedColumns }}
+                scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
+                {{- end }}
+                {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
+            }
         {{- end }}
+        {{- range $fk := .ReverseRelFields }}
+            if _, ok := ctx.JoinedTables["{{ .FromTable }}"]; ok {
+                joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
+                {{- range $fk.ReferencedColumns }}
+                scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
+                {{- end }}
+                {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
+            }
+        {{- end }}
+        {{- range $fk := .ManyToManyFields }}
+            if _, ok := ctx.JoinedTables["{{ .FromTable }}"]; ok {
+                joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
+                {{- range $fk.ReferencedColumns }}
+                scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
+                {{- end }}
+                {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
+            }
+        {{- end }}
+        }
         {{- end }}
     }
 

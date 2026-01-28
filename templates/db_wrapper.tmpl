@@ -1,3 +1,15 @@
+package {{ .PackageName }}
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"{{ .PackagePath }}/models"
+	"{{ .PackagePath }}/query/builder"
+	"{{ .PackagePath }}/query/dtos"
+)
+
 // DB wraps the database connection pool
 type DB struct {
 	pool *pgxpool.Pool
@@ -11,7 +23,7 @@ func NewDB(pool *pgxpool.Pool) *DB {
 {{- range .Tables }}
 
 // {{ .MethodName }} returns a query builder for {{ .TableName }}
-func (db *DB) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
+func (db *DB) {{ .MethodName }}() *builder.KnownTableBuilder[dtos.{{ .StructName }}s, models.{{ .StructName }}, *models.{{ .StructName }}] {
 	return New{{ .BuilderName }}(db.pool)
 }
 {{- end }}
@@ -37,7 +49,7 @@ func NewTx(tx pgx.Tx) *Tx {
 {{- range .Tables }}
 
 // {{ .MethodName }} returns a query builder within the transaction
-func (tx *Tx) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
+func (tx *Tx) {{ .MethodName }}() builder.KnownTableStartQuery[dtos.{{ .StructName }}s, models.{{ .StructName }}, *models.{{ .StructName }}] {
 	q := New{{ .BuilderName }}(nil)
 	return q.WithTx(tx.tx)
 }
@@ -46,7 +58,7 @@ func (tx *Tx) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}, 
 {{- range .Tables }}
 
 // New{{ .BuilderName }} returns a query builder for {{ .TableName }}
-func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
-	return builder.NewKnownTableBuilder(&{{ .StructName }}{}, pool)
+func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[dtos.{{ .StructName }}s, models.{{ .StructName }}, *models.{{ .StructName }}] {
+	return builder.NewKnownTableBuilder(dtos.{{ .StructName }}s{}, pool)
 }
 {{- end }}

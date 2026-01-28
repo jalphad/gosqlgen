@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jalphad/gosqlgen/integration/ref/ast"
+	"{{ .PackagePath }}/query/ast"
 )
 
 type SelectQuery[O any] interface {
