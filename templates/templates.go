@@ -28,10 +28,10 @@ var fieldReferencesTemplate string
 //go:embed join_builders.tmpl
 var joinBuildersTemplate string
 
-//go:embed db_wrapper.tmpl
+//go:embed models/db_wrapper.tmpl
 var dbWrapperTemplate string
 
-//go:embed collection_loaders.tmpl
+//go:embed models/collection_loaders.tmpl
 var collectionLoadersTemplate string
 
 //go:embed query/ast
@@ -40,13 +40,12 @@ var astTemplates embed.FS
 //go:embed query/builder
 var builderTemplates embed.FS
 
-//go:embed query/dtos/dtos.tmpl
+//go:embed models/dtos.tmpl
 var genDtosTemplate string
 
 // DtosPackageData contains data for rendering DTOs package
 type DtosPackageData struct {
-	PackagePath string
-	Table       DtosTableData
+	Table DtosTableData
 }
 
 // DtosTableData contains data for a single DTOs collection

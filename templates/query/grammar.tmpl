@@ -1,6 +1,6 @@
 package query
 
-import ()
+import "{{ .PackagePath }}/query/ast"
 
 func Distinct(expressions ...ast.Expression) *ast.KeywordExpression {
 	return ast.NewKeywordExpression("DISTINCT", expressions...)

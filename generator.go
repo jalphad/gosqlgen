@@ -18,7 +18,6 @@ type Generator struct {
 	parser      *parser.Parser
 	packageName string
 	packagePath string
-	imports     map[string]bool
 }
 
 // NewGenerator creates a new code generator
@@ -27,16 +26,6 @@ func NewGenerator(parser *parser.Parser) *Generator {
 		parser:      parser,
 		packageName: "models",
 		packagePath: "example.local/example",
-		imports: map[string]bool{
-			"context":                         true,
-			"fmt":                             true,
-			"time":                            true,
-			"strings":                         true,
-			"github.com/jackc/pgx/v5":         true,
-			"github.com/jackc/pgx/v5/pgxpool": true,
-			"github.com/jackc/pgx/v5/pgconn":  true,
-			"github.com/google/uuid":          true,
-		},
 	}
 }
 
@@ -76,6 +65,10 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 			return nil, err
 		}
 
+		if err := g.generateDtosType(&tableBuf, table); err != nil {
+			return nil, err
+		}
+
 		// Column references
 		//if err := g.generateFieldReferences(&tableBuf, table); err != nil {
 		//	return nil, err
@@ -110,7 +103,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	files["db.gen.go"] = string(formatted)
+	files["models/db.gen.go"] = string(formatted)
 
 	// Generate table query packages
 	if err := g.generateTableQueryPackages(files); err != nil {
@@ -135,11 +128,6 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = content
 	}
 
-	// Generate DTOs package
-	if err := g.generateDtosPackage(g.packagePath, files); err != nil {
-		return nil, err
-	}
-
 	return files, nil
 }
 
@@ -159,13 +147,10 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 		}
 
 		data := templates.TableStructData{
-			TableName: table.Name,
-			Fields:    fields,
+			TableName:   table.Name,
+			Fields:      fields,
+			PackagePath: g.packagePath,
 		}
-
-		// Set import path for AST package
-		// For integration test, we use: github.com/jalphad/gosqlgen/integration/output/query/ast
-		data.PackagePath = "github.com/jalphad/gosqlgen/integration/output"
 
 		// Render template
 		content, err := templates.RenderColumnExpressions(data)
@@ -181,59 +166,44 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 	return nil
 }
 
-// generateDtosPackage generates the DTOs package file
-func (g *Generator) generateDtosPackage(packagePath string, files map[string]string) error {
-	// Prepare table data for DTOs
-	tables := make([]templates.DtosTableData, 0, len(g.parser.GetTables()))
+// generateDtosType generates the DTOs type
+func (g *Generator) generateDtosType(buf *bytes.Buffer, table *parser.Table) error {
+	baseName := templates.ToPascalCase(table.Name)
+	structName := baseName + "Dto"
 
-	for _, table := range g.parser.GetTables() {
-		baseName := templates.ToPascalCase(table.Name)
-		structName := baseName + "Dto"
+	// Prepare columns data
+	columns := make([]templates.DtosColumnData, 0, len(table.Columns))
+	for _, col := range table.Columns {
+		fieldName := templates.ToPascalCase(col.Name)
+		goType := col.GoType
+		isPointer := col.IsNullable || col.HasDefault || col.IsSequence
 
-		// Prepare columns data
-		columns := make([]templates.DtosColumnData, 0, len(table.Columns))
-		for _, col := range table.Columns {
-			fieldName := templates.ToPascalCase(col.Name)
-			goType := col.GoType
-			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
-
-			// Remove pointer suffix for collection type
-			if isPointer && strings.HasPrefix(goType, "*") {
-				goType = strings.TrimPrefix(goType, "*")
-			}
-
-			columns = append(columns, templates.DtosColumnData{
-				FieldName:  fieldName,
-				ColumnName: col.Name,
-				GoType:     goType,
-				IsPointer:  isPointer,
-			})
+		// Remove pointer suffix for collection type
+		if isPointer && strings.HasPrefix(goType, "*") {
+			goType = strings.TrimPrefix(goType, "*")
 		}
 
-		tables = append(tables, templates.DtosTableData{
-			StructName: structName,
-			TableName:  table.Name,
-			Columns:    columns,
+		columns = append(columns, templates.DtosColumnData{
+			FieldName:  fieldName,
+			ColumnName: col.Name,
+			GoType:     goType,
+			IsPointer:  isPointer,
 		})
 	}
 
+	tableData := templates.DtosTableData{
+		StructName: structName,
+		TableName:  table.Name,
+		Columns:    columns,
+	}
+
 	// Render template
-	for _, table := range tables {
-		data := templates.DtosPackageData{
-			PackagePath: packagePath,
-			Table:       table,
-		}
-		var buf bytes.Buffer
-		err := templates.RenderDtosPackage(&buf, data)
-		if err != nil {
-			return fmt.Errorf("failed to render dtos package: %w", err)
-		}
-		filename := fmt.Sprintf("query/dtos/%s.gen.go", table.TableName)
-		formatted, err := g.format(filename, buf.Bytes())
-		if err != nil {
-			return fmt.Errorf("failed to format dtos package: %w", err)
-		}
-		files[filename] = string(formatted)
+	data := templates.DtosPackageData{
+		Table: tableData,
+	}
+	err := templates.RenderDtosPackage(buf, data)
+	if err != nil {
+		return fmt.Errorf("failed to render dtos package: %w", err)
 	}
 
 	return nil
