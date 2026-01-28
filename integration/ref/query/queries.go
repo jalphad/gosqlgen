@@ -13,7 +13,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
-func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
+func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Insert(
 			users.Username(),
@@ -25,7 +25,7 @@ func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalize
 		Values(dto)
 }
 
-func InsertUsers(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
+func UsersDtoInsertMultiple(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Insert(
 			users.Username(),
@@ -60,7 +60,6 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 }
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-
 	return models.NewQuery(pool, models.UsersDtos{}).
 		Update(
 			Set(users.Username()).To(Val(dto.Username)),
@@ -96,9 +95,71 @@ func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuer
 		Where(users.Id().Eq(Val(userId)))
 }
 
+func UsersDtoSelectById(pool *pgxpool.Pool, id uuid.UUID, opts ...func() *SelectOpt) builder.SelectFinalizeQuery[models.UsersDto] {
+	var toSelect = []ast.NamedExpression{
+		users.Id(),
+	}
+	for _, opt := range opts {
+		toSelect = append(toSelect, opt().selectExpr)
+	}
+
+	partial := models.NewUsersQuery(pool).
+		Select(
+			toSelect...,
+		)
+	for _, opt := range opts {
+		joinExpr := opt().joinExpr
+		partial = partial.Join(joinExpr.Type, joinExpr.Table, joinExpr.Condition)
+	}
+
+	return partial.
+		Where(users.Id().Eq(Val(id))).
+		GroupBy(users.Id())
+}
+
+func UserWithComments() *SelectOpt {
+	alias := ast.NewAlias("comments")
+	return &SelectOpt{
+		selectExpr: Coalesce(
+			JsonAgg(
+				Distinct(JsonbBuildObject(
+					comments.Id(),
+					comments.UserId(),
+					comments.Content(),
+					comments.CreatedAt(),
+				)),
+			),
+		).As(alias),
+		joinExpr: JoinExpr{
+			Type:      ast.JoinLeft,
+			Table:     "comments",
+			Condition: comments.UserId().Eq(users.Id()),
+		},
+	}
+}
+
+func WithPosts() *SelectOpt {
+	alias := ast.NewAlias("posts")
+	return &SelectOpt{
+		selectExpr: Coalesce(
+			JsonAgg(
+				Distinct(JsonbBuildObject(
+					posts.Id(),
+					posts.Title(),
+				)),
+			),
+		).As(alias),
+		joinExpr: JoinExpr{
+			Type:      ast.JoinLeft,
+			Table:     "posts",
+			Condition: posts.UserId().Eq(users.Id()),
+		},
+	}
+}
+
 func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
 	c := ast.NewAlias("comments")
-	return models.NewQuery(pool, models.UsersDtos{}).
+	return models.NewUsersQuery(pool).
 		Select(
 			users.Id(),
 			Coalesce(
