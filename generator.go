@@ -765,10 +765,18 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 		fromStructName := fromTableBaseName + "Dto"
 
 		var fromPKField string
-		for _, col := range reverseRel.FromTable.Columns {
+		fromColumns := make([]templates.Column, len(reverseRel.FromTable.Columns))
+		for i, col := range reverseRel.FromTable.Columns {
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
+			fromColumns[i] = templates.Column{
+				ColumnName: col.Name,
+				FieldName:  templates.ToPascalCase(col.Name),
+				GoType:     col.GoType,
+				IsNullable: col.IsNullable,
+				IsPointer:  isPointer,
+			}
 			if col.IsPrimary {
 				fromPKField = templates.ToPascalCase(col.Name)
-				break
 			}
 		}
 
@@ -779,6 +787,7 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 			FromTable:   reverseRel.FromTable.Name,
 			FKColumn:    reverseRel.FKColumn,
 			FromPKField: fromPKField,
+			FromColumns: fromColumns,
 		})
 	}
 

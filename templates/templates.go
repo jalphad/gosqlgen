@@ -145,12 +145,13 @@ type ReverseRelLoaderField struct {
 
 // ReverseRelField represents a reverse one-to-many relationship field
 type ReverseRelField struct {
-	FieldName   string // e.g., "Posts"
-	GoType      string // e.g., "[]*PostsDto"
-	StructName  string // "PostsDto"
-	FromTable   string // e.g., "posts"
-	FKColumn    string // e.g., "user_id"
-	FromPKField string // e.g., "Id"
+	FieldName   string   // e.g., "Posts"
+	GoType      string   // e.g., "[]*PostsDto"
+	StructName  string   // "PostsDto"
+	FromTable   string   // e.g., "posts"
+	FKColumn    string   // e.g., "user_id"
+	FromPKField string   // e.g., "Id"
+	FromColumns []Column //columns in the other table
 }
 
 // ManyToManyField represents a many-to-many relationship field

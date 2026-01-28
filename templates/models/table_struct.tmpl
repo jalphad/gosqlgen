@@ -125,20 +125,11 @@ func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(row pgx.Row, stmt ast.Sql
         {{- end }}
         {{- range $fk := .ReverseRelFields }}
             if _, ok := ctx.JoinedTables["{{ .FromTable }}"]; ok {
-                joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
-                {{- range $fk.ReferencedColumns }}
+                joined{{ $fk.FieldName }} := {{ $fk.StructName }}{}
+                {{- range $fk.FromColumns }}
                 scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
                 {{- end }}
-                {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
-            }
-        {{- end }}
-        {{- range $fk := .ManyToManyFields }}
-            if _, ok := ctx.JoinedTables["{{ .FromTable }}"]; ok {
-                joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
-                {{- range $fk.ReferencedColumns }}
-                scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
-                {{- end }}
-                {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
+                {{ $.ReceiverName }}.{{ $fk.FieldName }} = []{{ $fk.StructName }}{joined{{ $fk.FieldName }}}
             }
         {{- end }}
         }
