@@ -41,7 +41,6 @@ func (e *ErrorExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryCo
 
 // Expression represents any SQL Expression (binary, unary, function, literal).
 type Expression interface {
-	// TODO: refactor to allow returning an error
 	toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext)
 }
 type expression = Expression

@@ -54,6 +54,9 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	}
 	if len(s.SelectList) > 0 {
 		for i := 0; i < len(s.SelectList)-1; i++ {
+			if s.SelectList[i] == nil {
+				continue
+			}
 			s.SelectList[i].toSQL(builder, params, ctx)
 			builder.WriteString(", ")
 		}

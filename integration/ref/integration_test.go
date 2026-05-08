@@ -144,7 +144,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		}
 
 		// Act
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		//err := testDB.Users().Insert(context.Background(), user)
 
 		// Assert
@@ -174,7 +174,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		}
 
 		// Act
-		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
+		err := query.UsersDtoInsertMultiple(testDB.pool, user, user2).Exec(context.Background())
 		//err := testDB.Users().Insert(context.Background(), user)
 
 		// Assert
@@ -191,7 +191,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "janedoe",
 			Email:    "jane@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -217,7 +217,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "updateme",
 			Email:    "update@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated@example.com"
@@ -249,7 +249,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "updateme2",
 			Email:    "update2@example.com",
 		}
-		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
+		err := query.UsersDtoInsertMultiple(testDB.pool, user, user2).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated1@example.com"
@@ -288,7 +288,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -321,7 +321,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			UpdatedAt: timePtr(time.Now()),
 		}
 
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated@conflict.example.com"
@@ -357,7 +357,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Email:    "updateme@returning.example.com",
 			FullName: &fullName,
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated@returning.example.com"
@@ -385,7 +385,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -802,7 +802,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	// Setup test data
 	user1 := &models.UsersDto{Username: "author1", Email: "author1@example.com"}
 	user2 := &UsersDto{Username: "author2", Email: "author2@example.com"}
-	query.InsertUser(testDB.pool, user1).Exec(context.Background())
+	query.UsersDtoInsertOne(testDB.pool, user1).Exec(context.Background())
 	//testDB.Users().Insert(context.Background(), user1)
 	testDB.Users().Insert(context.Background(), user2)
 
@@ -882,7 +882,8 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
-		user, err := query.RetrieveUserWithComments(*user1.Id, testDB.pool).FindOne(context.Background())
+		user, err := query.UsersDtoSelectById(testDB.pool, *user1.Id,
+			query.UserWithComments, query.WithPosts).FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
@@ -1332,7 +1333,7 @@ func TestContextTracking(t *testing.T) {
 			Username: "sqlverify",
 			Email:    "sqlverify@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, user.Id)
 
