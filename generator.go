@@ -69,21 +69,6 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 			return nil, err
 		}
 
-		// Column references
-		//if err := g.generateFieldReferences(&tableBuf, table); err != nil {
-		//	return nil, err
-		//}
-
-		// Query builder
-		//if err := g.generateTypeSafeQueryBuilder(&tableBuf, table); err != nil {
-		//	return nil, err
-		//}
-
-		// Join builders
-		//if err := g.generateJoinBuilders(&tableBuf, table); err != nil {
-		//	return nil, err
-		//}
-
 		// Format to generated code
 		filename := fmt.Sprintf("models/%s.gen.go", table.Name)
 		formatted, err = g.format(filename, tableBuf.Bytes())
@@ -128,7 +113,131 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = content
 	}
 
+	// Generate query package helper files
+	if err := g.generateQueryPackageHelpers(files); err != nil {
+		return nil, err
+	}
+
 	return files, nil
+}
+
+// generateQueryPackageHelpers generates functions.gen.go, grammar.gen.go, helpers.gen.go, queries.gen.go
+func (g *Generator) generateQueryPackageHelpers(files map[string]string) error {
+	// Generate functions.gen.go
+	funcData := templates.QueryFunctionsData{
+		PackagePath: g.packagePath,
+	}
+	content, err := templates.RenderQueryFunctions(funcData)
+	if err != nil {
+		return fmt.Errorf("failed to render query functions: %w", err)
+	}
+	fileName := "functions.gen.go"
+	content, err = g.format(fileName, content)
+	if err != nil {
+		return err
+	}
+	files["query/functions.gen.go"] = string(content)
+
+	// Generate grammar.gen.go
+	grammarData := templates.QueryGrammarData{
+		PackagePath: g.packagePath,
+	}
+	content, err = templates.RenderQueryGrammar(grammarData)
+	if err != nil {
+		return fmt.Errorf("failed to render query grammar: %w", err)
+	}
+	files["query/grammar.gen.go"] = string(content)
+
+	// Generate helpers.gen.go
+	helpersData := templates.QueryHelpersData{
+		PackagePath: g.packagePath,
+	}
+	content, err = templates.RenderQueryHelpers(helpersData)
+	if err != nil {
+		return fmt.Errorf("failed to render query helpers: %w", err)
+	}
+	files["query/helpers.gen.go"] = string(content)
+
+	// Generate queries.gen.go
+	if err = g.generateQueryFunctions(files); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// generateQueryFunctions generates InsertOne and InsertMany functions for each table
+func (g *Generator) generateQueryFunctions(files map[string]string) error {
+	tables := make([]templates.QueryTableData, 0, len(g.parser.GetTables()))
+
+	for _, table := range g.parser.GetTables() {
+		baseName := templates.ToPascalCase(table.Name)
+		structName := baseName + "Dto"
+		packageName := table.Name
+		receiverName := strings.ToLower(baseName[0:1])
+
+		// Collect ALL primary key columns (support composite PKs)
+		primaryKeyFields := make([]string, 0)
+		for _, col := range table.Columns {
+			if col.IsPrimary {
+				primaryKeyFields = append(primaryKeyFields, templates.ToPascalCase(col.Name))
+			}
+		}
+
+		// Filter columns for INSERT:
+		// - Exclude sequence columns (SERIAL/BIGSERIAL)
+		// - Exclude columns with default values
+		// - INCLUDE nullable columns (nil values will insert NULL)
+		insertColumns := make([]templates.QueryColumn, 0)
+		for _, col := range table.Columns {
+			// Skip if:
+			// 1. Column is a sequence (SERIAL/BIGSERIAL)
+			if col.IsSequence {
+				continue
+			}
+			// 2. Column has a DEFAULT value
+			if col.HasDefault {
+				continue
+			}
+
+			fieldName := templates.ToPascalCase(col.Name)
+			insertColumns = append(insertColumns, templates.QueryColumn{
+				FieldName:  fieldName,
+				ColumnName: col.Name,
+				GoType:     col.GoType,
+			})
+		}
+
+		tables = append(tables, templates.QueryTableData{
+			PackageName:      packageName,
+			TableName:        table.Name,
+			StructName:       structName,
+			ReceiverName:     receiverName,
+			InsertColumns:    insertColumns,
+			PrimaryKeyFields: primaryKeyFields,
+		})
+	}
+	sort.Slice(tables, func(i, j int) bool {
+		return tables[i].StructName < tables[j].StructName
+	})
+
+	data := templates.QueryQueriesData{
+		PackagePath: g.packagePath,
+		Tables:      tables,
+	}
+
+	content, err := templates.RenderQueryQueries(data)
+	if err != nil {
+		return fmt.Errorf("failed to render queries package: %w", err)
+	}
+	fileName := "queries.go"
+	content, err = g.format(fileName, content)
+	if err != nil {
+		return fmt.Errorf("failed to format %s: %w", fileName, err)
+	}
+	files["query/"+fileName] = string(content)
+
+	return nil
 }
 
 // generateTableQueryPackages generates per-table query packages
@@ -410,243 +519,6 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 		buf.WriteString("\n")
 	}
 
-	return nil
-}
-
-// generateFieldReferences generates type-safe field references
-func (g *Generator) generateFieldReferences(buf *bytes.Buffer, table *parser.Table) error {
-	baseName := templates.ToPascalCase(table.Name)
-	structName := baseName + "Dto"
-	fieldsTypeName := baseName + "Fields"
-	receiverName := strings.ToLower(fieldsTypeName[0:1])
-
-	// Prepare template data
-	data := templates.FieldReferencesData{
-		BaseName:         baseName,
-		StructName:       structName,
-		TableName:        table.Name,
-		FieldsTypeName:   fieldsTypeName,
-		ReceiverName:     receiverName,
-		Fields:           make([]templates.FieldRefData, 0, len(table.Columns)),
-		ReverseRelations: g.reverseRelations(table),
-		ManyToManyRels:   g.manyToManyRelations(table),
-	}
-
-	for _, col := range table.Columns {
-		fieldName := templates.ToPascalCase(col.Name)
-		data.Fields = append(data.Fields, templates.FieldRefData{
-			FieldName:  fieldName,
-			ColumnName: col.Name,
-			GoType:     col.GoType,
-		})
-	}
-
-	// Render the field references using the template
-	rendered, err := templates.RenderFieldReferences(data)
-	if err != nil {
-		return err
-	}
-
-	buf.WriteString(rendered)
-	buf.WriteString("\n")
-	return nil
-}
-
-// generateTypeSafeQueryBuilder generates type-safe query builder
-func (g *Generator) generateTypeSafeQueryBuilder(buf *bytes.Buffer, table *parser.Table) error {
-	baseName := templates.ToPascalCase(table.Name)
-	structName := baseName + "Dto"
-	builderName := baseName + "Query"
-
-	// Get primary key info
-	var primaryKey string
-	var primaryKeyField string
-	var primaryKeyType = "int64" // default
-
-	for _, col := range table.Columns {
-		if col.IsPrimary {
-			primaryKey = col.Name
-			primaryKeyField = templates.ToPascalCase(col.Name)
-			primaryKeyType = col.GoType
-			break
-		}
-	}
-
-	// Prepare template data
-	data := templates.QueryBuilderData{
-		BaseName:        baseName,
-		BuilderName:     builderName,
-		StructName:      structName,
-		TableName:       table.Name,
-		PrimaryKey:      primaryKey,
-		PrimaryKeyField: primaryKeyField,
-		PrimaryKeyType:  primaryKeyType,
-	}
-
-	// Convert columns for template
-	for _, col := range table.Columns {
-		// Determine if this field is a pointer type in Go
-		isPointer := col.IsNullable || col.HasDefault || col.IsSequence
-
-		tc := templates.Column{
-			ColumnName: col.Name,
-			FieldName:  templates.ToPascalCase(col.Name),
-			GoType:     col.GoType,
-			IsNullable: col.IsNullable,
-			IsPointer:  isPointer,
-		}
-		data.Columns = append(data.Columns, tc)
-
-		if !col.IsPrimary {
-			data.NonPrimaryColumns = append(data.NonPrimaryColumns, tc)
-		}
-
-		if !col.IsSequence {
-			data.NonSequenceColumns = append(data.NonSequenceColumns, tc)
-		}
-	}
-
-	// Add FK information for join handling
-	for _, fk := range table.ForeignKeys {
-		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)
-		if !ok {
-			continue
-		}
-
-		referencedBaseName := templates.ToPascalCase(referencedTable.Name)
-		referencedStructName := referencedBaseName + "Dto"
-		joinedFieldName := templates.ToPascalCase(fk.Prefix)
-
-		// Convert referenced table columns
-		var referencedColumns []templates.Column
-		for _, col := range referencedTable.Columns {
-			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
-			referencedColumns = append(referencedColumns, templates.Column{
-				ColumnName: col.Name,
-				FieldName:  templates.ToPascalCase(col.Name),
-				GoType:     col.GoType,
-				IsNullable: col.IsNullable,
-				IsPointer:  isPointer,
-			})
-		}
-
-		data.ForeignKeys = append(data.ForeignKeys, templates.ForeignKeyData{
-			JoinedFieldName:      joinedFieldName,
-			ReferencedTable:      fk.ReferencedTableName,
-			ReferencedStructName: referencedStructName,
-			ReferencedColumns:    referencedColumns,
-		})
-	}
-
-	// Add reverse relationship information for scanInto
-	for _, reverseRel := range table.ReverseRelationships {
-		fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
-		fromStructName := fromTableBaseName + "Dto"
-		fromTableMethod := fromTableBaseName
-		fkFieldName := templates.ToPascalCase(reverseRel.FKColumn)
-
-		data.ReverseRelations = append(data.ReverseRelations, templates.ReverseRelLoaderField{
-			FieldName:       reverseRel.FieldName,
-			FromTable:       reverseRel.FromTable.Name,
-			FromStructName:  fromStructName,
-			FromTableMethod: fromTableMethod,
-			FKFieldName:     fkFieldName,
-		})
-	}
-
-	// Add M2M relationship information for scanInto
-	for _, m2m := range table.ManyToManyRels {
-		refTable, ok := g.parser.GetTable(m2m.ReferencedTable.Name)
-		if !ok {
-			continue
-		}
-
-		// Find the primary key of the referenced table
-		var refPKField string
-		var refPKType string
-		for _, col := range refTable.Columns {
-			if col.IsPrimary {
-				refPKField = templates.ToPascalCase(col.Name)
-				refPKType = col.GoType
-				break
-			}
-		}
-
-		refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)
-		refStructName := refTableBaseName + "Dto"
-		refTableMethod := refTableBaseName
-
-		data.ManyToManyRels = append(data.ManyToManyRels, templates.ManyToManyLoaderField{
-			FieldName:             m2m.FieldName,
-			JunctionTable:         m2m.JunctionTable.Name,
-			LeftFKColumn:          m2m.LeftFKColumn,
-			RightFKColumn:         m2m.RightFKColumn,
-			ReferencedTable:       m2m.ReferencedTable.Name,
-			ReferencedStructName:  refStructName,
-			ReferencedTableMethod: refTableMethod,
-			ReferencedPKField:     refPKField,
-			ReferencedPKType:      refPKType,
-		})
-	}
-
-	// Render the query builder using the templates package
-	rendered, err := templates.RenderQueryBuilder(data)
-	if err != nil {
-		return err
-	}
-
-	buf.WriteString(rendered)
-	return nil
-}
-
-// generateJoinBuilders generates type-safe join builders
-func (g *Generator) generateJoinBuilders(buf *bytes.Buffer, table *parser.Table) error {
-	baseName := templates.ToPascalCase(table.Name)
-	structName := baseName + "Dto"
-	builderName := baseName + "Query"
-
-	// Prepare template data
-	data := templates.JoinBuildersData{
-		BaseName:    baseName,
-		BuilderName: builderName,
-		StructName:  structName,
-		TableName:   table.Name,
-		Joins:       make([]templates.JoinData, 0, len(table.ForeignKeys)),
-	}
-
-	// Generate join methods for foreign keys
-	for _, fk := range table.ForeignKeys {
-		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)
-		if !ok {
-			continue
-		}
-
-		referencedBaseName := templates.ToPascalCase(referencedTable.Name)
-		referencedStructName := referencedBaseName + "Dto"
-		joinMethodName := "Join" + referencedBaseName
-		leftJoinMethodName := "LeftJoin" + referencedBaseName
-		joinStructName := baseName + referencedBaseName + "Join"
-
-		data.Joins = append(data.Joins, templates.JoinData{
-			JoinMethodName:       joinMethodName,
-			LeftJoinMethodName:   leftJoinMethodName,
-			JoinStructName:       joinStructName,
-			ReferencedTableName:  referencedTable.Name,
-			ReferencedBaseName:   referencedBaseName,
-			ReferencedStructName: referencedStructName,
-			LeftFieldName:        templates.ToPascalCase(fk.Column),
-			RightFieldName:       templates.ToPascalCase(fk.ReferencedColumn),
-		})
-	}
-
-	// Render the join builders using the template
-	rendered, err := templates.RenderJoinBuilders(data)
-	if err != nil {
-		return err
-	}
-
-	buf.WriteString(rendered)
-	buf.WriteString("\n")
 	return nil
 }
 

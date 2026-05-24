@@ -13,25 +13,23 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
-func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
+func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Insert(
 			users.Username(),
 			users.Email(),
 			users.FullName(),
-			users.IsActive(),
 		).
 		Returning(users.Id()).
 		Values(dto)
 }
 
-func InsertUsers(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
+func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
 		Insert(
 			users.Username(),
 			users.Email(),
 			users.FullName(),
-			users.IsActive(),
 		).
 		Returning(users.Id()).
 		Values(dtos...)
@@ -59,8 +57,16 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 		Values(dto)
 }
 
-func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
+type Foo struct {
+	Field      string
+	OtherField PartialCast[uuid.UUID]
+}
 
+func (f *Foo) Bar(param int) bool {
+	return param > 0
+}
+
+func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewQuery(pool, models.UsersDtos{}).
 		Update(
 			Set(users.Username()).To(Val(dto.Username)),
@@ -96,27 +102,32 @@ func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuer
 		Where(users.Id().Eq(Val(userId)))
 }
 
-func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
-	c := ast.NewAlias("comments")
-	return models.NewQuery(pool, models.UsersDtos{}).
-		Select(
-			users.Id(),
-			Coalesce(
-				JsonAgg(
-					Distinct(JsonbBuildObject(
-						comments.Id(),
-						comments.UserId(),
-						comments.Content(),
-						comments.CreatedAt(),
-					)),
-				),
-			).As(c)).
-		Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
+func UsersDtoSelectById(pool *pgxpool.Pool, id uuid.UUID, opts ...SelectOpt) builder.SelectFinalizeQuery[models.UsersDto] {
+	columns := users.AllColumns()
+	for _, opt := range opts {
+		if opt.selectExpr != nil {
+			columns = append(columns, opt.selectExpr)
+		}
+	}
+	qry := models.NewUsersQuery(pool).
+		Select(columns...)
+	for _, opt := range opts {
+		joins := opt.joinExprs
+		for _, join := range joins {
+			qry.Join(join.Type, join.Table, join.Condition)
+		}
+	}
+
+	return qry.
 		Where(users.Id().Eq(Val(id))).
 		GroupBy(users.Id())
 }
 
-func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {
+func UsersDtoSelectByIdWithComments(pool *pgxpool.Pool, id uuid.UUID) builder.SelectFinalizeQuery[models.UsersDto] {
+	return UsersDtoSelectById(pool, id, WithComments(users.Id().Eq(comments.UserId())))
+}
+
+func PostsDtoSelectById(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {
 	return models.NewPostsQuery(pool).
 		Select(
 			posts.Id(),
@@ -134,5 +145,40 @@ func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQu
 		Join(ast.JoinLeft, "post_tags", post_tags.PostId().Eq(posts.Id())).
 		Join(ast.JoinLeft, "tags", tags.Id().Eq(post_tags.TagId())).
 		Where(posts.Id().Eq(Val(id))).
-		GroupBy(posts.Id(), posts.Title(), posts.UserId())
+		GroupBy(posts.Id(), posts.UserId())
+}
+
+func WithComments(condition ast.OfType[bool]) SelectOpt {
+	return withJoinedMany("comments", comments.AllColumns(), []ast.OfType[bool]{condition})
+}
+
+func WithPosts(condition ast.OfType[bool]) SelectOpt {
+	return withJoinedMany("posts", posts.AllColumns(), []ast.OfType[bool]{condition})
+}
+
+func WithTags(conditions []ast.OfType[bool]) SelectOpt {
+	return withJoinedMany("tags", tags.AllColumns(), conditions)
+}
+
+func withJoinedMany(table string, columns []ast.NamedExpression, conditions []ast.OfType[bool]) SelectOpt {
+	t := ast.NewAlias(table)
+	opt := SelectOpt{
+		selectExpr: Coalesce(
+			JsonAgg(
+				Distinct(JsonbBuildObject(
+					columns...,
+				)),
+			),
+		).As(t),
+		joinExprs: make([]JoinExpr, 0, len(conditions)),
+	}
+	for _, condition := range conditions {
+		opt.joinExprs = append(opt.joinExprs, JoinExpr{
+			Type:      ast.JoinLeft,
+			Table:     t.Name(),
+			Condition: condition,
+		})
+	}
+
+	return opt
 }

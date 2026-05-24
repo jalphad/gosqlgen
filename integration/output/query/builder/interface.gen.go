@@ -1,0 +1,164 @@
+package builder
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+)
+
+type SelectQuery[O any] interface {
+	Select(columns ...ast.NamedExpression) SelectFromQuery[O]
+}
+
+type KnownTableSelectQuery[O any] interface {
+	Select(columns ...ast.NamedExpression) SelectJoinQuery[O]
+}
+
+type SelectFromQuery[O any] interface {
+	From(table *ast.TableSource) SelectWhereQuery[O]
+	SelectWhereQuery[O]
+}
+
+type SelectJoinQuery[O any] interface {
+	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[O]
+	SelectWhereQuery[O]
+}
+
+type SelectWhereQuery[O any] interface {
+	Where(expr ast.OfType[bool]) SelectGroupByQuery[O]
+	SelectGroupByQuery[O]
+}
+
+type SelectGroupByQuery[O any] interface {
+	GroupBy(columns ...ast.Expression) SelectHavingQuery[O]
+	SelectHavingQuery[O]
+}
+
+type SelectHavingQuery[O any] interface {
+	Having(expr ast.OfType[bool]) SelectOrderByQuery[O]
+	SelectOrderByQuery[O]
+}
+
+type SelectOrderByQuery[O any] interface {
+	OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[O]
+	SelectPagingQuery[O]
+}
+
+type SelectPagingQuery[O any] interface {
+	Limit(limit int) SelectPagingQuery[O]
+	Offset(offset int) SelectPagingQuery[O]
+	SelectFinalizeQuery[O]
+}
+
+type SelectFinalizeQuery[O any] interface {
+	Find(ctx context.Context) ([]O, error)
+	FindOne(ctx context.Context) (O, error)
+	ToSql() (string, error)
+}
+
+type InsertQuery[T any, O DTO[T]] interface {
+	Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O]
+}
+
+type InsertOnConflictQuery[T any, O DTO[T]] interface {
+	OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T, O]
+	InsertReturningQuery[T, O]
+}
+
+type InsertOnConflictDoQuery[T any, O DTO[T]] interface {
+	Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T, O]
+	InsertReturningQuery[T, O]
+}
+
+type InsertReturningQuery[T any, O DTO[T]] interface {
+	Returning(columns ...ast.NamedExpression) InsertValuesQuery[T, O]
+	InsertValuesQuery[T, O]
+}
+
+type InsertValuesQuery[T any, O DTO[T]] interface {
+	Values(values ...O) InsertFinalizeQuery[T, O]
+}
+
+type InsertFinalizeQuery[T any, O DTO[T]] interface {
+	Exec(context.Context) error
+	ToSql() (string, error)
+}
+
+type UpdateQuery[T any, O DTO[T]] interface {
+	Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T, O]
+}
+
+type UpdateFromQuery[T any, O DTO[T]] interface {
+	From(table ast.NamedTableExpression) UpdateWhereQuery[T, O]
+	UpdateWhereQuery[T, O]
+}
+
+type UpdateJoinQuery[T any, O DTO[T]] interface {
+	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) UpdateJoinQuery[T, O]
+	UpdateWhereQuery[T, O]
+}
+
+type UpdateWhereQuery[T any, O DTO[T]] interface {
+	Where(expr ast.OfType[bool]) UpdateReturningQuery[T, O]
+	UpdateReturningQuery[T, O]
+}
+
+type UpdateReturningQuery[T any, O DTO[T]] interface {
+	Returning(columns ...ast.NamedExpression) UpdateFinalizeQuery[T, O]
+	UpdateFinalizeQuery[T, O]
+}
+
+type UpdateFinalizeQuery[T any, O DTO[T]] interface {
+	Exec(context.Context) (int64, []T, error)
+	ToSql() (string, error)
+}
+
+type DeleteQuery[T any, O DTO[T]] interface {
+	Delete(from string) DeleteUsingQuery[T, O]
+}
+
+type KnownTableDeleteQuery[T any, O DTO[T]] interface {
+	Delete() DeleteUsingQuery[T, O]
+}
+
+type DeleteUsingQuery[T any, O DTO[T]] interface {
+	Using(tables ...ast.NamedExpression) DeleteWhereQuery[T, O]
+	DeleteWhereQuery[T, O]
+}
+
+type DeleteWhereQuery[T any, O DTO[T]] interface {
+	Where(expr ast.OfType[bool]) DeleteReturningQuery[T, O]
+	DeleteReturningQuery[T, O]
+}
+
+type DeleteReturningQuery[T any, O DTO[T]] interface {
+	Returning(columns ...ast.NamedExpression) DeleteFinalizeQuery[T, O]
+	DeleteFinalizeQuery[T, O]
+}
+
+type DeleteFinalizeQuery[T any, O DTO[T]] interface {
+	Exec(ctx context.Context) (int64, []T, error)
+	ToSql() (string, error)
+}
+
+type KnownTableStartQuery[S DTOs[T, O], T any, O DTO[T]] interface {
+	WithTx(tx pgx.Tx) KnownTableStartQuery[S, T, O]
+	KnownTableSelectQuery[T]
+	KnownTableDeleteQuery[T, O]
+	InsertQuery[T, O]
+	UpdateQuery[T, O]
+}
+
+type DTOs[T any, O DTO[T]] interface {
+	~[]O
+	GetArgs(column ast.NamedExpression) ast.Expression
+	GetValues(columns ...ast.NamedExpression) []ast.Expression
+}
+
+type DTO[T any] interface {
+	*T
+	ScanInto(row pgx.Row, stmt ast.SqlStatement) error
+	GetArg(column ast.NamedExpression) (ast.Expression, error)
+	TableName() string
+}

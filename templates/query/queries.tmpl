@@ -3,13 +3,53 @@ package query
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"{{ .PackagePath }}/models"
-	"{{ .PackagePath }}/query/ast"
-	"{{ .PackagePath }}/query/builder"
-	{{- range .TableNames }}
-	"{{ .PackagePath }}/query/{{ . }}"
+	"{{ $.PackagePath }}/models"
+	"{{ $.PackagePath }}/query/ast"
+	"{{ $.PackagePath }}/query/builder"
+	{{- range .Tables }}
+	"{{ $.PackagePath }}/query/{{ .TableName }}"
 	{{- end }}
 )
+
+{{ range $table := .Tables }}
+{{- $tablePkg := $table.PackageName }}
+{{- $receiver := $table.ReceiverName }}
+// {{ $table.StructName }}InsertOne inserts a single {{ $table.TableName }} DTO
+func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
+	return models.New{{ toPascalCase $table.TableName }}Query(pool).
+		Insert(
+			{{- range $table.InsertColumns }}
+			{{ $tablePkg }}.{{ .FieldName }}(),
+			{{- end }}
+		).
+		{{- if $table.PrimaryKeyFields }}
+		Returning(
+			{{- range $index, $pkField := $table.PrimaryKeyFields }}
+			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
+			{{- end -}}
+		).
+		{{- end }}
+		Values(dto)
+}
+
+// {{ $table.StructName }}InsertMany inserts multiple {{ $table.TableName }} DTOs
+func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
+	return models.New{{ toPascalCase $table.TableName }}Query(pool).
+		Insert(
+			{{- range $table.InsertColumns }}
+			{{ $tablePkg }}.{{ .FieldName }}(),
+			{{- end }}
+		).
+		{{- if $table.PrimaryKeyFields }}
+		Returning(
+			{{- range $index, $pkField := $table.PrimaryKeyFields }}
+			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
+			{{- end -}}
+		).
+		{{- end }}
+		Values(dtos...)
+}
+{{ end }}
 
 func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewUsersQuery(pool).
@@ -58,8 +98,7 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 }
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-
-	return models.NewQuery(pool, models.UsersDtos{}).
+	return models.NewUsersQuery(pool).
 		Update(
 			Set(users.Username()).To(Val(dto.Username)),
 			Set(users.Email()).To(Val(dto.Email)),
@@ -89,7 +128,7 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewQuery(pool, models.UsersDtos{}).
+	return models.NewUsersQuery(pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }
@@ -99,18 +138,16 @@ func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFi
 	return models.NewUsersQuery(pool).
 		Select(
 			users.Id(),
-			comments.Content(),
-		).GroupBy().OrderBy().
-		Coalesce(
-			JsonAgg(
-				Distinct(JsonbBuildObject(
-					comments.Id(),
-					comments.UserId(),
-					comments.Content(),
-					comments.CreatedAt(),
-				)),
-			),
-		).As(c)).
+			Coalesce(
+				JsonAgg(
+					Distinct(JsonbBuildObject(
+						comments.Id(),
+						comments.UserId(),
+						comments.Content(),
+						comments.CreatedAt(),
+					)),
+				),
+			).As(c)).
 		Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
 		Where(users.Id().Eq(Val(id))).
 		GroupBy(users.Id())
@@ -136,3 +173,4 @@ func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQu
 		Where(posts.Id().Eq(Val(id))).
 		GroupBy(posts.Id(), posts.Title(), posts.UserId())
 }
+

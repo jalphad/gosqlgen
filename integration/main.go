@@ -14,7 +14,7 @@ func main() {
 }
 
 func generateModels() {
-	inputPath := "./dump.sql"
+	inputPath := "./schema.sql"
 	outputPath := "./output"
 	// Define your SQL schema
 	bts, err := os.ReadFile(inputPath)
@@ -26,7 +26,8 @@ func generateModels() {
 	// Create generator
 	gen := gosqlgen.New().
 		WithPackageName("database").
-		WithOutputPath(outputPath)
+		WithOutputPath(outputPath).
+		WithPackagePath("github.com/jalphad/gosqlgen/integration/output")
 
 	// Parse the schema
 	if err := gen.Parse(schema); err != nil {

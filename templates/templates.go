@@ -41,11 +41,61 @@ var astTemplates embed.FS
 var builderTemplates embed.FS
 
 //go:embed models/dtos.tmpl
-var genDtosTemplate string
+var dtosTemplate string
+
+//go:embed query/functions.tmpl
+var queryFunctionsTemplate string
+
+//go:embed query/grammar.tmpl
+var queryGrammarTemplate string
+
+//go:embed query/helpers.tmpl
+var queryHelpersTemplate string
+
+//go:embed query/queries.tmpl
+var queryQueriesTemplate string
 
 // DtosPackageData contains data for rendering DTOs package
 type DtosPackageData struct {
 	Table DtosTableData
+}
+
+// QueryTableData contains data for rendering query functions for a single table
+type QueryTableData struct {
+	PackageName      string        // Package name (e.g., "users", "posts")
+	TableName        string        // SQL table name (e.g., "users", "posts")
+	StructName       string        // DTO struct name (e.g., "UsersDto", "PostsDto")
+	ReceiverName     string        // Lowercase first letter (e.g., "u", "p")
+	InsertColumns    []QueryColumn // Columns to include in INSERT
+	PrimaryKeyFields []string      // ALL primary key field names (support composite PKs)
+}
+
+// QueryColumn represents a column to include in INSERT statement
+type QueryColumn struct {
+	FieldName  string
+	ColumnName string
+	GoType     string
+}
+
+// QueryQueriesData contains data for rendering query functions for all tables
+type QueryQueriesData struct {
+	PackagePath string
+	Tables      []QueryTableData
+}
+
+// QueryFunctionsData contains data for rendering query functions
+type QueryFunctionsData struct {
+	PackagePath string
+}
+
+// QueryGrammarData contains data for rendering query grammar
+type QueryGrammarData struct {
+	PackagePath string
+}
+
+// QueryHelpersData contains data for rendering query helpers
+type QueryHelpersData struct {
+	PackagePath string
 }
 
 // DtosTableData contains data for a single DTOs collection
@@ -508,7 +558,7 @@ func RenderQueryBuilderPackage(packagePath string) (map[string]string, error) {
 
 // RenderDtosPackage renders the DTOs package file
 func RenderDtosPackage(buf *bytes.Buffer, data DtosPackageData) error {
-	t, err := template.New("dtos").Parse(genDtosTemplate)
+	t, err := template.New("dtos").Parse(dtosTemplate)
 	if err != nil {
 		return fmt.Errorf("failed to parse dtos template: %w", err)
 	}
@@ -518,4 +568,63 @@ func RenderDtosPackage(buf *bytes.Buffer, data DtosPackageData) error {
 	}
 
 	return nil
+}
+
+// GenerateInsertPackage generates query/inserts.gen.go with InsertOne and InsertMany functions
+func RenderQueryQueries(data QueryQueriesData) ([]byte, error) {
+	t, err := template.New("inserts").Funcs(template.FuncMap{
+		"toPascalCase": ToPascalCase,
+	}).Parse(queryQueriesTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse inserts template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute inserts template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func RenderQueryFunctions(data QueryFunctionsData) ([]byte, error) {
+	t, err := template.New("functions").Parse(queryFunctionsTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse inserts template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute inserts template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func RenderQueryGrammar(data QueryGrammarData) ([]byte, error) {
+	t, err := template.New("functions").Parse(queryGrammarTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse inserts template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute inserts template: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+func RenderQueryHelpers(data QueryHelpersData) ([]byte, error) {
+	t, err := template.New("functions").Parse(queryHelpersTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse inserts template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute inserts template: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }

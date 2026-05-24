@@ -137,14 +137,14 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		user := &models.UsersDto{
 			Username:  "johndoe",
 			Email:     "john@example.com",
-			FullName:  strPtr("John Doe"),
-			IsActive:  boolPtr(true),
-			CreatedAt: timePtr(time.Now()),
-			UpdatedAt: timePtr(time.Now()),
+			FullName:  new("John Doe"),
+			IsActive:  new(true),
+			CreatedAt: new(time.Now()),
+			UpdatedAt: new(time.Now()),
 		}
 
 		// Act
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		//err := testDB.Users().Insert(context.Background(), user)
 
 		// Assert
@@ -158,23 +158,23 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		user := &models.UsersDto{
 			Username:  "johndoe1",
 			Email:     "john1@example.com",
-			FullName:  strPtr("John Doe"),
-			IsActive:  boolPtr(true),
-			CreatedAt: timePtr(time.Now()),
-			UpdatedAt: timePtr(time.Now()),
+			FullName:  new("John Doe"),
+			IsActive:  new(true),
+			CreatedAt: new(time.Now()),
+			UpdatedAt: new(time.Now()),
 		}
 
 		user2 := &models.UsersDto{
 			Username:  "johndoe2",
 			Email:     "john2@example.com",
-			FullName:  strPtr("John Doe 2"),
-			IsActive:  boolPtr(true),
-			CreatedAt: timePtr(time.Now()),
-			UpdatedAt: timePtr(time.Now()),
+			FullName:  new("John Doe 2"),
+			IsActive:  new(true),
+			CreatedAt: new(time.Now()),
+			UpdatedAt: new(time.Now()),
 		}
 
 		// Act
-		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
+		err := query.UsersDtoInsertMany(testDB.pool, user, user2).Exec(context.Background())
 		//err := testDB.Users().Insert(context.Background(), user)
 
 		// Assert
@@ -191,7 +191,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "janedoe",
 			Email:    "jane@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -217,11 +217,11 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "updateme",
 			Email:    "update@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated@example.com"
-		user.FullName = strPtr("Updated Name")
+		user.FullName = new("Updated Name")
 
 		// Act
 		affected, _, err := query.UpdateUser(testDB.pool, user).Exec(context.Background())
@@ -249,13 +249,13 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "updateme2",
 			Email:    "update2@example.com",
 		}
-		err := query.InsertUsers(testDB.pool, user, user2).Exec(context.Background())
+		err := query.UsersDtoInsertMany(testDB.pool, user, user2).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated1@example.com"
-		user.FullName = strPtr("Updated Name")
+		user.FullName = new("Updated Name")
 		user2.Email = "updated2@example.com"
-		user2.FullName = strPtr("Updated Name 2")
+		user2.FullName = new("Updated Name 2")
 
 		// Act
 		affected, _, err := query.UpdateUsers(testDB.pool, user, user2).Exec(context.Background())
@@ -288,7 +288,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -315,13 +315,13 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		user := &models.UsersDto{
 			Username:  "conflictedjohndoe",
 			Email:     "john@conflict.example.com",
-			FullName:  strPtr("John Doe"),
-			IsActive:  boolPtr(true),
-			CreatedAt: timePtr(time.Now()),
-			UpdatedAt: timePtr(time.Now()),
+			FullName:  new("John Doe"),
+			IsActive:  new(true),
+			CreatedAt: new(time.Now()),
+			UpdatedAt: new(time.Now()),
 		}
 
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated@conflict.example.com"
@@ -357,7 +357,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Email:    "updateme@returning.example.com",
 			FullName: &fullName,
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		user.Email = "updated@returning.example.com"
@@ -385,7 +385,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 			Username: "deleteme",
 			Email:    "delete@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 
 		// Act
@@ -415,10 +415,10 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 
 	// Insert test data
 	users := []*UsersDto{
-		{Username: "alice", Email: "alice@example.com", FullName: strPtr("Alice Smith"), IsActive: boolPtr(true)},
-		{Username: "bob", Email: "bob@example.com", FullName: strPtr("Bob Jones"), IsActive: boolPtr(true)},
-		{Username: "charlie", Email: "charlie@example.com", FullName: strPtr("Charlie Brown"), IsActive: boolPtr(false)},
-		{Username: "david", Email: "david@example.com", FullName: strPtr("David Wilson"), IsActive: boolPtr(true)},
+		{Username: "alice", Email: "alice@example.com", FullName: new("Alice Smith"), IsActive: new(true)},
+		{Username: "bob", Email: "bob@example.com", FullName: new("Bob Jones"), IsActive: new(true)},
+		{Username: "charlie", Email: "charlie@example.com", FullName: new("Charlie Brown"), IsActive: new(false)},
+		{Username: "david", Email: "david@example.com", FullName: new("David Wilson"), IsActive: new(true)},
 	}
 
 	for _, user := range users {
@@ -530,8 +530,8 @@ func TestIntegration_Joins(t *testing.T) {
 	}
 
 	posts := []*PostsDto{
-		{UserId: *user.Id, Title: "First Post", Content: strPtr("Content 1"), Status: strPtr("published")},
-		{UserId: *user.Id, Title: "Second Post", Content: strPtr("Content 2"), Status: strPtr("draft")},
+		{UserId: *user.Id, Title: "First Post", Content: new("Content 1"), Status: new("published")},
+		{UserId: *user.Id, Title: "Second Post", Content: new("Content 2"), Status: new("draft")},
 	}
 
 	for _, post := range posts {
@@ -708,7 +708,7 @@ func TestIntegration_NullableFields(t *testing.T) {
 		user := &UsersDto{
 			Username: "nullupdate",
 			Email:    "nullupdate@example.com",
-			FullName: strPtr("Initial Name"),
+			FullName: new("Initial Name"),
 		}
 		err := testDB.Users().Insert(context.Background(), user)
 		require.NoError(t, err)
@@ -743,9 +743,9 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 
 	// Create posts for both users
 	posts := []*PostsDto{
-		{UserId: *user1.Id, Title: "User1 Post 1", ViewCount: int64Ptr(100)},
-		{UserId: *user1.Id, Title: "User1 Post 2", ViewCount: int64Ptr(200)},
-		{UserId: *user2.Id, Title: "User2 Post 1", ViewCount: int64Ptr(50)},
+		{UserId: *user1.Id, Title: "User1 Post 1", ViewCount: new(int64(100))},
+		{UserId: *user1.Id, Title: "User1 Post 2", ViewCount: new(int64(200))},
+		{UserId: *user2.Id, Title: "User2 Post 1", ViewCount: new(int64(50))},
 	}
 
 	for _, post := range posts {
@@ -802,14 +802,14 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	// Setup test data
 	user1 := &models.UsersDto{Username: "author1", Email: "author1@example.com"}
 	user2 := &UsersDto{Username: "author2", Email: "author2@example.com"}
-	query.InsertUser(testDB.pool, user1).Exec(context.Background())
+	query.UsersDtoInsertOne(testDB.pool, user1).Exec(context.Background())
 	//testDB.Users().Insert(context.Background(), user1)
 	testDB.Users().Insert(context.Background(), user2)
 
 	// Create posts for user1
-	post1 := &PostsDto{UserId: user1.Id.String(), Title: "Post 1", Content: strPtr("Content 1")}
-	post2 := &PostsDto{UserId: user1.Id.String(), Title: "Post 2", Content: strPtr("Content 2")}
-	post3 := &PostsDto{UserId: *user2.Id, Title: "Post 3", Content: strPtr("Content 3")}
+	post1 := &PostsDto{UserId: user1.Id.String(), Title: "Post 1", Content: new("Content 1")}
+	post2 := &PostsDto{UserId: user1.Id.String(), Title: "Post 2", Content: new("Content 2")}
+	post3 := &PostsDto{UserId: *user2.Id, Title: "Post 3", Content: new("Content 3")}
 	testDB.Posts().Insert(context.Background(), post1)
 	testDB.Posts().Insert(context.Background(), post2)
 	testDB.Posts().Insert(context.Background(), post3)
@@ -882,7 +882,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
-		user, err := query.RetrieveUserWithComments(*user1.Id, testDB.pool).FindOne(context.Background())
+		user, err := query.UsersDtoSelectByIdWithComments(testDB.pool, *user1.Id).FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
@@ -900,8 +900,8 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	user := &UsersDto{Username: "blogger", Email: "blogger@example.com"}
 	testDB.Users().Insert(context.Background(), user)
 
-	post1 := &PostsDto{UserId: *user.Id, Title: "Go Programming", Content: strPtr("Learn Go")}
-	post2 := &PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: strPtr("Optimize queries")}
+	post1 := &PostsDto{UserId: *user.Id, Title: "Go Programming", Content: new("Learn Go")}
+	post2 := &PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: new("Optimize queries")}
 	testDB.Posts().Insert(context.Background(), post1)
 	testDB.Posts().Insert(context.Background(), post2)
 
@@ -1014,9 +1014,9 @@ func TestIntegration_ExpressionFromString(t *testing.T) {
 	user := &UsersDto{Username: "testuser", Email: "test@example.com"}
 	testDB.Users().Insert(context.Background(), user)
 
-	post1 := &PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: int64Ptr(100)}
-	post2 := &PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: int64Ptr(200)}
-	post3 := &PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: int64Ptr(300)}
+	post1 := &PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: new(int64(100))}
+	post2 := &PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: new(int64(200))}
+	post3 := &PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: new(int64(300))}
 	testDB.Posts().Insert(context.Background(), post1)
 	testDB.Posts().Insert(context.Background(), post2)
 	testDB.Posts().Insert(context.Background(), post3)
@@ -1062,23 +1062,6 @@ func TestIntegration_ExpressionFromString(t *testing.T) {
 		// so that pgx can scan into that value
 		assert.NotNil(t, post.FromExpressions["avg_views"])
 	})
-}
-
-// Helper functions
-func strPtr(s string) *string {
-	return &s
-}
-
-func boolPtr(b bool) *bool {
-	return &b
-}
-
-func timePtr(t time.Time) *time.Time {
-	return &t
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
 }
 
 // TestContextTracking tests that QueryContext properly tracks joins during SQL generation
@@ -1189,7 +1172,7 @@ func TestContextTracking(t *testing.T) {
 		user := &models.UsersDto{
 			Username: "joinuser",
 			Email:    "join@example.com",
-			IsActive: boolPtr(true),
+			IsActive: new(true),
 		}
 		err := models.NewUsersQuery(testDB.pool).
 			Insert(
@@ -1209,7 +1192,7 @@ func TestContextTracking(t *testing.T) {
 		post := &models.PostsDto{
 			UserId:  *user.Id,
 			Title:   "Test Post",
-			Content: strPtr("Test Content"),
+			Content: new("Test Content"),
 		}
 		err = models.NewQuery(testDB.pool, models.PostsDtos{}).
 			Insert(
@@ -1249,7 +1232,7 @@ func TestContextTracking(t *testing.T) {
 		user := &models.UsersDto{
 			Username: "multijoinuser",
 			Email:    "multi@example.com",
-			IsActive: boolPtr(true),
+			IsActive: new(true),
 		}
 		err := models.NewUsersQuery(testDB.pool).
 			Insert(
@@ -1267,7 +1250,7 @@ func TestContextTracking(t *testing.T) {
 		post := &models.PostsDto{
 			UserId:  *user.Id,
 			Title:   "Multi Join Post",
-			Content: strPtr("Multi Join Content"),
+			Content: new("Multi Join Content"),
 		}
 		err = models.NewPostsQuery(testDB.pool).
 			Insert(
@@ -1332,7 +1315,7 @@ func TestContextTracking(t *testing.T) {
 			Username: "sqlverify",
 			Email:    "sqlverify@example.com",
 		}
-		err := query.InsertUser(testDB.pool, user).Exec(context.Background())
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, user.Id)
 
