@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"{{ .PackagePath }}/models"
+	"{{ .PackagePath }}/query/ast"
 	"{{ .PackagePath }}/query/builder"
 )
 
@@ -61,3 +62,11 @@ func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[{{ .St
 	return builder.NewKnownTableBuilder({{ .StructName }}s{}, pool)
 }
 {{- end }}
+
+func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.ResultTableBuilder[T] {
+	return builder.NewResultTableBuilder[T](pool, table)
+}
+
+func NewDTOQuery[S builder.DTOs[T, O], T any, O builder.DTO[T]](pool *pgxpool.Pool, s S) *builder.KnownTableBuilder[S, T, O] {
+	return builder.NewKnownTableBuilder(s, pool)
+}

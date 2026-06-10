@@ -4,6 +4,10 @@ import (
 	"{{ .PackagePath }}/query/ast"
 )
 
+func Table() *ast.TableSource {
+	return &ast.TableSource{Table: "{{ .TableName }}"}
+}
+
 {{ range .Fields }}
 func {{ .FieldName }}() *ast.{{ toTypeExpression .GoType .SQLType }} {
 	return ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $.TableName }}", "{{ .ColumnName }}")

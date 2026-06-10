@@ -57,6 +57,52 @@ type SelectFinalizeQuery[O any] interface {
 	ToSql() (string, error)
 }
 
+type ResultSelectQuery[O any] interface {
+	Select(projections ...ast.Projection[O]) ResultSelectJoinQuery[O]
+}
+
+type ResultSelectFromQuery[O any] interface {
+	From(table *ast.TableSource) ResultSelectWhereQuery[O]
+	ResultSelectWhereQuery[O]
+}
+
+type ResultSelectJoinQuery[O any] interface {
+	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) ResultSelectJoinQuery[O]
+	ResultSelectWhereQuery[O]
+}
+
+type ResultSelectWhereQuery[O any] interface {
+	Where(expr ast.OfType[bool]) ResultSelectGroupByQuery[O]
+	ResultSelectGroupByQuery[O]
+}
+
+type ResultSelectGroupByQuery[O any] interface {
+	GroupBy(columns ...ast.Expression) ResultSelectHavingQuery[O]
+	ResultSelectHavingQuery[O]
+}
+
+type ResultSelectHavingQuery[O any] interface {
+	Having(expr ast.OfType[bool]) ResultSelectOrderByQuery[O]
+	ResultSelectOrderByQuery[O]
+}
+
+type ResultSelectOrderByQuery[O any] interface {
+	OrderBy(orderBy ...*ast.OrderByItem) ResultSelectPagingQuery[O]
+	ResultSelectPagingQuery[O]
+}
+
+type ResultSelectPagingQuery[O any] interface {
+	Limit(limit int) ResultSelectPagingQuery[O]
+	Offset(offset int) ResultSelectPagingQuery[O]
+	ResultSelectFinalizeQuery[O]
+}
+
+type ResultSelectFinalizeQuery[O any] interface {
+	Find(ctx context.Context) ([]O, error)
+	FindOne(ctx context.Context) (O, error)
+	ToSql() (string, error)
+}
+
 type InsertQuery[T any, O DTO[T]] interface {
 	Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O]
 }
