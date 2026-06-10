@@ -23,6 +23,40 @@ type DTO[T any] interface {
 	TableName() string
 }
 
+type ResultTableBuilder[T any] struct {
+	pool  *pgxpool.Pool
+	tx    pgx.Tx
+	table *ast.TableSource
+}
+
+func NewResultTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *ResultTableBuilder[T] {
+	return &ResultTableBuilder[T]{
+		pool:  pool,
+		table: table,
+	}
+}
+
+func (b *ResultTableBuilder[T]) WithTx(tx pgx.Tx) *ResultTableBuilder[T] {
+	b.tx = tx
+	return b
+}
+
+func (b *ResultTableBuilder[T]) Select(projections ...ast.Projection[T]) ResultSelectJoinQuery[T] {
+	selectList := make([]ast.NamedExpression, 0, len(projections))
+	for _, projection := range projections {
+		selectList = append(selectList, projection)
+	}
+	return &ResultSelectBuilder[T]{
+		pool:        b.pool,
+		tx:          b.tx,
+		projections: projections,
+		stmt: &ast.SelectStatement{
+			SelectList: selectList,
+			From:       b.table,
+		},
+	}
+}
+
 // KnownTableBuilder is the builder for known tables
 type KnownTableBuilder[S DTOs[T, O], T any, O DTO[T]] struct {
 	pool      *pgxpool.Pool
@@ -191,6 +225,121 @@ func (b *SelectBuilder[T, O]) Find(ctx context.Context) ([]T, error) {
 }
 
 func (b *SelectBuilder[T, O]) FindOne(ctx context.Context) (T, error) {
+	b.Limit(1)
+	results, err := b.Find(ctx)
+	if err != nil {
+		var t T
+		return t, err
+	}
+	if len(results) == 0 {
+		var t T
+		return t, pgx.ErrNoRows
+	}
+	return results[0], nil
+}
+
+type ResultSelectBuilder[T any] struct {
+	pool        *pgxpool.Pool
+	tx          pgx.Tx
+	stmt        *ast.SelectStatement
+	projections []ast.Projection[T]
+}
+
+func (b *ResultSelectBuilder[T]) WithTx(tx pgx.Tx) *ResultSelectBuilder[T] {
+	b.tx = tx
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) From(table *ast.TableSource) ResultSelectWhereQuery[T] {
+	b.stmt.From = table
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) ResultSelectJoinQuery[T] {
+	b.stmt.From.Join(joinType, table, expr)
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) Where(expr ast.OfType[bool]) ResultSelectGroupByQuery[T] {
+	b.stmt.Where = expr
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) GroupBy(columns ...ast.Expression) ResultSelectHavingQuery[T] {
+	b.stmt.GroupBy = columns
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) Having(expr ast.OfType[bool]) ResultSelectOrderByQuery[T] {
+	b.stmt.Having = expr
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) OrderBy(orderBy ...*ast.OrderByItem) ResultSelectPagingQuery[T] {
+	b.stmt.OrderBy = orderBy
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) Limit(limit int) ResultSelectPagingQuery[T] {
+	if b.stmt.Limit == nil {
+		b.stmt.Limit = &ast.LimitClause{}
+	}
+	b.stmt.Limit.Limit = limit
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) Offset(offset int) ResultSelectPagingQuery[T] {
+	if b.stmt.Limit == nil {
+		b.stmt.Limit = &ast.LimitClause{}
+	}
+	b.stmt.Limit.Offset = offset
+	return b
+}
+
+func (b *ResultSelectBuilder[T]) ToSql() (string, error) {
+	params := make([]any, 0)
+	return ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.From.Table})
+}
+
+func (b *ResultSelectBuilder[T]) Find(ctx context.Context) ([]T, error) {
+	queryCtx := &ast.QueryContext{
+		PrimaryTable: b.stmt.From.Table,
+	}
+
+	args := make([]any, 0)
+	query, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows pgx.Rows
+	if b.tx != nil {
+		rows, err = b.tx.Query(ctx, query, args...)
+	} else {
+		rows, err = b.pool.Query(ctx, query, args...)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []T
+	for rows.Next() {
+		var t T
+		scanDest := make([]any, 0, len(b.projections))
+		for _, projection := range b.projections {
+			scanDest = append(scanDest, projection.ScanDestination(&t))
+		}
+		if err = rows.Scan(scanDest...); err != nil {
+			return nil, err
+		}
+		results = append(results, t)
+	}
+
+	return results, rows.Err()
+}
+
+func (b *ResultSelectBuilder[T]) FindOne(ctx context.Context) (T, error) {
 	b.Limit(1)
 	results, err := b.Find(ctx)
 	if err != nil {

@@ -16,6 +16,10 @@ func Val[T ast.MappedTypes](t T) ast.OfType[T] {
 	return ast.NewSQLType(t)
 }
 
+func Into[R any, T ast.MappedTypes, D ast.ScanDest[T]](expr ast.OfType[T], dest func(*R) D) ast.Projection[R] {
+	return ast.NewProjection(expr, dest)
+}
+
 func Rel[T ast.MappedTypes](r *ast.Alias, c ast.NamedAndTyped[T]) ast.OfType[T] {
 	return ast.SetType[T](ast.NewColumnNode(r.Name(), c.Name()))
 }

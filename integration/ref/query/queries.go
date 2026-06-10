@@ -58,7 +58,7 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 }
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewQuery(pool, models.UsersDtos{}).
+	return models.NewDTOQuery(pool, models.UsersDtos{}).
 		Update(
 			Set(users.Username()).To(Val(dto.Username)),
 			Set(users.Email()).To(Val(dto.Email)),
@@ -88,7 +88,7 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewQuery(pool, models.UsersDtos{}).
+	return models.NewDTOQuery(pool, models.UsersDtos{}).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }
@@ -117,9 +117,9 @@ func UsersDtoSelectById(pool *pgxpool.Pool, id uuid.UUID, opts ...SelectOpt) bui
 		GroupBy(users.Id())
 }
 
-func UserWithComments() *SelectOpt {
+func UserWithComments() SelectOpt {
 	alias := ast.NewAlias("comments")
-	return &SelectOpt{
+	return SelectOpt{
 		selectExpr: Coalesce(
 			JsonAgg(
 				Distinct(JsonbBuildObject(

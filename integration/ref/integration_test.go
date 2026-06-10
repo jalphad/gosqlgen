@@ -199,8 +199,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		//	UsersClause().Id.Eq(*user.Id),
 		//).FindOne(context.Background())
 
-		found, err := models.NewUsersQuery(testDB.pool).
-			Select(users.AllColumns()...).
+		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(users.Into.AllColumns()...).
 			Where(
 				users.Id().Eq(query.Val(*user.Id))).
 			FindOne(context.Background())
@@ -883,7 +883,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
 		user, err := query.UsersDtoSelectById(testDB.pool, *user1.Id,
-			query.UserWithComments, query.WithPosts).FindOne(context.Background())
+			query.UserWithComments(), query.WithPosts(posts.UserId().Eq(users.Id()))).FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)
@@ -1195,7 +1195,7 @@ func TestContextTracking(t *testing.T) {
 			Title:   "Test Post",
 			Content: new("Test Content"),
 		}
-		err = models.NewQuery(testDB.pool, models.PostsDtos{}).
+		err = models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
 			Insert(
 				posts.UserId(),
 				posts.Title(),
@@ -1208,7 +1208,7 @@ func TestContextTracking(t *testing.T) {
 		require.NotNil(t, post.Id)
 
 		// Act - Select posts with a JOIN to users (use Select() without args to get all columns including joined ones)
-		results, err := models.NewQuery(testDB.pool, models.PostsDtos{}).
+		results, err := models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
 			Select().
 			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id))).
@@ -1284,7 +1284,7 @@ func TestContextTracking(t *testing.T) {
 		require.NotNil(t, comment.Id)
 
 		// Act - Select comments with JOINs to both posts and users
-		results, err := models.NewQuery(testDB.pool, models.CommentsDtos{}).
+		results, err := models.NewDTOQuery(testDB.pool, models.CommentsDtos{}).
 			Select().
 			Join(ast.JoinLeft, "posts", comments.PostId().Eq(posts.Id())).
 			Join(ast.JoinLeft, "users", comments.UserId().Eq(users.Id())).
@@ -1324,7 +1324,7 @@ func TestContextTracking(t *testing.T) {
 			UserId: *user.Id,
 			Title:  "SQL Verify Post",
 		}
-		err = models.NewQuery(testDB.pool, models.PostsDtos{}).
+		err = models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
 			Insert(
 				posts.UserId(),
 				posts.Title(),
@@ -1336,7 +1336,7 @@ func TestContextTracking(t *testing.T) {
 		require.NotNil(t, post.Id)
 
 		// Act - Build query and get SQL
-		queryBuilder := models.NewQuery(testDB.pool, models.PostsDtos{}).
+		queryBuilder := models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
 			Select(posts.Title(), users.Username()).
 			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id)))

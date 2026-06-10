@@ -23,6 +23,10 @@ func JsonAgg(expression ast.Expression) *ast.AggregationFunction[json.RawMessage
 		ast.NewFunctionNode("json_agg", []ast.Expression{expression}, nil))
 }
 
+func Count(expression ast.Expression) ast.OfType[int64] {
+	return ast.SetType[int64](ast.NewFunctionNode("count", []ast.Expression{expression}, nil))
+}
+
 func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Function[json.RawMessage] {
 	return ast.NewFunction[json.RawMessage](ast.NewFunctionNode(
 		"jsonb_build_object",

@@ -4,6 +4,10 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
+func Table() *ast.TableSource {
+	return &ast.TableSource{Table: "comments"}
+}
+
 func Id() *ast.IntColumnExpression {
 	return ast.NewIntColumnExpression("comments", "id")
 }

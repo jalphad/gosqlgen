@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jalphad/gosqlgen/integration/ref/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 )
 
@@ -20,7 +21,7 @@ func NewDB(pool *pgxpool.Pool) *DB {
 
 // Comments returns a query builder for comments
 func (db *DB) Comments() *builder.KnownTableBuilder[CommentsDtos, CommentsDto, *CommentsDto] {
-	return NewQuery(db.pool, CommentsDtos{})
+	return NewDTOQuery(db.pool, CommentsDtos{})
 }
 
 //// PostTags returns a query builder for post_tags
@@ -30,7 +31,7 @@ func (db *DB) Comments() *builder.KnownTableBuilder[CommentsDtos, CommentsDto, *
 
 // Posts returns a query builder for posts
 func (db *DB) Posts() *builder.KnownTableBuilder[PostsDtos, PostsDto, *PostsDto] {
-	return NewQuery(db.pool, PostsDtos{})
+	return NewDTOQuery(db.pool, PostsDtos{})
 }
 
 //// Tags returns a query builder for tags
@@ -40,7 +41,7 @@ func (db *DB) Posts() *builder.KnownTableBuilder[PostsDtos, PostsDto, *PostsDto]
 
 // Users returns a query builder for users
 func (db *DB) Users() *builder.KnownTableBuilder[UsersDtos, UsersDto, *UsersDto] {
-	return NewQuery(db.pool, UsersDtos{})
+	return NewDTOQuery(db.pool, UsersDtos{})
 }
 
 // Transaction executes a function within a transaction
@@ -63,7 +64,7 @@ func NewTx(tx pgx.Tx) *Tx {
 
 // Comments returns a query builder within the transaction
 func (tx *Tx) Comments() builder.KnownTableStartQuery[CommentsDtos, CommentsDto, *CommentsDto] {
-	q := NewQuery(nil, CommentsDtos{})
+	q := NewDTOQuery(nil, CommentsDtos{})
 	return q.WithTx(tx.tx)
 }
 
@@ -75,7 +76,7 @@ func (tx *Tx) Comments() builder.KnownTableStartQuery[CommentsDtos, CommentsDto,
 
 // Posts returns a query builder within the transaction
 func (tx *Tx) Posts() builder.KnownTableStartQuery[PostsDtos, PostsDto, *PostsDto] {
-	q := NewQuery(nil, PostsDtos{})
+	q := NewDTOQuery(nil, PostsDtos{})
 	return q.WithTx(tx.tx)
 }
 
@@ -87,7 +88,7 @@ func (tx *Tx) Posts() builder.KnownTableStartQuery[PostsDtos, PostsDto, *PostsDt
 
 // Users returns a query builder within the transaction
 func (tx *Tx) Users() builder.KnownTableStartQuery[UsersDtos, UsersDto, *UsersDto] {
-	q := NewQuery(nil, UsersDtos{})
+	q := NewDTOQuery(nil, UsersDtos{})
 	return q.WithTx(tx.tx)
 }
 
@@ -116,6 +117,10 @@ func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[UsersDtos, Use
 	return builder.NewKnownTableBuilder(UsersDtos{}, pool)
 }
 
-func NewQuery[S builder.DTOs[T, O], T any, O builder.DTO[T]](pool *pgxpool.Pool, s S) *builder.KnownTableBuilder[S, T, O] {
+func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.ResultTableBuilder[T] {
+	return builder.NewResultTableBuilder[T](pool, table)
+}
+
+func NewDTOQuery[S builder.DTOs[T, O], T any, O builder.DTO[T]](pool *pgxpool.Pool, s S) *builder.KnownTableBuilder[S, T, O] {
 	return builder.NewKnownTableBuilder(s, pool)
 }
