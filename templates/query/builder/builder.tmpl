@@ -340,11 +340,28 @@ func (b *ResultSelectBuilder[T]) FindOne(ctx context.Context) (T, error) {
 	return results[0], nil
 }
 
+func projectionsToNamedExpressions[T any](projections []ast.Projection[T]) []ast.NamedExpression {
+	named := make([]ast.NamedExpression, 0, len(projections))
+	for _, projection := range projections {
+		named = append(named, projection)
+	}
+	return named
+}
+
+func scanProjections[T any](target *T, projections []ast.Projection[T], row pgx.Row) error {
+	scanDest := make([]any, 0, len(projections))
+	for _, projection := range projections {
+		scanDest = append(scanDest, projection.ScanDestination(target))
+	}
+	return row.Scan(scanDest...)
+}
+
 type InsertBuilder[S DTOs[T, O], T any, O DTO[T]] struct {
-	pool   *pgxpool.Pool
-	tx     pgx.Tx
-	stmt   *ast.InsertStatement
-	execFn func(ctx context.Context) (int64, error)
+	pool      *pgxpool.Pool
+	tx        pgx.Tx
+	stmt      *ast.InsertStatement
+	returning []ast.Projection[T]
+	execFn    func(ctx context.Context) (int64, error)
 }
 
 func (b *InsertBuilder[S, T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
@@ -364,8 +381,9 @@ func (b *InsertBuilder[S, T, O]) Do(expr ast.OnConflictDoExpression) InsertRetur
 	return b
 }
 
-func (b *InsertBuilder[S, T, O]) Returning(columns ...ast.NamedExpression) InsertValuesQuery[T, O] {
-	b.stmt.Returning = columns
+func (b *InsertBuilder[S, T, O]) Returning(projections ...ast.Projection[T]) InsertValuesQuery[T, O] {
+	b.returning = projections
+	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
 }
 
@@ -428,7 +446,7 @@ func (b *InsertBuilder[S, T, O]) queryRow(record O) func(ctx context.Context) (i
 		}
 
 		if len(b.stmt.Returning) > 0 {
-			if err = record.ScanInto(row, b.stmt); err != nil {
+			if err = scanProjections((*T)(record), b.returning, row); err != nil {
 				return -1, err
 			}
 		}
@@ -462,7 +480,7 @@ func (b *InsertBuilder[S, T, O]) query(records []O) func(ctx context.Context) (i
 
 		for _, record := range records {
 			rows.Next()
-			err = record.ScanInto(rows, b.stmt)
+			err = scanProjections((*T)(record), b.returning, rows)
 			if err != nil {
 				return int64(len(records)), err
 			}
@@ -509,8 +527,7 @@ func (b *InsertBuilder[S, T, O]) ExecBatch(ctx context.Context, records []T) err
 	// Scan returned PKs (if any) back into records
 	if len(b.stmt.Returning) > 0 {
 		for _, record := range records {
-			dto := O(&record)
-			if err := dto.ScanInto(br.QueryRow().(pgx.Rows), b.stmt); err != nil {
+			if err := scanProjections(&record, b.returning, br.QueryRow()); err != nil {
 				return fmt.Errorf("failed to scan batch result %+v: %w", record, err)
 			}
 		}
@@ -520,9 +537,10 @@ func (b *InsertBuilder[S, T, O]) ExecBatch(ctx context.Context, records []T) err
 }
 
 type UpdateBuilder[S DTOs[T, O], T any, O DTO[T]] struct {
-	pool *pgxpool.Pool
-	tx   pgx.Tx
-	stmt *ast.UpdateStatement
+	pool      *pgxpool.Pool
+	tx        pgx.Tx
+	stmt      *ast.UpdateStatement
+	returning []ast.Projection[T]
 }
 
 func NewUpdateBuilder[S DTOs[T, O], T any, O DTO[T]](pool *pgxpool.Pool, table string) *UpdateBuilder[S, T, O] {
@@ -549,8 +567,9 @@ func (b *UpdateBuilder[S, T, O]) Where(expr ast.OfType[bool]) UpdateReturningQue
 	return b
 }
 
-func (b *UpdateBuilder[S, T, O]) Returning(columns ...ast.NamedExpression) UpdateFinalizeQuery[T, O] {
-	b.stmt.Returning = columns
+func (b *UpdateBuilder[S, T, O]) Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T, O] {
+	b.returning = projections
+	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
 }
 
@@ -595,8 +614,7 @@ func (b *UpdateBuilder[S, T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	var results []T
 	for rows.Next() {
 		var t T
-		result := O(&t)
-		if err = result.ScanInto(rows, b.stmt); err != nil {
+		if err = scanProjections(&t, b.returning, rows); err != nil {
 			return rows.CommandTag().RowsAffected(), results, err
 		}
 		results = append(results, t)
@@ -611,9 +629,10 @@ func (b *UpdateBuilder[S, T, O]) ToSql() (string, error) {
 }
 
 type DeleteBuilder[T any, O DTO[T]] struct {
-	pool *pgxpool.Pool
-	tx   pgx.Tx
-	stmt *ast.DeleteStatement
+	pool      *pgxpool.Pool
+	tx        pgx.Tx
+	stmt      *ast.DeleteStatement
+	returning []ast.Projection[T]
 }
 
 func NewDeleteBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *DeleteBuilder[T, O] {
@@ -640,8 +659,9 @@ func (b *DeleteBuilder[T, O]) Where(expr ast.OfType[bool]) DeleteReturningQuery[
 	return b
 }
 
-func (b *DeleteBuilder[T, O]) Returning(columns ...ast.NamedExpression) DeleteFinalizeQuery[T, O] {
-	b.stmt.Returning = columns
+func (b *DeleteBuilder[T, O]) Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T, O] {
+	b.returning = projections
+	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
 }
 
@@ -677,8 +697,7 @@ func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	var results []T
 	for rows.Next() {
 		var t T
-		result := O(&t)
-		if err = result.ScanInto(rows, b.stmt); err != nil {
+		if err = scanProjections(&t, b.returning, rows); err != nil {
 			return rows.CommandTag().RowsAffected(), results, err
 		}
 		results = append(results, t)

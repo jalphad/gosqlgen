@@ -335,6 +335,17 @@ func RenderTableStruct(data TableStructData) (string, error) {
 func RenderColumnExpressions(data TableStructData) (string, error) {
 	funcMap := template.FuncMap{
 		"toTypeExpression": ToTypeExpression,
+		"scanDestType": func(goType string) string {
+			return "*" + goType
+		},
+		"usesType": func(fields []StructField, needle string) bool {
+			for _, field := range fields {
+				if strings.Contains(field.GoType, needle) {
+					return true
+				}
+			}
+			return false
+		},
 	}
 
 	t, err := template.New("columnExpressions").Funcs(funcMap).Parse(tableQueryExpressionsTemplate)

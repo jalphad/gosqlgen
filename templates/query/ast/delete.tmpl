@@ -54,10 +54,11 @@ func (s *DeleteStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		if ctx != nil {
 			ctx.CurrentPart = QueryPartReturning
 		}
-		returning := make([]string, 0, len(s.Returning))
-		for _, val := range s.Returning {
-			returning = append(returning, val.Name())
+		builder.WriteString(" RETURNING ")
+		for i := 0; i < len(s.Returning)-1; i++ {
+			s.Returning[i].toSQL(builder, params, ctx)
+			builder.WriteString(", ")
 		}
-		builder.WriteString(" RETURNING " + strings.Join(returning, ", "))
+		s.Returning[len(s.Returning)-1].toSQL(builder, params, ctx)
 	}
 }

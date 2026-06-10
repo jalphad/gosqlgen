@@ -118,7 +118,7 @@ type InsertOnConflictDoQuery[T any, O DTO[T]] interface {
 }
 
 type InsertReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) InsertValuesQuery[T, O]
+	Returning(projections ...ast.Projection[T]) InsertValuesQuery[T, O]
 	InsertValuesQuery[T, O]
 }
 
@@ -151,7 +151,7 @@ type UpdateWhereQuery[T any, O DTO[T]] interface {
 }
 
 type UpdateReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) UpdateFinalizeQuery[T, O]
+	Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T, O]
 	UpdateFinalizeQuery[T, O]
 }
 
@@ -179,7 +179,7 @@ type DeleteWhereQuery[T any, O DTO[T]] interface {
 }
 
 type DeleteReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) DeleteFinalizeQuery[T, O]
+	Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T, O]
 	DeleteFinalizeQuery[T, O]
 }
 

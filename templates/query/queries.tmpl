@@ -25,7 +25,7 @@ func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.
 		{{- if $table.PrimaryKeyFields }}
 		Returning(
 			{{- range $index, $pkField := $table.PrimaryKeyFields }}
-			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
+			{{- if $index }}, {{ end }}{{ $tablePkg }}.Into.{{ $pkField }}()
 			{{- end -}}
 		).
 		{{- end }}
@@ -43,7 +43,7 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 		{{- if $table.PrimaryKeyFields }}
 		Returning(
 			{{- range $index, $pkField := $table.PrimaryKeyFields }}
-			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
+			{{- if $index }}, {{ end }}{{ $tablePkg }}.Into.{{ $pkField }}()
 			{{- end -}}
 		).
 		{{- end }}
@@ -59,7 +59,7 @@ func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalize
 			users.FullName(),
 			users.IsActive(),
 		).
-		Returning(users.Id()).
+		Returning(users.Into.Id()).
 		Values(dto)
 }
 
@@ -71,7 +71,7 @@ func InsertUsers(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFin
 			users.FullName(),
 			users.IsActive(),
 		).
-		Returning(users.Id()).
+		Returning(users.Into.Id()).
 		Values(dtos...)
 }
 
@@ -82,7 +82,7 @@ func InsertPost(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalize
 			posts.Title(),
 			posts.Content(),
 		).
-		Returning(posts.Id()).
+		Returning(posts.Into.Id()).
 		Values(dto)
 }
 
@@ -93,7 +93,7 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 			comments.UserId(),
 			comments.Content(),
 		).
-		Returning(comments.Id()).
+		Returning(comments.Into.Id()).
 		Values(dto)
 }
 
@@ -173,4 +173,3 @@ func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQu
 		Where(posts.Id().Eq(Val(id))).
 		GroupBy(posts.Id(), posts.Title(), posts.UserId())
 }
-

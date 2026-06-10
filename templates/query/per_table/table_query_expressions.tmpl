@@ -1,8 +1,25 @@
 package {{ .TableName }}
 
 import (
+	{{- if usesType .Fields "json.RawMessage" }}
+	"encoding/json"
+	{{- end }}
+	{{- if usesType .Fields "time.Time" }}
+	"time"
+	{{- end }}
+	{{- if usesType .Fields "uuid.UUID" }}
+	"github.com/google/uuid"
+	{{- end }}
+	{{- if usesType .Fields "pgtype.Numeric" }}
+	"github.com/jackc/pgx/v5/pgtype"
+	{{- end }}
+	"{{ .PackagePath }}/models"
 	"{{ .PackagePath }}/query/ast"
 )
+
+var Into = into{{ .StructName }}{}
+
+type into{{ .StructName }} struct{}
 
 func Table() *ast.TableSource {
 	return &ast.TableSource{Table: "{{ .TableName }}"}
@@ -18,6 +35,22 @@ func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 	{{- range .Fields }}
 		{{ .FieldName }}(),
+	{{- end }}
+	}
+}
+
+{{ range .Fields }}
+func (into{{ $.StructName }}) {{ .FieldName }}() ast.Projection[models.{{ $.StructName }}] {
+	return ast.NewProjection({{ .FieldName }}(), func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
+		return &{{ $.ReceiverName }}.{{ .FieldName }}
+	})
+}
+{{ end }}
+
+func (into{{ .StructName }}) AllColumns() []ast.Projection[models.{{ .StructName }}] {
+	return []ast.Projection[models.{{ .StructName }}]{
+	{{- range .Fields }}
+		Into.{{ .FieldName }}(),
 	{{- end }}
 	}
 }
