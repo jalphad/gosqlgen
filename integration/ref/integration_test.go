@@ -882,7 +882,8 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Eager load comments for User", func(t *testing.T) {
 		// Act
-		user, err := query.UsersDtoSelectByIdWithComments(testDB.pool, *user1.Id).FindOne(context.Background())
+		user, err := query.UsersDtoSelectById(testDB.pool, *user1.Id,
+			query.UserWithComments, query.WithPosts).FindOne(context.Background())
 
 		// Assert
 		require.NoError(t, err)

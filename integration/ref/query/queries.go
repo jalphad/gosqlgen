@@ -57,15 +57,6 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 		Values(dto)
 }
 
-type Foo struct {
-	Field      string
-	OtherField PartialCast[uuid.UUID]
-}
-
-func (f *Foo) Bar(param int) bool {
-	return param > 0
-}
-
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewQuery(pool, models.UsersDtos{}).
 		Update(
@@ -103,22 +94,68 @@ func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuer
 }
 
 func UsersDtoSelectById(pool *pgxpool.Pool, id uuid.UUID, opts ...SelectOpt) builder.SelectFinalizeQuery[models.UsersDto] {
-	columns := users.AllColumns()
-	for _, opt := range opts {
-		if opt.selectExpr != nil {
-			columns = append(columns, opt.selectExpr)
-		}
+	var toSelect = []ast.NamedExpression{
+		users.Id(),
 	}
-	qry := models.NewUsersQuery(pool).
-		Select(columns...)
 	for _, opt := range opts {
-		joins := opt.joinExprs
-		for _, join := range joins {
-			qry.Join(join.Type, join.Table, join.Condition)
+		toSelect = append(toSelect, opt.selectExpr)
+	}
+
+	partial := models.NewUsersQuery(pool).
+		Select(
+			toSelect...,
+		)
+	for _, opt := range opts {
+		joinExprs := opt.joinExprs
+		for _, joinExpr := range joinExprs {
+			partial = partial.Join(joinExpr.Type, joinExpr.Table, joinExpr.Condition)
 		}
 	}
 
-	return qry.
+	return partial.
+		Where(users.Id().Eq(Val(id))).
+		GroupBy(users.Id())
+}
+
+func UserWithComments() *SelectOpt {
+	alias := ast.NewAlias("comments")
+	return &SelectOpt{
+		selectExpr: Coalesce(
+			JsonAgg(
+				Distinct(JsonbBuildObject(
+					comments.Id(),
+					comments.UserId(),
+					comments.Content(),
+					comments.CreatedAt(),
+				)),
+			),
+		).As(alias),
+		joinExprs: []JoinExpr{
+			{
+				Type:      ast.JoinLeft,
+				Table:     "comments",
+				Condition: comments.UserId().Eq(users.Id()),
+			},
+		},
+	}
+}
+
+func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
+	c := ast.NewAlias("comments")
+	return models.NewUsersQuery(pool).
+		Select(
+			users.Id(),
+			Coalesce(
+				JsonAgg(
+					Distinct(JsonbBuildObject(
+						comments.Id(),
+						comments.UserId(),
+						comments.Content(),
+						comments.CreatedAt(),
+					)),
+				),
+			).As(c)).
+		Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
 		Where(users.Id().Eq(Val(id))).
 		GroupBy(users.Id())
 }
