@@ -20,7 +20,7 @@ func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertF
 			users.Email(),
 			users.FullName(),
 		).
-		Returning(users.Id()).
+		Returning(users.Into.Id()).
 		Values(dto)
 }
 
@@ -31,7 +31,7 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 			users.Email(),
 			users.FullName(),
 		).
-		Returning(users.Id()).
+		Returning(users.Into.Id()).
 		Values(dtos...)
 }
 
@@ -42,7 +42,7 @@ func InsertPost(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalize
 			posts.Title(),
 			posts.Content(),
 		).
-		Returning(posts.Id()).
+		Returning(posts.Into.Id()).
 		Values(dto)
 }
 
@@ -53,7 +53,7 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 			comments.UserId(),
 			comments.Content(),
 		).
-		Returning(comments.Id()).
+		Returning(comments.Into.Id()).
 		Values(dto)
 }
 

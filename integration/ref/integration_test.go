@@ -333,7 +333,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 				users.IsActive(),
 			).
 			OnConflict(users.Username()).Do(ast.Update(users.Email())).
-			Returning(users.Id()).
+			Returning(users.Into.Id()).
 			Values(user)
 		err = conflict.Exec(context.Background())
 		require.NoError(t, err)
@@ -370,7 +370,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 				query.Set(users.Username()).To(query.Val(user.Username)),
 			).
 			Where(users.Id().Eq(query.Val(*user.Id))).
-			Returning(users.FullName()).
+			Returning(users.Into.FullName()).
 			Exec(context.Background())
 
 		// Assert
@@ -392,7 +392,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		deleted, details, err := models.NewUsersQuery(testDB.pool).
 			Delete().
 			Where(users.Id().Eq(query.Val(*user.Id))).
-			Returning(users.Id()).
+			Returning(users.Into.Id()).
 			Exec(context.Background())
 		require.NoError(t, err)
 
@@ -1182,7 +1182,7 @@ func TestContextTracking(t *testing.T) {
 				users.FullName(),
 				users.IsActive(),
 			).
-			Returning(users.Id()).
+			Returning(users.Into.Id()).
 			Values(user).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1201,7 +1201,7 @@ func TestContextTracking(t *testing.T) {
 				posts.Title(),
 				posts.Content(),
 			).
-			Returning(posts.Id()).
+			Returning(posts.Into.Id()).
 			Values(post).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1242,7 +1242,7 @@ func TestContextTracking(t *testing.T) {
 				users.FullName(),
 				users.IsActive(),
 			).
-			Returning(users.Id()).
+			Returning(users.Into.Id()).
 			Values(user).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1259,7 +1259,7 @@ func TestContextTracking(t *testing.T) {
 				posts.Title(),
 				posts.Content(),
 			).
-			Returning(posts.Id()).
+			Returning(posts.Into.Id()).
 			Values(post).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1277,7 +1277,7 @@ func TestContextTracking(t *testing.T) {
 				comments.UserId(),
 				comments.Content(),
 			).
-			Returning(comments.Id()).
+			Returning(comments.Into.Id()).
 			Values(comment).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1329,7 +1329,7 @@ func TestContextTracking(t *testing.T) {
 				posts.UserId(),
 				posts.Title(),
 			).
-			Returning(posts.Id()).
+			Returning(posts.Into.Id()).
 			Values(post).
 			Exec(context.Background())
 		require.NoError(t, err)

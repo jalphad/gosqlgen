@@ -46,3 +46,20 @@ func TestGeneratedDTOProjectionToSQL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "SELECT users.id, users.email, users.full_name FROM users", sql)
 }
+
+func TestInsertReturningProjectionToSQL(t *testing.T) {
+	user := &models.UsersDto{
+		Username: "janedoe",
+		Email:    "jane@example.com",
+	}
+
+	q := models.NewUsersQuery(nil).
+		Insert(users.Username(), users.Email()).
+		Returning(users.Into.Id()).
+		Values(user)
+
+	sql, err := q.ToSql()
+
+	require.NoError(t, err)
+	require.Equal(t, "INSERT INTO users(username, email) VALUES ($1, $2) RETURNING users.id", sql)
+}

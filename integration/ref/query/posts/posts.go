@@ -1,8 +1,16 @@
 package posts
 
 import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
+
+var Into = intoPostsDto{}
+
+type intoPostsDto struct{}
 
 func Table() *ast.TableSource {
 	return &ast.TableSource{Table: "posts"}
@@ -46,4 +54,46 @@ func AllColumns() []ast.NamedExpression {
 		PublishedAt(),
 		ViewCount(),
 	}
+}
+
+func (intoPostsDto) Id() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(Id(), func(p *models.PostsDto) **int64 {
+		return &p.Id
+	})
+}
+
+func (intoPostsDto) Title() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(Title(), func(p *models.PostsDto) *string {
+		return &p.Title
+	})
+}
+
+func (intoPostsDto) UserId() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(UserId(), func(p *models.PostsDto) *uuid.UUID {
+		return &p.UserId
+	})
+}
+
+func (intoPostsDto) Content() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(Content(), func(p *models.PostsDto) **string {
+		return &p.Content
+	})
+}
+
+func (intoPostsDto) Status() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(Status(), func(p *models.PostsDto) **string {
+		return &p.Status
+	})
+}
+
+func (intoPostsDto) PublishedAt() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(PublishedAt(), func(p *models.PostsDto) **time.Time {
+		return &p.PublishedAt
+	})
+}
+
+func (intoPostsDto) ViewCount() ast.Projection[models.PostsDto] {
+	return ast.NewProjection(ViewCount(), func(p *models.PostsDto) **int64 {
+		return &p.ViewCount
+	})
 }

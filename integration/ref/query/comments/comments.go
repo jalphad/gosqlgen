@@ -1,8 +1,16 @@
 package comments
 
 import (
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
+
+var Into = intoCommentsDto{}
+
+type intoCommentsDto struct{}
 
 func Table() *ast.TableSource {
 	return &ast.TableSource{Table: "comments"}
@@ -41,4 +49,40 @@ func AllColumns() []ast.NamedExpression {
 		IsApproved(),
 		CreatedAt(),
 	}
+}
+
+func (intoCommentsDto) Id() ast.Projection[models.CommentsDto] {
+	return ast.NewProjection(Id(), func(c *models.CommentsDto) **int64 {
+		return &c.Id
+	})
+}
+
+func (intoCommentsDto) Content() ast.Projection[models.CommentsDto] {
+	return ast.NewProjection(Content(), func(c *models.CommentsDto) *string {
+		return &c.Content
+	})
+}
+
+func (intoCommentsDto) UserId() ast.Projection[models.CommentsDto] {
+	return ast.NewProjection(UserId(), func(c *models.CommentsDto) *uuid.UUID {
+		return &c.UserId
+	})
+}
+
+func (intoCommentsDto) PostId() ast.Projection[models.CommentsDto] {
+	return ast.NewProjection(PostId(), func(c *models.CommentsDto) *int64 {
+		return &c.PostId
+	})
+}
+
+func (intoCommentsDto) IsApproved() ast.Projection[models.CommentsDto] {
+	return ast.NewProjection(IsApproved(), func(c *models.CommentsDto) **bool {
+		return &c.IsApproved
+	})
+}
+
+func (intoCommentsDto) CreatedAt() ast.Projection[models.CommentsDto] {
+	return ast.NewProjection(CreatedAt(), func(c *models.CommentsDto) **time.Time {
+		return &c.CreatedAt
+	})
 }
