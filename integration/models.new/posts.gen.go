@@ -3,12 +3,10 @@ package models
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
@@ -235,9 +233,6 @@ type PostsDto struct {
 
 	// Many-to-many relationships (populated via LoadXxx methods)
 	Tags []TagsDto `manytomany:"post_tags"`
-
-	// FromExpressions stores custom aggregations and expressions not mapped to fields
-	FromExpressions map[string]any `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for PostsDto
@@ -266,207 +261,6 @@ func (p *PostsDto) UnmarshalJSON(b []byte) error {
 	p.UpdatedAt = &wrapper.UpdatedAt.Time
 
 	return nil
-}
-
-// scanInto scans a row into a struct
-func (p *PostsDto) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
-	var scanDest []any
-	var jsonUnmarshalFuncs []func() error
-
-	columns := stmt.Returns()
-	if len(columns) > 0 {
-		// Use selectFields - scan in exact order
-		for _, field := range columns {
-			destPtr, unmarshalFunc := p.getScanDestForField(field, stmt)
-			scanDest = append(scanDest, destPtr)
-			if unmarshalFunc != nil {
-				jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
-			}
-		}
-	} else {
-		// Default behavior - scan all table columns + joined tables
-		scanDest = append(scanDest, &p.Id)
-		scanDest = append(scanDest, &p.UserId)
-		scanDest = append(scanDest, &p.Title)
-		scanDest = append(scanDest, &p.Content)
-		scanDest = append(scanDest, &p.Status)
-		scanDest = append(scanDest, &p.PublishedAt)
-		scanDest = append(scanDest, &p.ViewCount)
-		scanDest = append(scanDest, &p.CreatedAt)
-		scanDest = append(scanDest, &p.UpdatedAt)
-
-		// Add joined table columns if active (using context)
-		ctx := stmt.GetQueryContext()
-		if ctx != nil && ctx.JoinedTables != nil {
-			if _, hasUsers := ctx.JoinedTables["users"]; hasUsers {
-				joinedUser := &UsersDto{}
-				scanDest = append(scanDest, &joinedUser.Id)
-				scanDest = append(scanDest, &joinedUser.Username)
-				scanDest = append(scanDest, &joinedUser.Email)
-				scanDest = append(scanDest, &joinedUser.FullName)
-				scanDest = append(scanDest, &joinedUser.CreatedAt)
-				scanDest = append(scanDest, &joinedUser.UpdatedAt)
-				scanDest = append(scanDest, &joinedUser.IsActive)
-				p.User = joinedUser
-			}
-		}
-	}
-
-	// Perform scan
-	if err := row.Scan(scanDest...); err != nil {
-		return err
-	}
-
-	// Execute JSON unmarshal functions and collect errors
-	var unmarshalErrors []error
-	for _, fn := range jsonUnmarshalFuncs {
-		if err := fn(); err != nil {
-			unmarshalErrors = append(unmarshalErrors, err)
-		}
-	}
-
-	if len(unmarshalErrors) > 0 {
-		return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
-	}
-
-	return nil
-}
-
-// getScanDestForField returns the appropriate scan destination for a field
-// and optionally a function to unmarshal JSON data after scanning
-func (p *PostsDto) getScanDestForField(ref ast.NamedExpression, stmt ast.SqlStatement) (any, func() error) {
-	var refTable string
-	if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
-		refTable = split[0]
-	}
-
-	ctx := stmt.GetQueryContext()
-
-	// Normalize alias for matching (lowercase)
-	aliasLower := strings.ToLower(ref.Name())
-	// Check if alias matches a reverse relationship collection field
-	if aliasLower == "comments" {
-		var jsonData []byte
-		unmarshalFunc := func() error {
-			if len(jsonData) > 0 && string(jsonData) != "null" {
-				var items []CommentsDto
-				if err := json.Unmarshal(jsonData, &items); err != nil {
-					return fmt.Errorf("field Comments: %w", err)
-				}
-				p.Comments = items
-			} else {
-				p.Comments = []CommentsDto{}
-			}
-			return nil
-		}
-		return &jsonData, unmarshalFunc
-	}
-	// Check if alias matches a many-to-many collection field
-	if aliasLower == "tags" {
-		var jsonData []byte
-		unmarshalFunc := func() error {
-			if len(jsonData) > 0 && string(jsonData) != "null" {
-				var items []TagsDto
-				if err := json.Unmarshal(jsonData, &items); err != nil {
-					return fmt.Errorf("field Tags: %w", err)
-				}
-				p.Tags = items
-			} else {
-				p.Tags = []TagsDto{}
-			}
-			return nil
-		}
-		return &jsonData, unmarshalFunc
-	}
-
-	// Check if alias matches a regular table column
-	if refTable == "posts" {
-
-		if aliasLower == "id" {
-			return &p.Id, nil
-		}
-
-		if aliasLower == "user_id" || aliasLower == "userid" {
-			return &p.UserId, nil
-		}
-
-		if aliasLower == "title" {
-			return &p.Title, nil
-		}
-
-		if aliasLower == "content" {
-			return &p.Content, nil
-		}
-
-		if aliasLower == "status" {
-			return &p.Status, nil
-		}
-
-		if aliasLower == "published_at" || aliasLower == "publishedat" {
-			return &p.PublishedAt, nil
-		}
-
-		if aliasLower == "view_count" || aliasLower == "viewcount" {
-			return &p.ViewCount, nil
-		}
-
-		if aliasLower == "created_at" || aliasLower == "createdat" {
-			return &p.CreatedAt, nil
-		}
-
-		if aliasLower == "updated_at" || aliasLower == "updatedat" {
-			return &p.UpdatedAt, nil
-		}
-	}
-	// Check if it matches a joined table column (using context)
-	if refTable == "users" {
-		if ctx != nil && ctx.JoinedTables != nil {
-			_, hasUsers := ctx.JoinedTables["users"]
-			if hasUsers && p.User == nil {
-				p.User = &UsersDto{}
-			}
-
-			if hasUsers && aliasLower == "id" {
-				return &p.User.Id, nil
-			}
-
-			if hasUsers && aliasLower == "username" {
-				return &p.User.Username, nil
-			}
-
-			if hasUsers && aliasLower == "email" {
-				return &p.User.Email, nil
-			}
-
-			if hasUsers && aliasLower == "full_name" || aliasLower == "fullname" {
-				return &p.User.FullName, nil
-			}
-
-			if hasUsers && aliasLower == "created_at" || aliasLower == "createdat" {
-				return &p.User.CreatedAt, nil
-			}
-
-			if hasUsers && aliasLower == "updated_at" || aliasLower == "updatedat" {
-				return &p.User.UpdatedAt, nil
-			}
-
-			if hasUsers && aliasLower == "is_active" || aliasLower == "isactive" {
-				return &p.User.IsActive, nil
-			}
-		}
-	}
-
-	// No match - store in FromExpressions as any
-	if p.FromExpressions == nil {
-		p.FromExpressions = make(map[string]any)
-	}
-	var value any
-	// Store a pointer to value that we'll populate after scan
-	unmarshalFunc := func() error {
-		p.FromExpressions[ref.Name()] = value
-		return nil
-	}
-	return &value, unmarshalFunc
 }
 
 // GetArg returns an expression which will be converted to a parameter in the SQL query
@@ -534,18 +328,6 @@ func (p *PostsDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
 	return nil, errors.New("unknown column")
 }
 
-// LoadComments loads associated comments for this posts
-//func (p *PostsDto) LoadComments(ctx context.Context, db *DB) error {
-//	if p.Id == nil {
-//		return nil
-//	}
-//	results, err := db.Comments().Select().Where(comments.PostId().Eq(ast.NewSQLType(*p.Id))).Find(ctx)
-//	if err != nil {
-//		return err
-//	}
-//	p.Comments = results
-//	return nil
-//}
 //
 //// LoadTags loads associated tags through post_tags
 //func (p *PostsDto) LoadTags(ctx context.Context, db *DB) error {
