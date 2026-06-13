@@ -1,8 +1,6 @@
 package ast
 
-import (
-	"strings"
-)
+import "strings"
 
 type AliasedFunction[T MappedTypes] interface {
 	ofType[T]

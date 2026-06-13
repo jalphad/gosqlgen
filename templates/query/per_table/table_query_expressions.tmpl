@@ -15,6 +15,9 @@ import (
 	{{- end }}
 	"{{ .PackagePath }}/models"
 	"{{ .PackagePath }}/query/ast"
+	{{- if or .ReverseRelFields .ManyToManyFields }}
+	"{{ .PackagePath }}/query/expr"
+	{{- end }}
 )
 
 var Into = into{{ .StructName }}{}
@@ -54,3 +57,51 @@ func (into{{ .StructName }}) AllColumns() []ast.Projection[models.{{ .StructName
 	{{- end }}
 	}
 }
+
+{{ range .ReverseRelFields }}
+{{- $rel := . }}
+func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[models.{{ $.StructName }}] {
+	if len(columns) == 0 {
+		columns = default{{ .FieldName }}Columns()
+	}
+	{{- $filter := filterColumn .FromColumns .FromPKField .FKColumn }}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("{{ .FieldName | toLower }}", ast.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ .GoType }} {
+			return &{{ $.ReceiverName }}.{{ .FieldName }}
+		},
+	)
+}
+
+func default{{ .FieldName }}Columns() []ast.NamedExpression {
+	return []ast.NamedExpression{
+	{{- range .FromColumns }}
+		ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $rel.FromTable }}", "{{ .ColumnName }}"),
+	{{- end }}
+	}
+}
+{{ end }}
+
+{{ range .ManyToManyFields }}
+{{- $rel := . }}
+func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[models.{{ $.StructName }}] {
+	if len(columns) == 0 {
+		columns = default{{ .FieldName }}Columns()
+	}
+	{{- $filter := filterColumn .ReferencedColumns .ReferencedPKField .RightFKColumn }}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("{{ .FieldName | toLower }}", ast.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ .GoType }} {
+			return &{{ $.ReceiverName }}.{{ .FieldName }}
+		},
+	)
+}
+
+func default{{ .FieldName }}Columns() []ast.NamedExpression {
+	return []ast.NamedExpression{
+	{{- range .ReferencedColumns }}
+		ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $rel.ReferencedTable }}", "{{ .ColumnName }}"),
+	{{- end }}
+	}
+}
+{{ end }}

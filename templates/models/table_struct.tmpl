@@ -1,15 +1,15 @@
 package models
 
 import (
+	{{- if needsCustomUnmarshal .Fields }}
 	"encoding/json"
+	{{- end }}
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"{{ .PackagePath }}/query/ast"
 )
 
@@ -39,9 +39,6 @@ type {{ .StructName }} struct {
 	{{ .FieldName }} {{ .GoType }} `manytomany:"{{ .JunctionTable }}"`
 {{- end }}
 {{- end }}
-
-	// FromExpressions stores custom aggregations and expressions not mapped to fields
-	FromExpressions map[string]any `json:"from_expressions,omitempty"`
 }
 
 // TableName returns the table name for {{ .StructName }}
@@ -89,165 +86,6 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 }
 {{- end }}
 
-// scanInto scans a row into a struct
-func ({{ .ReceiverName }} *{{ .StructName }}) ScanInto(row pgx.Row, stmt ast.SqlStatement) error {
-    var scanDest []any
-    var jsonUnmarshalFuncs []func() error
-
-    columns := stmt.Returns()
-    if len(columns) > 0 {
-        // Use selectFields - scan in exact order
-        for _, field := range columns {
-            destPtr, unmarshalFunc := {{ .ReceiverName }}.getScanDestForField(field)
-            scanDest = append(scanDest, destPtr)
-            if unmarshalFunc != nil {
-                jsonUnmarshalFuncs = append(jsonUnmarshalFuncs, unmarshalFunc)
-            }
-        }
-    } else {
-        // Default behavior - scan all table columns + joined tables
-        {{- range .Fields }}
-        scanDest = append(scanDest, &{{ $.ReceiverName }}.{{ .FieldName }})
-        {{- end }}
-
-	{{- if or .JoinedFields .ReverseRelFields .ManyToManyFields }}
-        // Add joined table columns
-        ctx := stmt.GetQueryContext()
-        if ctx != nil && ctx.JoinedTables != nil {
-        {{- range $fk := .JoinedFields }}
-            if _, ok := ctx.JoinedTables["{{ .ReferencedTable }}"]; ok {
-                joined{{ $fk.FieldName }} := &{{ $fk.StructName }}{}
-                {{- range $fk.ReferencedColumns }}
-                scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
-                {{- end }}
-                {{ $.ReceiverName }}.{{ $fk.FieldName }} = joined{{ $fk.FieldName }}
-            }
-        {{- end }}
-        {{- range $fk := .ReverseRelFields }}
-            if _, ok := ctx.JoinedTables["{{ .FromTable }}"]; ok {
-                joined{{ $fk.FieldName }} := {{ $fk.StructName }}{}
-                {{- range $fk.FromColumns }}
-                scanDest = append(scanDest, &joined{{ $fk.FieldName }}.{{ .FieldName }})
-                {{- end }}
-                {{ $.ReceiverName }}.{{ $fk.FieldName }} = []{{ $fk.StructName }}{joined{{ $fk.FieldName }}}
-            }
-        {{- end }}
-        }
-        {{- end }}
-    }
-
-    // Perform scan
-    if err := row.Scan(scanDest...); err != nil {
-        return err
-    }
-
-    // Execute JSON unmarshal functions and collect errors
-    var unmarshalErrors []error
-    for _, fn := range jsonUnmarshalFuncs {
-        if err := fn(); err != nil {
-            unmarshalErrors = append(unmarshalErrors, err)
-        }
-    }
-
-    if len(unmarshalErrors) > 0 {
-        return fmt.Errorf("JSON unmarshal errors: %v", unmarshalErrors)
-    }
-
-    return nil
-}
-
-// getScanDestForField returns the appropriate scan destination for a field
-// and optionally a function to unmarshal JSON data after scanning
-func ({{ .ReceiverName }} *{{ .StructName }}) getScanDestForField(ref ast.NamedExpression) (any, func() error) {
-    var refTable string
-    if split := strings.Split(ast.Render(ref, &[]any{}), "."); len(split) == 2 {
-        refTable = split[0]
-    }
-
-    // Normalize alias for matching (lowercase)
-    aliasLower := strings.ToLower(ref.Name())
-
-    {{- if .ReverseRelFields }}
-    // Check if alias matches a reverse relationship collection field
-    {{- range .ReverseRelFields }}
-    if aliasLower == "{{ .FieldName | toLower }}" {
-        var jsonData []byte
-        unmarshalFunc := func() error {
-            if len(jsonData) > 0 && string(jsonData) != "null" {
-                var items []{{ .StructName }}
-                if err := json.Unmarshal(jsonData, &items); err != nil {
-                    return fmt.Errorf("field {{ .FieldName }}: %w", err)
-                }
-                {{ $.ReceiverName }}.{{ .FieldName }} = items
-            } else {
-                {{ $.ReceiverName }}.{{ .FieldName }} = []{{ .StructName }}{}
-            }
-            return nil
-        }
-        return &jsonData, unmarshalFunc
-    }
-    {{- end }}
-    {{- end }}
-
-    {{- if .ManyToManyFields }}
-    // Check if alias matches a many-to-many collection field
-    {{- range .ManyToManyFields }}
-    if aliasLower == "{{ .FieldName | toLower }}" {
-        var jsonData []byte
-        unmarshalFunc := func() error {
-            if len(jsonData) > 0 && string(jsonData) != "null" {
-                var items []{{ .StructName }}
-                if err := json.Unmarshal(jsonData, &items); err != nil {
-                    return fmt.Errorf("field {{ .FieldName }}: %w", err)
-                }
-                {{ $.ReceiverName }}.{{ .FieldName }} = items
-            } else {
-                {{ $.ReceiverName }}.{{ .FieldName }} = []{{ .StructName }}{}
-            }
-            return nil
-        }
-        return &jsonData, unmarshalFunc
-    }
-    {{- end }}
-    {{- end }}
-
-    // Check if alias matches a regular table column
-    if refTable == "{{ .TableName }}" {
-        {{- range .Fields }}
-        {{ template "ifAliasLower" . }}
-            return &{{ $.ReceiverName }}.{{ .FieldName }}, nil
-        }
-        {{- end }}
-    }
-
-    {{- if .JoinedFields }}
-    // Check if it matches a joined table column
-    {{- range $fk := .JoinedFields }}
-    if refTable == "{{ $fk.ReferencedTable }}" {
-        if {{ $.ReceiverName }}.{{ $fk.FieldName }} == nil {
-            {{ $.ReceiverName }}.{{ $fk.FieldName }} = &{{ $fk.StructName }}{}
-        }
-        {{- range $fk.ReferencedColumns }}
-        {{ template "ifAliasLower" . }}
-            return {{ $.ReceiverName }}.{{ $fk.FieldName }}.{{ .FieldName }}, nil
-        }
-        {{- end }}
-    }
-    {{- end }}
-    {{- end }}
-
-    // No match - store in FromExpressions as any
-    if {{ .ReceiverName }}.FromExpressions == nil {
-        {{ .ReceiverName }}.FromExpressions = make(map[string]any)
-    }
-    var value any
-    // Store a pointer to value that we'll populate after scan
-    unmarshalFunc := func() error {
-        {{ .ReceiverName }}.FromExpressions[ref.Name()] = value
-        return nil
-    }
-    return &value, unmarshalFunc
-}
 
 // GetArg returns an expression which will be converted to a parameter in the SQL query
 func ({{ .ReceiverName }} *{{ .StructName }}) GetArg(ref ast.NamedExpression) (ast.Expression, error) {

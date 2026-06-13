@@ -262,13 +262,14 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 		//err = testDB.Users().Update(context.Background(), user)
 		require.NoError(t, err)
-		found, err := models.NewUsersQuery(testDB.pool).
-			Select(users.AllColumns()...).
+		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(users.Into.AllColumns()...).
 			Where(
 				users.Id().Eq(query.Val(*user.Id))).
 			FindOne(context.Background())
-		found2, err := models.NewUsersQuery(testDB.pool).
-			Select(users.AllColumns()...).
+		require.NoError(t, err)
+		found2, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(users.Into.AllColumns()...).
 			Where(
 				users.Id().Eq(query.Val(*user2.Id))).
 			FindOne(context.Background())
@@ -302,8 +303,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.EqualValues(t, 1, deleted)
 		assert.Nil(t, details)
 
-		_, err = models.NewUsersQuery(testDB.pool).
-			Select().
+		_, err = models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(users.Into.Id()).
 			Where(users.Id().Eq(query.Val(*user.Id))).
 			FindOne(context.Background())
 		require.Error(t, err)
@@ -339,8 +340,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		require.NoError(t, err)
 
 		// Act
-		found, err := models.NewUsersQuery(testDB.pool).
-			Select(users.AllColumns()...).
+		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(users.Into.AllColumns()...).
 			Where(
 				users.Id().Eq(query.Val(*user.Id))).
 			FindOne(context.Background())
@@ -401,8 +402,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.EqualValues(t, 1, deleted)
 		assert.Equal(t, *user.Id, *details[0].Id)
 
-		_, err = models.NewUsersQuery(testDB.pool).
-			Select().
+		_, err = models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(users.Into.Id()).
 			Where(users.Id().Eq(query.Val(*user.Id))).FindOne(context.Background())
 		require.Error(t, err)
 		assert.ErrorIs(t, err, pgx.ErrNoRows)
@@ -513,6 +514,69 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		assert.EqualValues(t, 3, count)
+	})
+}
+
+func TestIntegration_RelationshipProjection(t *testing.T) {
+	cleanupTables(t)
+
+	t.Run("Load posts into user DTO", func(t *testing.T) {
+		user := &models.UsersDto{
+			Username: "projectionuser",
+			Email:    "projection@example.com",
+		}
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, user.Id)
+
+		post1 := &models.PostsDto{UserId: *user.Id, Title: "Projection Post 1"}
+		post2 := &models.PostsDto{UserId: *user.Id, Title: "Projection Post 2"}
+		err = query.InsertPost(testDB.pool, post1).Exec(context.Background())
+		require.NoError(t, err)
+		err = query.InsertPost(testDB.pool, post2).Exec(context.Background())
+		require.NoError(t, err)
+
+		result, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(
+				users.Into.Id(),
+				users.Into.Posts(posts.Id(), posts.Title()),
+			).
+			Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
+			Where(users.Id().Eq(query.Val(*user.Id))).
+			GroupBy(users.Id()).
+			FindOne(context.Background())
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Posts)
+		require.Len(t, result.Posts, 2)
+		assert.ElementsMatch(t, []string{"Projection Post 1", "Projection Post 2"}, []string{
+			result.Posts[0].Title,
+			result.Posts[1].Title,
+		})
+	})
+
+	t.Run("Empty relationship becomes empty slice", func(t *testing.T) {
+		user := &models.UsersDto{
+			Username: "emptyprojectionuser",
+			Email:    "empty-projection@example.com",
+		}
+		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
+		require.NoError(t, err)
+		require.NotNil(t, user.Id)
+
+		result, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+			Select(
+				users.Into.Id(),
+				users.Into.Posts(posts.Id(), posts.Title()),
+			).
+			Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
+			Where(users.Id().Eq(query.Val(*user.Id))).
+			GroupBy(users.Id()).
+			FindOne(context.Background())
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Posts)
+		assert.Empty(t, result.Posts)
 	})
 }
 
@@ -880,17 +944,6 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 		assert.Equal(t, comment1.Content, user.Comments[0].Content)
 	})
 
-	t.Run("Eager load comments for User", func(t *testing.T) {
-		// Act
-		user, err := query.UsersDtoSelectById(testDB.pool, *user1.Id,
-			query.UserWithComments(), query.WithPosts(posts.UserId().Eq(users.Id()))).FindOne(context.Background())
-
-		// Assert
-		require.NoError(t, err)
-		assert.Len(t, user.Comments, 1)
-		assert.NotNil(t, user.Comments[0].CreatedAt)
-		assert.Equal(t, "Comment 1", user.Comments[0].Content)
-	})
 }
 
 // TestIntegration_ManyToMany tests many-to-many relationships through junction tables
@@ -977,34 +1030,6 @@ func TestIntegration_ManyToMany(t *testing.T) {
 		require.NotNil(t, post.Tags)
 		assert.Len(t, post.Tags, 0)
 	})
-
-	//t.Run("Eager load tags for posts", func(t *testing.T) {
-	//	// Act
-	//	post, err := query.RetrievePostWithTags(*post1.Id, testDB.pool).FindOne(context.Background())
-	//
-	//	//post, err := testDB.Posts().
-	//	//	Select(
-	//	//		PostsTable.Id(),
-	//	//		PostsTable.Title(),
-	//	//		PostsTable.UserId(),
-	//	//		PostsTable.AggregateTags()).
-	//	//	JoinOn(LeftJoin, (&PostTagsDto{}).TableName(), PostTagsTable.PostId(), PostsTable.Id()).
-	//	//	JoinOn(LeftJoin, (&TagsDto{}).TableName(), TagsTable.Id(), PostTagsTable.TagId()).
-	//	//	WhereIdEq(*post1.Id).
-	//	//	GroupBy(PostsTable.Id(), PostsTable.Title(), PostsTable.UserId()).
-	//	//	FindOne(context.Background())
-	//
-	//	// Assert
-	//	require.NoError(t, err)
-	//	assert.Len(t, post.Tags, 2)
-	//	assert.ElementsMatch(t, []string{tag1.Name, tag3.Name}, func() []string {
-	//		ret := make([]string, 0, len(post.Tags))
-	//		for _, tag := range post.Tags {
-	//			ret = append(ret, tag.Name)
-	//		}
-	//		return ret
-	//	}())
-	//})
 }
 
 // TestIntegration_ExpressionFromString tests custom SQL expressions
@@ -1049,20 +1074,6 @@ func TestIntegration_ExpressionFromString(t *testing.T) {
 		assert.Equal(t, expectedSQL, avgExpr.String())
 	})
 
-	t.Run("FromExpressions field exists", func(t *testing.T) {
-		// Act
-		post, err := testDB.Posts().Select(
-			ExpressionFromString("AVG(view_count)", "avg_views")).
-			FindOne(context.Background())
-
-		// Assert
-		require.NoError(t, err)
-		require.NotNil(t, post.FromExpressions)
-		assert.Len(t, post.FromExpressions, 1)
-		// TODO: currently returns a pgx Numeric type, prepopulate the FromExpressions map with the correct type
-		// so that pgx can scan into that value
-		assert.NotNil(t, post.FromExpressions["avg_views"])
-	})
 }
 
 // TestContextTracking tests that QueryContext properly tracks joins during SQL generation
@@ -1207,9 +1218,21 @@ func TestContextTracking(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, post.Id)
 
-		// Act - Select posts with a JOIN to users (use Select() without args to get all columns including joined ones)
-		results, err := models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
-			Select().
+		type postWithUser struct {
+			PostID   int64
+			Title    string
+			Username string
+			Email    string
+		}
+
+		// Act - Select explicit projections from posts and the joined users table.
+		results, err := models.NewQuery[postWithUser](testDB.pool, posts.Table()).
+			Select(
+				query.Into(posts.Id(), func(p *postWithUser) *int64 { return &p.PostID }),
+				query.Into(posts.Title(), func(p *postWithUser) *string { return &p.Title }),
+				query.Into(users.Username(), func(p *postWithUser) *string { return &p.Username }),
+				query.Into(users.Email(), func(p *postWithUser) *string { return &p.Email }),
+			).
 			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id))).
 			Find(context.Background())
@@ -1219,11 +1242,10 @@ func TestContextTracking(t *testing.T) {
 		require.Len(t, results, 1, "expected 1 result")
 
 		postResult := results[0]
-		assert.Equal(t, *post.Id, *postResult.Id)
+		assert.Equal(t, *post.Id, postResult.PostID)
 		assert.Equal(t, "Test Post", postResult.Title)
-		assert.NotNil(t, postResult.User, "expected User to be populated via join")
-		assert.Equal(t, "joinuser", postResult.User.Username)
-		assert.Equal(t, "join@example.com", postResult.User.Email)
+		assert.Equal(t, "joinuser", postResult.Username)
+		assert.Equal(t, "join@example.com", postResult.Email)
 	})
 
 	t.Run("Execute query with multiple JOINs", func(t *testing.T) {
@@ -1283,9 +1305,25 @@ func TestContextTracking(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, comment.Id)
 
-		// Act - Select comments with JOINs to both posts and users
-		results, err := models.NewDTOQuery(testDB.pool, models.CommentsDtos{}).
-			Select().
+		type commentWithPostAndUser struct {
+			CommentID  int64
+			Content    string
+			PostTitle  string
+			PostUserID uuid.UUID
+			Username   string
+			Email      string
+		}
+
+		// Act - Select explicit projections from comments and both joined tables.
+		results, err := models.NewQuery[commentWithPostAndUser](testDB.pool, comments.Table()).
+			Select(
+				query.Into(comments.Id(), func(c *commentWithPostAndUser) *int64 { return &c.CommentID }),
+				query.Into(comments.Content(), func(c *commentWithPostAndUser) *string { return &c.Content }),
+				query.Into(posts.Title(), func(c *commentWithPostAndUser) *string { return &c.PostTitle }),
+				query.Into(posts.UserId(), func(c *commentWithPostAndUser) *uuid.UUID { return &c.PostUserID }),
+				query.Into(users.Username(), func(c *commentWithPostAndUser) *string { return &c.Username }),
+				query.Into(users.Email(), func(c *commentWithPostAndUser) *string { return &c.Email }),
+			).
 			Join(ast.JoinLeft, "posts", comments.PostId().Eq(posts.Id())).
 			Join(ast.JoinLeft, "users", comments.UserId().Eq(users.Id())).
 			Where(comments.Id().Eq(query.Val(*comment.Id))).
@@ -1296,18 +1334,12 @@ func TestContextTracking(t *testing.T) {
 		require.Len(t, results, 1, "expected 1 result")
 
 		commentResult := results[0]
-		assert.Equal(t, *comment.Id, *commentResult.Id)
+		assert.Equal(t, *comment.Id, commentResult.CommentID)
 		assert.Equal(t, "Test Comment", commentResult.Content)
-
-		// Verify Post joined data
-		assert.NotNil(t, commentResult.Post, "expected Post to be populated via join")
-		assert.Equal(t, "Multi Join Post", commentResult.Post.Title)
-		assert.Equal(t, *user.Id, commentResult.Post.UserId)
-
-		// Verify User joined data
-		assert.NotNil(t, commentResult.User, "expected User to be populated via join")
-		assert.Equal(t, "multijoinuser", commentResult.User.Username)
-		assert.Equal(t, "multi@example.com", commentResult.User.Email)
+		assert.Equal(t, "Multi Join Post", commentResult.PostTitle)
+		assert.Equal(t, *user.Id, commentResult.PostUserID)
+		assert.Equal(t, "multijoinuser", commentResult.Username)
+		assert.Equal(t, "multi@example.com", commentResult.Email)
 	})
 
 	t.Run("Verify SQL generation with actual query", func(t *testing.T) {
@@ -1336,8 +1368,16 @@ func TestContextTracking(t *testing.T) {
 		require.NotNil(t, post.Id)
 
 		// Act - Build query and get SQL
-		queryBuilder := models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
-			Select(posts.Title(), users.Username()).
+		type sqlVerifyRow struct {
+			Title    string
+			Username string
+		}
+
+		queryBuilder := models.NewQuery[sqlVerifyRow](testDB.pool, posts.Table()).
+			Select(
+				query.Into(posts.Title(), func(r *sqlVerifyRow) *string { return &r.Title }),
+				query.Into(users.Username(), func(r *sqlVerifyRow) *string { return &r.Username }),
+			).
 			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id)))
 
@@ -1357,7 +1397,6 @@ func TestContextTracking(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		assert.Equal(t, "SQL Verify Post", results[0].Title)
-		assert.NotNil(t, results[0].User)
-		assert.Equal(t, "sqlverify", results[0].User.Username)
+		assert.Equal(t, "sqlverify", results[0].Username)
 	})
 }

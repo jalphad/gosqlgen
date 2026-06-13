@@ -87,11 +87,11 @@ func (t *StringType) Between(start, end OfType[string]) *BoolType {
 }
 
 func (t *StringType) IsNull() *BoolType {
-	return Bool(&UnaryNode{Op: "IS NULL", Args: []Expression{t}})
+	return isNull(t)
 }
 
 func (t *StringType) IsNotNull() *BoolType {
-	return Bool(&UnaryNode{Op: "IS NOT NULL", Args: []Expression{t}})
+	return isNotNull(t)
 }
 
 func Int(e Expression) *IntType {
@@ -264,10 +264,7 @@ func (t *BoolType) IsFalse() *BoolType {
 }
 
 func (t *BoolType) IsNull() *BoolType {
-	return Bool(&UnaryNode{
-		Op:   "IS NULL",
-		Args: []Expression{t},
-	})
+	return isNull(t)
 }
 
 type TimestampType struct {
@@ -352,17 +349,11 @@ func (t *UUIDType) In(expr OfType[[]uuid.UUID]) *BoolType {
 }
 
 func (t *UUIDType) IsNull() *BoolType {
-	return Bool(&UnaryNode{
-		Op:   "IS NULL",
-		Args: []Expression{t},
-	})
+	return isNull(t)
 }
 
 func (t *UUIDType) IsNotNull() *BoolType {
-	return Bool(&UnaryNode{
-		Op:   "IS NOT NULL",
-		Args: []Expression{t},
-	})
+	return isNotNull(t)
 }
 
 func Array[T ArrayTypes](t T) *ArrayType[T] {
@@ -397,3 +388,28 @@ type (
 	bytesType   = BytesType
 	jsonType    = JsonType
 )
+
+func isNull(e Expression) *BoolType {
+	return Bool(&BinaryNode{
+		Op: "IS",
+		Args: []Expression{
+			e,
+			NewKeywordNode("NULL"),
+		},
+	})
+}
+
+func isNotNull(e Expression) *BoolType {
+	return Bool(&BinaryNode{
+		Op: "IS",
+		Args: []Expression{
+			e,
+			&UnaryNode{
+				Op: "NOT",
+				Args: []Expression{
+					NewKeywordNode("NULL"),
+				},
+			},
+		},
+	})
+}

@@ -84,4 +84,16 @@ func TestErrorExpression(t *testing.T) {
 			t.Errorf("expected empty SQL, got '%s'", sql)
 		}
 	})
+
+	t.Run("KeywordNode rejects invalid tokens", func(t *testing.T) {
+		ctx := &QueryContext{}
+		sql, err := RenderWithContext(NewKeywordNode("NULL; DROP TABLE users"), &[]any{}, ctx)
+
+		if err == nil {
+			t.Fatal("expected error from invalid keyword token")
+		}
+		if sql != "" {
+			t.Errorf("expected empty SQL, got '%s'", sql)
+		}
+	})
 }

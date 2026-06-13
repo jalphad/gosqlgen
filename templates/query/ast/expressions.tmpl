@@ -24,6 +24,84 @@ func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
 	e.toSQL(builder, params, &QueryContext{})
 }
 
+func Null() Expression {
+	return nullExpression{}
+}
+
+func NewStringConstant(value string) Expression {
+	return stringConstantExpression{value: value}
+}
+
+func Cast[T MappedTypes](e Expression, sqlType string) OfType[T] {
+	return SetType[T](castExpression{
+		expression: e,
+		sqlType:    sqlType,
+	})
+}
+
+type nullExpression struct{}
+
+func (e nullExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString("NULL")
+}
+
+type stringConstantExpression struct {
+	value string
+}
+
+func (e stringConstantExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString("'")
+	builder.WriteString(strings.ReplaceAll(e.value, "'", "''"))
+	builder.WriteString("'")
+}
+
+type castExpression struct {
+	expression Expression
+	sqlType    string
+}
+
+func (e castExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString("CAST(")
+	e.expression.toSQL(builder, params, ctx)
+	builder.WriteString(" AS ")
+	builder.WriteString(e.sqlType)
+	builder.WriteString(")")
+}
+
+func IsNull(e Expression) OfType[bool] {
+	return Bool(&BinaryNode{
+		Op: "IS",
+		Args: []Expression{
+			e,
+			Null(),
+		},
+	})
+}
+
+func IsNotNull(e Expression) OfType[bool] {
+	return Bool(&BinaryNode{
+		Op: "IS",
+		Args: []Expression{
+			e,
+			&UnaryNode{
+				Op: "NOT",
+				Args: []Expression{
+					Null(),
+				},
+			},
+		},
+	})
+}
+
 // ErrorExpression represents an expression that sets an error in the context during rendering
 type ErrorExpression struct {
 	err error

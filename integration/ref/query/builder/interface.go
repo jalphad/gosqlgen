@@ -7,56 +7,6 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
 
-type SelectQuery[O any] interface {
-	Select(columns ...ast.NamedExpression) SelectFromQuery[O]
-}
-
-type KnownTableSelectQuery[O any] interface {
-	Select(columns ...ast.NamedExpression) SelectJoinQuery[O]
-}
-
-type SelectFromQuery[O any] interface {
-	From(table *ast.TableSource) SelectWhereQuery[O]
-	SelectWhereQuery[O]
-}
-
-type SelectJoinQuery[O any] interface {
-	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[O]
-	SelectWhereQuery[O]
-}
-
-type SelectWhereQuery[O any] interface {
-	Where(expr ast.OfType[bool]) SelectGroupByQuery[O]
-	SelectGroupByQuery[O]
-}
-
-type SelectGroupByQuery[O any] interface {
-	GroupBy(columns ...ast.Expression) SelectHavingQuery[O]
-	SelectHavingQuery[O]
-}
-
-type SelectHavingQuery[O any] interface {
-	Having(expr ast.OfType[bool]) SelectOrderByQuery[O]
-	SelectOrderByQuery[O]
-}
-
-type SelectOrderByQuery[O any] interface {
-	OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[O]
-	SelectPagingQuery[O]
-}
-
-type SelectPagingQuery[O any] interface {
-	Limit(limit int) SelectPagingQuery[O]
-	Offset(offset int) SelectPagingQuery[O]
-	SelectFinalizeQuery[O]
-}
-
-type SelectFinalizeQuery[O any] interface {
-	Find(ctx context.Context) ([]O, error)
-	FindOne(ctx context.Context) (O, error)
-	ToSql() (string, error)
-}
-
 type ResultSelectQuery[O any] interface {
 	Select(projections ...ast.Projection[O]) ResultSelectJoinQuery[O]
 }
@@ -190,7 +140,6 @@ type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 
 type KnownTableStartQuery[S DTOs[T, O], T any, O DTO[T]] interface {
 	WithTx(tx pgx.Tx) KnownTableStartQuery[S, T, O]
-	KnownTableSelectQuery[T]
 	KnownTableDeleteQuery[T, O]
 	InsertQuery[T, O]
 	UpdateQuery[T, O]

@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -22,6 +23,10 @@ func RenderWithContext(e Expression, params *[]any, ctx *QueryContext) (string, 
 
 func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
 	e.toSQL(builder, params, &QueryContext{})
+}
+
+func BuildQueryWithContext(e Expression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	e.toSQL(builder, params, ctx)
 }
 
 // ErrorExpression represents an expression that sets an error in the context during rendering
@@ -279,15 +284,6 @@ func (e *TimeColumnExpression) Name() string {
 	return ""
 }
 
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
 	Table string      // Base table Name
@@ -308,7 +304,7 @@ func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 		// Add to AllTables if not already there
 		if ctx.AllTables == nil {
 			ctx.AllTables = []string{s.Table}
-		} else if !contains(ctx.AllTables, s.Table) {
+		} else if !slices.Contains(ctx.AllTables, s.Table) {
 			ctx.AllTables = append(ctx.AllTables, s.Table)
 		}
 	}
@@ -349,7 +345,7 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 			ctx.JoinedTables = make(map[string]JoinType)
 		}
 		ctx.JoinedTables[j.Right.Table] = j.Type
-		if !contains(ctx.AllTables, j.Right.Table) {
+		if !slices.Contains(ctx.AllTables, j.Right.Table) {
 			ctx.AllTables = append(ctx.AllTables, j.Right.Table)
 		}
 		ctx.CurrentPart = QueryPartJoin

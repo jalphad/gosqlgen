@@ -47,6 +47,48 @@ func (n *LiteralNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	builder.WriteString(fmt.Sprintf("$%d", len(*params)))
 }
 
+type KeywordNode struct {
+	keyword string
+}
+
+func NewKeywordNode(keyword string) *KeywordNode {
+	return &KeywordNode{keyword: keyword}
+}
+
+func (n *KeywordNode) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if !isKeywordToken(n.keyword) {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("invalid SQL keyword token %q", n.keyword)
+		}
+		return
+	}
+	builder.WriteString(n.keyword)
+}
+
+type InlineStringLiteralNode struct {
+	value string
+}
+
+// NewInlineStringLiteralNode returns an expression rendered directly into SQL
+// as a quoted string literal instead of as a bind parameter. Use this only for
+// trusted, static values controlled by the program. Never pass user input,
+// request data, database values, or partially sanitized strings.
+func NewInlineStringLiteralNode(value string) *InlineStringLiteralNode {
+	return &InlineStringLiteralNode{value: value}
+}
+
+func (n *InlineStringLiteralNode) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString("'")
+	builder.WriteString(strings.ReplaceAll(n.value, "'", "''"))
+	builder.WriteString("'")
+}
+
 type UnaryNode ExpressionNode
 
 func (n *UnaryNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -131,4 +173,23 @@ func FunctionDefaultRender(node ExpressionNode, builder *strings.Builder, params
 	}
 	node.Args[len(node.Args)-1].toSQL(builder, params, ctx)
 	builder.WriteString(")")
+}
+
+func isKeywordToken(keyword string) bool {
+	if keyword == "" {
+		return false
+	}
+	for i, r := range keyword {
+		if r >= 'A' && r <= 'Z' {
+			continue
+		}
+		if r == '_' {
+			continue
+		}
+		if i > 0 && r >= '0' && r <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
 }

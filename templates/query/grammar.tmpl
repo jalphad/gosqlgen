@@ -1,7 +1,14 @@
 package query
 
-import "{{ .PackagePath }}/query/ast"
+import (
+	"{{ .PackagePath }}/query/ast"
+	"{{ .PackagePath }}/query/expr"
+)
 
 func Distinct(expressions ...ast.Expression) *ast.KeywordExpression {
-	return ast.NewKeywordExpression("DISTINCT", expressions...)
+	return expr.Distinct(expressions...)
+}
+
+func IsNotNull(expression ast.Expression) *ast.BoolType {
+	return expr.IsNotNull(expression)
 }

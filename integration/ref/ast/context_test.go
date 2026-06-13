@@ -154,3 +154,24 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 		assert.Equal(t, QueryPartJoin, ctx.CurrentPart)
 	})
 }
+
+func TestNullPredicatesRenderAsBinaryIsExpressions(t *testing.T) {
+	params := []any{}
+
+	isNullSQL, err := RenderWithContext(NewStringColumnExpression("users", "email").IsNull(), &params, &QueryContext{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isNullSQL != "users.email IS NULL" {
+		t.Fatalf("expected users.email IS NULL, got %q", isNullSQL)
+	}
+
+	params = []any{}
+	isNotNullSQL, err := RenderWithContext(NewStringColumnExpression("users", "email").IsNotNull(), &params, &QueryContext{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isNotNullSQL != "users.email IS NOT NULL" {
+		t.Fatalf("expected users.email IS NOT NULL, got %q", isNotNullSQL)
+	}
+}

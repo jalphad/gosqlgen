@@ -1,6 +1,8 @@
 package query
 
 import (
+	"encoding/json"
+
 	"{{ .PackagePath }}/query/ast"
 )
 
@@ -18,6 +20,14 @@ func Val[T ast.MappedTypes](t T) ast.OfType[T] {
 
 func Into[R any, T ast.MappedTypes, D ast.ScanDest[T]](expr ast.OfType[T], dest func(*R) D) ast.Projection[R] {
 	return ast.NewProjection(expr, dest)
+}
+
+func IntoCustom[R any, I ast.MappedTypes, O any](expr ast.OfType[I], dest func(*R) *O, convert func(I) (O, error)) ast.Projection[R] {
+	return ast.NewCustomProjection(expr, dest, convert)
+}
+
+func IntoJSON[R any, O any](expr ast.OfType[json.RawMessage], dest func(*R) *O) ast.Projection[R] {
+	return ast.NewJSONProjection(expr, dest)
 }
 
 func Rel[T ast.MappedTypes](r *ast.Alias, c ast.NamedAndTyped[T]) ast.OfType[T] {

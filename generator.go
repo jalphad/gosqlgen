@@ -113,6 +113,14 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = content
 	}
 
+	exprFiles, err := templates.RenderQueryExprPackage(g.packagePath)
+	if err != nil {
+		return nil, err
+	}
+	for filename, content := range exprFiles {
+		files[filename] = content
+	}
+
 	// Generate query package helper files
 	if err := g.generateQueryPackageHelpers(files); err != nil {
 		return nil, err
@@ -255,10 +263,17 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 			})
 		}
 
+		baseName := templates.ToPascalCase(table.Name)
+		reverseRelations := g.reverseRelations(table)
+		manyToManyRels := g.manyToManyRelations(table)
 		data := templates.TableStructData{
-			TableName:   table.Name,
-			Fields:      fields,
-			PackagePath: g.packagePath,
+			StructName:       baseName + "Dto",
+			TableName:        table.Name,
+			ReceiverName:     strings.ToLower(baseName[:1]),
+			Fields:           fields,
+			ReverseRelFields: reverseRelations,
+			ManyToManyFields: manyToManyRels,
+			PackagePath:      g.packagePath,
 		}
 
 		// Render template
@@ -406,6 +421,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 				ColumnName: col.Name,
 				FieldName:  templates.ToPascalCase(col.Name),
 				GoType:     col.GoType,
+				SQLType:    col.SQLType,
 				IsNullable: col.IsNullable,
 				IsPointer:  isPointer,
 			})
@@ -614,6 +630,7 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 				ColumnName: col.Name,
 				FieldName:  templates.ToPascalCase(col.Name),
 				GoType:     col.GoType,
+				SQLType:    col.SQLType,
 				IsNullable: col.IsNullable,
 				IsPointer:  isPointer,
 			}
@@ -647,10 +664,19 @@ func (g *Generator) manyToManyRelations(table *parser.Table) []templates.ManyToM
 		refStructName := refTableBaseName + "Dto"
 
 		var refPKField string
-		for _, col := range m2m.ReferencedTable.Columns {
+		referencedColumns := make([]templates.Column, len(m2m.ReferencedTable.Columns))
+		for i, col := range m2m.ReferencedTable.Columns {
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
+			referencedColumns[i] = templates.Column{
+				ColumnName: col.Name,
+				FieldName:  templates.ToPascalCase(col.Name),
+				GoType:     col.GoType,
+				SQLType:    col.SQLType,
+				IsNullable: col.IsNullable,
+				IsPointer:  isPointer,
+			}
 			if col.IsPrimary {
 				refPKField = templates.ToPascalCase(col.Name)
-				break
 			}
 		}
 
@@ -663,6 +689,7 @@ func (g *Generator) manyToManyRelations(table *parser.Table) []templates.ManyToM
 			RightFKColumn:     m2m.RightFKColumn,
 			ReferencedTable:   m2m.ReferencedTable.Name,
 			ReferencedPKField: refPKField,
+			ReferencedColumns: referencedColumns,
 		})
 	}
 

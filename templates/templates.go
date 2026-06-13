@@ -40,6 +40,9 @@ var astTemplates embed.FS
 //go:embed query/builder
 var builderTemplates embed.FS
 
+//go:embed query/expr
+var exprTemplates embed.FS
+
 //go:embed models/dtos.tmpl
 var dtosTemplate string
 
@@ -135,6 +138,7 @@ type Column struct {
 	ColumnName string
 	FieldName  string
 	GoType     string
+	SQLType    string
 	IsNullable bool
 	IsPointer  bool // true if Go field is a pointer type
 }
@@ -205,14 +209,15 @@ type ReverseRelField struct {
 
 // ManyToManyField represents a many-to-many relationship field
 type ManyToManyField struct {
-	FieldName         string // e.g., "Tags"
-	GoType            string // e.g., "[]*TagsDto"
-	StructName        string // "PostsDto"
-	JunctionTable     string // e.g., "post_tags"
-	LeftFKColumn      string // e.g., "post_id"
-	RightFKColumn     string // e.g., "tag_id"
-	ReferencedTable   string // e.g., "tags"
-	ReferencedPKField string // e.g., "Id"
+	FieldName         string   // e.g., "Tags"
+	GoType            string   // e.g., "[]*TagsDto"
+	StructName        string   // "PostsDto"
+	JunctionTable     string   // e.g., "post_tags"
+	LeftFKColumn      string   // e.g., "post_id"
+	RightFKColumn     string   // e.g., "tag_id"
+	ReferencedTable   string   // e.g., "tags"
+	ReferencedPKField string   // e.g., "Id"
+	ReferencedColumns []Column // columns in the referenced table
 }
 
 // FieldReferencesData contains data for rendering to field references template
@@ -335,8 +340,25 @@ func RenderTableStruct(data TableStructData) (string, error) {
 func RenderColumnExpressions(data TableStructData) (string, error) {
 	funcMap := template.FuncMap{
 		"toTypeExpression": ToTypeExpression,
+		"toLower":          strings.ToLower,
 		"scanDestType": func(goType string) string {
 			return "*" + goType
+		},
+		"filterColumn": func(columns []Column, primaryField, fallbackColumn string) Column {
+			for _, column := range columns {
+				if column.FieldName == primaryField {
+					return column
+				}
+			}
+			for _, column := range columns {
+				if column.ColumnName == fallbackColumn {
+					return column
+				}
+			}
+			if len(columns) > 0 {
+				return columns[0]
+			}
+			return Column{}
 		},
 		"usesType": func(fields []StructField, needle string) bool {
 			for _, field := range fields {
@@ -474,6 +496,7 @@ func ToPascalCase(s string) string {
 }
 
 func ToTypeExpression(goType, sqlType string) string {
+	goType = strings.TrimPrefix(goType, "*")
 	// Normalize SQL type to uppercase for case-insensitive matching
 	upperSQLType := strings.ToUpper(sqlType)
 
@@ -500,7 +523,7 @@ func ToTypeExpression(goType, sqlType string) string {
 		return "TimeColumnExpression" // default fallback
 	case "[]byte":
 		return "BytesColumnExpression"
-	case "json.Rawmessage":
+	case "json.RawMessage":
 		return "JsonColumnExpression"
 	case "uuid.UUID":
 		return "UUIDColumnExpression"
@@ -548,6 +571,39 @@ func RenderQueryBuilderPackage(packagePath string) (map[string]string, error) {
 
 		// Parse template and execute with package path
 		tmpl, err := template.New(fileName).ParseFS(builderTemplates, filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse template %s: %w", fileName, err)
+		}
+
+		data := map[string]any{
+			"PackagePath": packagePath,
+		}
+
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, data); err != nil {
+			return nil, fmt.Errorf("failed to execute template %s: %w", fileName, err)
+		}
+
+		files[fmt.Sprintf("%s/%s.gen.go", basedir, strings.TrimSuffix(fileName, ".tmpl"))] = buf.String()
+	}
+
+	return files, nil
+}
+
+func RenderQueryExprPackage(packagePath string) (map[string]string, error) {
+	files := make(map[string]string)
+
+	basedir := "query/expr"
+	dirEntries, err := exprTemplates.ReadDir(basedir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range dirEntries {
+		fileName := entry.Name()
+		filePath := path.Join(basedir, fileName)
+
+		tmpl, err := template.New(fileName).ParseFS(exprTemplates, filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse template %s: %w", fileName, err)
 		}
