@@ -7,30 +7,62 @@ import (
 )
 
 var Into = intoUsersDto{}
+var Column = columns{}
 
 type intoUsersDto struct{}
+type columns struct{}
 
 func Table() *ast.TableSource {
 	return &ast.TableSource{Table: "users"}
 }
 
-func Id() *ast.UUIDColumnExpression {
+func Id() *ast.UUIDFieldProjection[models.UsersDto, **uuid.UUID] {
+	return ast.NewUUIDFieldProjection("users", "id", func(u *models.UsersDto) **uuid.UUID {
+		return &u.Id
+	})
+}
+
+func Username() *ast.StringFieldProjection[models.UsersDto, *string] {
+	return ast.NewStringFieldProjection("users", "username", func(u *models.UsersDto) *string {
+		return &u.Username
+	})
+}
+
+func Email() *ast.StringFieldProjection[models.UsersDto, *string] {
+	return ast.NewStringFieldProjection("users", "email", func(u *models.UsersDto) *string {
+		return &u.Email
+	})
+}
+
+func FullName() *ast.StringFieldProjection[models.UsersDto, **string] {
+	return ast.NewStringFieldProjection("users", "full_name", func(u *models.UsersDto) **string {
+		return &u.FullName
+	})
+}
+
+func IsActive() *ast.BoolFieldProjection[models.UsersDto, **bool] {
+	return ast.NewBoolFieldProjection("users", "is_active", func(u *models.UsersDto) **bool {
+		return &u.IsActive
+	})
+}
+
+func (columns) Id() *ast.UUIDColumnExpression {
 	return ast.NewUUIDColumnExpression("users", "id")
 }
 
-func Username() *ast.StringColumnExpression {
+func (columns) Username() *ast.StringColumnExpression {
 	return ast.NewStringColumnExpression("users", "username")
 }
 
-func Email() *ast.StringColumnExpression {
+func (columns) Email() *ast.StringColumnExpression {
 	return ast.NewStringColumnExpression("users", "email")
 }
 
-func FullName() *ast.StringColumnExpression {
+func (columns) FullName() *ast.StringColumnExpression {
 	return ast.NewStringColumnExpression("users", "full_name")
 }
 
-func IsActive() *ast.BoolColumnExpression {
+func (columns) IsActive() *ast.BoolColumnExpression {
 	return ast.NewBoolColumnExpression("users", "is_active")
 }
 
@@ -45,33 +77,23 @@ func AllColumns() []ast.NamedExpression {
 }
 
 func (intoUsersDto) Id() ast.Projection[models.UsersDto] {
-	return ast.NewProjection(Id(), func(u *models.UsersDto) **uuid.UUID {
-		return &u.Id
-	})
+	return Id()
 }
 
 func (intoUsersDto) Username() ast.Projection[models.UsersDto] {
-	return ast.NewProjection(Username(), func(u *models.UsersDto) *string {
-		return &u.Username
-	})
+	return Username()
 }
 
 func (intoUsersDto) Email() ast.Projection[models.UsersDto] {
-	return ast.NewProjection(Email(), func(u *models.UsersDto) *string {
-		return &u.Email
-	})
+	return Email()
 }
 
 func (intoUsersDto) FullName() ast.Projection[models.UsersDto] {
-	return ast.NewProjection(FullName(), func(u *models.UsersDto) **string {
-		return &u.FullName
-	})
+	return FullName()
 }
 
 func (intoUsersDto) IsActive() ast.Projection[models.UsersDto] {
-	return ast.NewProjection(IsActive(), func(u *models.UsersDto) **bool {
-		return &u.IsActive
-	})
+	return IsActive()
 }
 
 func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {

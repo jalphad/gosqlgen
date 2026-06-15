@@ -49,6 +49,20 @@ func TestGeneratedDTOProjectionToSQL(t *testing.T) {
 	require.Equal(t, "SELECT users.id, users.email, users.full_name FROM users", sql)
 }
 
+func TestGeneratedFieldDescriptorProjectionToSQL(t *testing.T) {
+	q := models.NewQuery[models.UsersDto](nil, users.Table()).
+		Select(
+			users.Id(),
+			users.Email(),
+			users.FullName(),
+		)
+
+	sql, err := q.ToSql()
+
+	require.NoError(t, err)
+	require.Equal(t, "SELECT users.id, users.email, users.full_name FROM users", sql)
+}
+
 func TestRelationshipProjectionToSQL(t *testing.T) {
 	q := models.NewQuery[models.UsersDto](nil, users.Table()).
 		Select(
