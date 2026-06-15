@@ -11,9 +11,9 @@ import (
 func main() {
 	qry := models.NewQuery[models.UsersDto](nil, users.Table()).
 		Select(
-			users.Into.Id(),
-			users.Into.FullName(),
-			users.Into.Email()).
+			users.Id(),
+			users.FullName(),
+			users.Email()).
 		Where(users.Email().Like("%@corp.com").
 			And(users.IsActive().IsTrue()).
 			And(users.Username().Eq(query.Val("foo")))).

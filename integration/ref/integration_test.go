@@ -304,7 +304,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.Nil(t, details)
 
 		_, err = models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Into.Id()).
+			Select(users.Id()).
 			Where(users.Id().Eq(query.Val(*user.Id))).
 			FindOne(context.Background())
 		require.Error(t, err)
@@ -334,7 +334,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 				users.IsActive(),
 			).
 			OnConflict(users.Username()).Do(ast.Update(users.Email())).
-			Returning(users.Into.Id()).
+			Returning(users.Id()).
 			Values(user)
 		err = conflict.Exec(context.Background())
 		require.NoError(t, err)
@@ -371,7 +371,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 				query.Set(users.Username()).To(query.Val(user.Username)),
 			).
 			Where(users.Id().Eq(query.Val(*user.Id))).
-			Returning(users.Into.FullName()).
+			Returning(users.FullName()).
 			Exec(context.Background())
 
 		// Assert
@@ -393,7 +393,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		deleted, details, err := models.NewUsersQuery(testDB.pool).
 			Delete().
 			Where(users.Id().Eq(query.Val(*user.Id))).
-			Returning(users.Into.Id()).
+			Returning(users.Id()).
 			Exec(context.Background())
 		require.NoError(t, err)
 
@@ -403,7 +403,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		assert.Equal(t, *user.Id, *details[0].Id)
 
 		_, err = models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Into.Id()).
+			Select(users.Id()).
 			Where(users.Id().Eq(query.Val(*user.Id))).FindOne(context.Background())
 		require.Error(t, err)
 		assert.ErrorIs(t, err, pgx.ErrNoRows)
@@ -538,7 +538,7 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 
 		result, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
 			Select(
-				users.Into.Id(),
+				users.Id(),
 				users.Into.Posts(posts.Id(), posts.Title()),
 			).
 			Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
@@ -566,7 +566,7 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 
 		result, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
 			Select(
-				users.Into.Id(),
+				users.Id(),
 				users.Into.Posts(posts.Id(), posts.Title()),
 			).
 			Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
@@ -1193,7 +1193,7 @@ func TestContextTracking(t *testing.T) {
 				users.FullName(),
 				users.IsActive(),
 			).
-			Returning(users.Into.Id()).
+			Returning(users.Id()).
 			Values(user).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1212,7 +1212,7 @@ func TestContextTracking(t *testing.T) {
 				posts.Title(),
 				posts.Content(),
 			).
-			Returning(posts.Into.Id()).
+			Returning(posts.Id()).
 			Values(post).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1264,7 +1264,7 @@ func TestContextTracking(t *testing.T) {
 				users.FullName(),
 				users.IsActive(),
 			).
-			Returning(users.Into.Id()).
+			Returning(users.Id()).
 			Values(user).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1281,7 +1281,7 @@ func TestContextTracking(t *testing.T) {
 				posts.Title(),
 				posts.Content(),
 			).
-			Returning(posts.Into.Id()).
+			Returning(posts.Id()).
 			Values(post).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1299,7 +1299,7 @@ func TestContextTracking(t *testing.T) {
 				comments.UserId(),
 				comments.Content(),
 			).
-			Returning(comments.Into.Id()).
+			Returning(comments.Id()).
 			Values(comment).
 			Exec(context.Background())
 		require.NoError(t, err)
@@ -1361,7 +1361,7 @@ func TestContextTracking(t *testing.T) {
 				posts.UserId(),
 				posts.Title(),
 			).
-			Returning(posts.Into.Id()).
+			Returning(posts.Id()).
 			Values(post).
 			Exec(context.Background())
 		require.NoError(t, err)

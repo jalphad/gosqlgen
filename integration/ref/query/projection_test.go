@@ -38,9 +38,9 @@ func TestProjectionQueryToSQL(t *testing.T) {
 func TestGeneratedDTOProjectionToSQL(t *testing.T) {
 	q := models.NewQuery[models.UsersDto](nil, users.Table()).
 		Select(
-			users.Into.Id(),
-			users.Into.Email(),
-			users.Into.FullName(),
+			users.Id(),
+			users.Email(),
+			users.FullName(),
 		)
 
 	sql, err := q.ToSql()
@@ -66,7 +66,7 @@ func TestGeneratedFieldDescriptorProjectionToSQL(t *testing.T) {
 func TestRelationshipProjectionToSQL(t *testing.T) {
 	q := models.NewQuery[models.UsersDto](nil, users.Table()).
 		Select(
-			users.Into.Id(),
+			users.Id(),
 			users.Into.Posts(posts.Id(), posts.Title()),
 		).
 		Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
@@ -126,7 +126,7 @@ func TestInsertReturningProjectionToSQL(t *testing.T) {
 
 	q := models.NewUsersQuery(nil).
 		Insert(users.Username(), users.Email()).
-		Returning(users.Into.Id()).
+		Returning(users.Id()).
 		Values(user)
 
 	sql, err := q.ToSql()
