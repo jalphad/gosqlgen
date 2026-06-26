@@ -32,7 +32,7 @@ func TestProjectionQueryToSQL(t *testing.T) {
 	sql, err := q.ToSql()
 
 	require.NoError(t, err)
-	require.Equal(t, "SELECT users.email, count(posts.id) FROM users GROUP BY users.email", sql)
+	require.Equal(t, "SELECT users.email, count(posts.id) AS count FROM users GROUP BY users.email", sql)
 }
 
 func TestGeneratedDTOProjectionToSQL(t *testing.T) {

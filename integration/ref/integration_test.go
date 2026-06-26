@@ -202,7 +202,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(
-				users.Id().Eq(query.Val(*user.Id))).
+				users.Id().Eq(query.Nullable(user.Id))).
 			FindOne(context.Background())
 
 		// Assert

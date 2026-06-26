@@ -53,7 +53,7 @@ func FullName() *ast.StringColumnProjection[models.UsersDto, **string] {
 func IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	return ast.NewBoolColumnProjection(
 		"users",
-		"username",
+		"is_active",
 		func(r *models.UsersDto) **bool {
 			return &r.IsActive
 		})
