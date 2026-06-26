@@ -18,40 +18,64 @@ func Table() *ast.TableSource {
 	return &ast.TableSource{Table: "comments"}
 }
 
-func Id() *ast.IntFieldProjection[models.CommentsDto, **int64] {
-	return ast.NewIntFieldProjection("comments", "id", func(c *models.CommentsDto) **int64 {
-		return &c.Id
-	})
+func Id() *ast.IntColumnProjection[models.CommentsDto, **int64] {
+	return ast.NewIntColumnProjection(
+		"comments",
+		"id",
+		func(c *models.CommentsDto) **int64 {
+			return &c.Id
+		},
+	)
 }
 
-func Content() *ast.StringFieldProjection[models.CommentsDto, *string] {
-	return ast.NewStringFieldProjection("comments", "content", func(c *models.CommentsDto) *string {
-		return &c.Content
-	})
+func Content() *ast.StringColumnProjection[models.CommentsDto, *string] {
+	return ast.NewStringColumnProjection(
+		"comments",
+		"content",
+		func(c *models.CommentsDto) *string {
+			return &c.Content
+		},
+	)
 }
 
-func UserId() *ast.UUIDFieldProjection[models.CommentsDto, *uuid.UUID] {
-	return ast.NewUUIDFieldProjection("comments", "user_id", func(c *models.CommentsDto) *uuid.UUID {
-		return &c.UserId
-	})
+func UserId() *ast.UUIDColumnProjection[models.CommentsDto, *uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		"comments",
+		"user_id",
+		func(c *models.CommentsDto) *uuid.UUID {
+			return &c.UserId
+		},
+	)
 }
 
-func PostId() *ast.IntFieldProjection[models.CommentsDto, *int64] {
-	return ast.NewIntFieldProjection("comments", "post_id", func(c *models.CommentsDto) *int64 {
-		return &c.PostId
-	})
+func PostId() *ast.IntColumnProjection[models.CommentsDto, *int64] {
+	return ast.NewIntColumnProjection(
+		"comments",
+		"post_id",
+		func(c *models.CommentsDto) *int64 {
+			return &c.PostId
+		},
+	)
 }
 
-func IsApproved() *ast.BoolFieldProjection[models.CommentsDto, **bool] {
-	return ast.NewBoolFieldProjection("comments", "is_approved", func(c *models.CommentsDto) **bool {
-		return &c.IsApproved
-	})
+func IsApproved() *ast.BoolColumnProjection[models.CommentsDto, **bool] {
+	return ast.NewBoolColumnProjection(
+		"comments",
+		"is_approved",
+		func(c *models.CommentsDto) **bool {
+			return &c.IsApproved
+		},
+	)
 }
 
-func CreatedAt() *ast.TimestampFieldProjection[models.CommentsDto, **time.Time] {
-	return ast.NewTimestampFieldProjection("comments", "created_at", func(c *models.CommentsDto) **time.Time {
-		return &c.CreatedAt
-	})
+func CreatedAt() *ast.TimestampColumnProjection[models.CommentsDto, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"comments",
+		"created_at",
+		func(c *models.CommentsDto) **time.Time {
+			return &c.CreatedAt
+		},
+	)
 }
 
 func (columns) Id() *ast.IntColumnExpression {

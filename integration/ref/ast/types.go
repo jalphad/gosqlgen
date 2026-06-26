@@ -8,23 +8,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ArrayTypes interface {
+type ArrayMappedTypes interface {
 	[]float64 | []int | []int64 | []string | []bool |
 		[]time.Time | []uuid.UUID | []pgtype.Numeric |
-		[]json.RawMessage | []any
+		[]json.RawMessage | [][]byte | []any
 }
 
 type NullableMappedTypes[T MappedTypes] interface {
 	*T
 }
 
-type MappedTypes interface {
+type BaseMappedTypes interface {
 	float64 | int | int64 | string | bool |
 		time.Time | time.Duration |
 		uuid.UUID |
 		pgtype.Numeric |
-		[]byte | json.RawMessage |
-		ArrayTypes
+		[]byte | json.RawMessage
+}
+
+type MappedTypes interface {
+	BaseMappedTypes | ArrayMappedTypes
 }
 
 type ofType[T MappedTypes] = OfType[T]
@@ -356,11 +359,11 @@ func (t *UUIDType) IsNotNull() *BoolType {
 	return isNotNull(t)
 }
 
-func Array[T ArrayTypes](t T) *ArrayType[T] {
+func Array[T ArrayMappedTypes](t T) *ArrayType[T] {
 	return &ArrayType[T]{NewSQLType(t)}
 }
 
-type ArrayType[T ArrayTypes] struct {
+type ArrayType[T ArrayMappedTypes] struct {
 	ofType[T]
 }
 

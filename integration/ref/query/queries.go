@@ -58,10 +58,11 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	return models.NewDTOQuery(pool, models.UsersDtos{}).
 		Update(
-			Set(users.Username()).To(Val(dto.Username)),
-			Set(users.Email()).To(Val(dto.Email)),
-			Set(users.FullName()).To(NVal(dto.FullName)),
-			Set(users.IsActive()).To(NVal(dto.IsActive)),
+			SetTo(dto,
+				users.Username(),
+				users.Email(),
+				users.FullName(),
+				users.IsActive()),
 		).Where(users.Id().Eq(Val(*dto.Id)))
 }
 

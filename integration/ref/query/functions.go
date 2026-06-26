@@ -19,7 +19,7 @@ func JsonAggObject(alias string, filter ast.OfType[bool], columns ...ast.NamedEx
 	return expr.JsonAggObject(alias, filter, columns...)
 }
 
-func Count(expression ast.Expression) ast.OfType[int64] {
+func Count(expression ast.Expression) ast.Function[int64] {
 	return expr.Count(expression)
 }
 

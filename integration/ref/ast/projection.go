@@ -2,7 +2,9 @@ package ast
 
 import (
 	"encoding/json"
-	"strings"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type ScanDest[T MappedTypes] interface {
@@ -14,74 +16,70 @@ type ScanBinding interface {
 	Assign() error
 }
 
-type Projection[T any] interface {
+type Projection[R any] interface {
 	NamedExpression
-	BindScan(*T) ScanBinding
+	BindScan(*R) ScanBinding
 }
 
-type projection[T any, V MappedTypes, D ScanDest[V]] struct {
-	expression OfType[V]
-	name       string
-	dest       func(*T) D
+type BaseProjection[R any, T MappedTypes, D ScanDest[T]] struct {
+	OfType[T]
+	name string
+	dest func(*R) D
 }
 
-func NewProjection[T any, V MappedTypes, D ScanDest[V]](expr OfType[V], dest func(*T) D) Projection[T] {
-	name := ""
+func NewProjection[R any, T MappedTypes, D ScanDest[T]](expr OfType[T], dest func(*R) D) *BaseProjection[R, T, D] {
+	projection := &BaseProjection[R, T, D]{
+		OfType: expr,
+		dest:   dest,
+	}
 	if named, ok := expr.(NamedExpression); ok {
-		name = named.Name()
+		projection.name = named.Name()
 	}
-	return &projection[T, V, D]{
-		expression: expr,
-		name:       name,
-		dest:       dest,
-	}
+
+	return projection
 }
 
-func (p *projection[T, V, D]) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	p.expression.toSQL(builder, params, ctx)
-}
-
-func (p *projection[T, V, D]) Name() string {
+func (p *BaseProjection[R, T, D]) Name() string {
 	return p.name
 }
 
-func (p *projection[T, V, D]) BindScan(t *T) ScanBinding {
-	return scalarScanBinding[V, D]{dest: p.dest(t)}
+func (p *BaseProjection[R, T, D]) BindScan(t *R) ScanBinding {
+	return scalarScanBinding[T, D]{dest: p.dest(t)}
 }
 
-type scalarScanBinding[V MappedTypes, D ScanDest[V]] struct {
+type scalarScanBinding[T MappedTypes, D ScanDest[T]] struct {
 	dest D
 }
 
-func (b scalarScanBinding[V, D]) Destination() any {
+func (b scalarScanBinding[T, D]) Destination() any {
 	return b.dest
 }
 
-func (b scalarScanBinding[V, D]) Assign() error {
+func (b scalarScanBinding[T, D]) Assign() error {
 	return nil
 }
 
-type customProjection[T any, I MappedTypes, O any] struct {
-	expression OfType[I]
-	name       string
-	dest       func(*T) *O
-	convert    func(I) (O, error)
+type CustomProjection[R any, T MappedTypes, O any] struct {
+	OfType[T]
+	name    string
+	dest    func(*R) *O
+	convert func(T) (O, error)
 }
 
-func NewCustomProjection[T any, I MappedTypes, O any](expr OfType[I], dest func(*T) *O, convert func(I) (O, error)) Projection[T] {
-	name := ""
+func NewCustomProjection[R any, T MappedTypes, O any](expr OfType[T], dest func(*R) *O, convert func(T) (O, error)) *CustomProjection[R, T, O] {
+	projection := &CustomProjection[R, T, O]{
+		OfType:  expr,
+		dest:    dest,
+		convert: convert,
+	}
 	if named, ok := expr.(NamedExpression); ok {
-		name = named.Name()
+		projection.name = named.Name()
 	}
-	return &customProjection[T, I, O]{
-		expression: expr,
-		name:       name,
-		dest:       dest,
-		convert:    convert,
-	}
+
+	return projection
 }
 
-func NewJSONProjection[T any, O any](expr OfType[json.RawMessage], dest func(*T) *O) Projection[T] {
+func NewJSONProjection[R any, O any](expr OfType[json.RawMessage], dest func(*R) *O) Projection[R] {
 	return NewCustomProjection(expr, dest, func(raw json.RawMessage) (O, error) {
 		var out O
 		if err := json.Unmarshal(raw, &out); err != nil {
@@ -91,36 +89,142 @@ func NewJSONProjection[T any, O any](expr OfType[json.RawMessage], dest func(*T)
 	})
 }
 
-func (p *customProjection[T, I, O]) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	p.expression.toSQL(builder, params, ctx)
-}
-
-func (p *customProjection[T, I, O]) Name() string {
+func (p *CustomProjection[R, T, O]) Name() string {
 	return p.name
 }
 
-func (p *customProjection[T, I, O]) BindScan(t *T) ScanBinding {
-	return &customScanBinding[I, O]{
+func (p *CustomProjection[R, T, O]) BindScan(t *R) ScanBinding {
+	return &customScanBinding[T, O]{
 		dest:    p.dest(t),
 		convert: p.convert,
 	}
 }
 
-type customScanBinding[I MappedTypes, O any] struct {
-	input   I
+type customScanBinding[T MappedTypes, O any] struct {
+	input   T
 	dest    *O
-	convert func(I) (O, error)
+	convert func(T) (O, error)
 }
 
-func (b *customScanBinding[I, O]) Destination() any {
+func (b *customScanBinding[T, O]) Destination() any {
 	return &b.input
 }
 
-func (b *customScanBinding[I, O]) Assign() error {
+func (b *customScanBinding[T, O]) Assign() error {
 	out, err := b.convert(b.input)
 	if err != nil {
 		return err
 	}
 	*b.dest = out
 	return nil
+}
+
+type StringColumnProjection[R any, D ScanDest[string]] struct {
+	*StringColumnExpression
+	dest func(*R) D
+}
+
+func NewStringColumnProjection[R any, D ScanDest[string]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *StringColumnProjection[R, D] {
+	return &StringColumnProjection[R, D]{
+		StringColumnExpression: NewStringColumnExpression(table, column),
+		dest:                   ref,
+	}
+}
+
+func (p *StringColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[string, D]{
+		dest: p.dest(r),
+	}
+}
+
+type IntColumnProjection[R any, D ScanDest[int64]] struct {
+	*IntColumnExpression
+	dest func(*R) D
+}
+
+func NewIntColumnProjection[R any, D ScanDest[int64]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *IntColumnProjection[R, D] {
+	return &IntColumnProjection[R, D]{
+		IntColumnExpression: NewIntColumnExpression(table, column),
+		dest:                ref,
+	}
+}
+
+func (p *IntColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[int64, D]{
+		dest: p.dest(r),
+	}
+}
+
+type UUIDColumnProjection[R any, D ScanDest[uuid.UUID]] struct {
+	*UUIDColumnExpression
+	dest func(*R) D
+}
+
+func NewUUIDColumnProjection[R any, D ScanDest[uuid.UUID]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *UUIDColumnProjection[R, D] {
+	return &UUIDColumnProjection[R, D]{
+		UUIDColumnExpression: NewUUIDColumnExpression(table, column),
+		dest:                 ref,
+	}
+}
+
+func (p *UUIDColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[uuid.UUID, D]{
+		dest: p.dest(r),
+	}
+}
+
+type BoolColumnProjection[R any, D ScanDest[bool]] struct {
+	*BoolColumnExpression
+	dest func(*R) D
+}
+
+func NewBoolColumnProjection[R any, D ScanDest[bool]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *BoolColumnProjection[R, D] {
+	return &BoolColumnProjection[R, D]{
+		BoolColumnExpression: NewBoolColumnExpression(table, column),
+		dest:                 ref,
+	}
+}
+
+func (p *BoolColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[bool, D]{
+		dest: p.dest(r),
+	}
+}
+
+type TimestampColumnProjection[R any, D ScanDest[time.Time]] struct {
+	*TimestampColumnExpression
+	dest func(*R) D
+}
+
+func NewTimestampColumnProjection[R any, D ScanDest[time.Time]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *TimestampColumnProjection[R, D] {
+	return &TimestampColumnProjection[R, D]{
+		TimestampColumnExpression: NewTimestampColumnExpression(table, column),
+		dest:                      ref,
+	}
+}
+
+func (p *TimestampColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[time.Time, D]{
+		dest: p.dest(r),
+	}
 }

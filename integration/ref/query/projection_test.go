@@ -23,7 +23,7 @@ func TestProjectionQueryToSQL(t *testing.T) {
 			query.Into(users.Email(), func(s *userSummary) *string {
 				return &s.Email
 			}),
-			query.Into(query.Count(posts.Id()), func(s *userSummary) *int64 {
+			query.Into(query.Count(posts.Id()).As(ast.NewAlias("count")), func(s *userSummary) *int64 {
 				return &s.PostCount
 			}),
 		).
@@ -36,20 +36,6 @@ func TestProjectionQueryToSQL(t *testing.T) {
 }
 
 func TestGeneratedDTOProjectionToSQL(t *testing.T) {
-	q := models.NewQuery[models.UsersDto](nil, users.Table()).
-		Select(
-			users.Id(),
-			users.Email(),
-			users.FullName(),
-		)
-
-	sql, err := q.ToSql()
-
-	require.NoError(t, err)
-	require.Equal(t, "SELECT users.id, users.email, users.full_name FROM users", sql)
-}
-
-func TestGeneratedFieldDescriptorProjectionToSQL(t *testing.T) {
 	q := models.NewQuery[models.UsersDto](nil, users.Table()).
 		Select(
 			users.Id(),

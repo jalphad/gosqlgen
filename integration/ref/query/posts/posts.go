@@ -18,46 +18,74 @@ func Table() *ast.TableSource {
 	return &ast.TableSource{Table: "posts"}
 }
 
-func Id() *ast.IntFieldProjection[models.PostsDto, **int64] {
-	return ast.NewIntFieldProjection("posts", "id", func(p *models.PostsDto) **int64 {
-		return &p.Id
-	})
+func Id() *ast.IntColumnProjection[models.PostsDto, **int64] {
+	return ast.NewIntColumnProjection(
+		"posts",
+		"id",
+		func(p *models.PostsDto) **int64 {
+			return &p.Id
+		},
+	)
 }
 
-func Title() *ast.StringFieldProjection[models.PostsDto, *string] {
-	return ast.NewStringFieldProjection("posts", "title", func(p *models.PostsDto) *string {
-		return &p.Title
-	})
+func Title() *ast.StringColumnProjection[models.PostsDto, *string] {
+	return ast.NewStringColumnProjection(
+		"posts",
+		"title",
+		func(p *models.PostsDto) *string {
+			return &p.Title
+		},
+	)
 }
 
-func UserId() *ast.UUIDFieldProjection[models.PostsDto, *uuid.UUID] {
-	return ast.NewUUIDFieldProjection("posts", "user_id", func(p *models.PostsDto) *uuid.UUID {
-		return &p.UserId
-	})
+func UserId() *ast.UUIDColumnProjection[models.PostsDto, *uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		"posts",
+		"user_id",
+		func(p *models.PostsDto) *uuid.UUID {
+			return &p.UserId
+		},
+	)
 }
 
-func Content() *ast.StringFieldProjection[models.PostsDto, **string] {
-	return ast.NewStringFieldProjection("posts", "content", func(p *models.PostsDto) **string {
-		return &p.Content
-	})
+func Content() *ast.StringColumnProjection[models.PostsDto, **string] {
+	return ast.NewStringColumnProjection(
+		"posts",
+		"content",
+		func(p *models.PostsDto) **string {
+			return &p.Content
+		},
+	)
 }
 
-func Status() *ast.StringFieldProjection[models.PostsDto, **string] {
-	return ast.NewStringFieldProjection("posts", "status", func(p *models.PostsDto) **string {
-		return &p.Status
-	})
+func Status() *ast.StringColumnProjection[models.PostsDto, **string] {
+	return ast.NewStringColumnProjection(
+		"posts",
+		"status",
+		func(p *models.PostsDto) **string {
+			return &p.Status
+		},
+	)
 }
 
-func PublishedAt() *ast.TimestampFieldProjection[models.PostsDto, **time.Time] {
-	return ast.NewTimestampFieldProjection("posts", "published_at", func(p *models.PostsDto) **time.Time {
-		return &p.PublishedAt
-	})
+func PublishedAt() *ast.TimestampColumnProjection[models.PostsDto, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"posts",
+		"published_at",
+		func(p *models.PostsDto) **time.Time {
+			return &p.PublishedAt
+		},
+	)
 }
 
-func ViewCount() *ast.IntFieldProjection[models.PostsDto, **int64] {
-	return ast.NewIntFieldProjection("posts", "view_count", func(p *models.PostsDto) **int64 {
-		return &p.ViewCount
-	})
+func ViewCount() *ast.IntColumnProjection[models.PostsDto, **int64] {
+	return ast.NewIntColumnProjection(
+		"posts",
+		"view_count",
+		func(p *models.PostsDto) **int64 {
+			return &p.ViewCount
+		},
+	)
 }
 
 func (columns) Id() *ast.IntColumnExpression {
