@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ScanDest[T MappedTypes] interface {
@@ -176,6 +177,50 @@ func NewIntColumnProjection[R any, D ScanDest[int64]](
 
 func (p *IntColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	return &scalarScanBinding[int64, D]{
+		dest: p.dest(r),
+	}
+}
+
+type FloatColumnProjection[R any, D ScanDest[float64]] struct {
+	*FloatColumnExpression
+	dest func(*R) D
+}
+
+func NewFloatColumnProjection[R any, D ScanDest[float64]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *FloatColumnProjection[R, D] {
+	return &FloatColumnProjection[R, D]{
+		FloatColumnExpression: NewFloatColumnExpression(table, column),
+		dest:                  ref,
+	}
+}
+
+func (p *FloatColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[float64, D]{
+		dest: p.dest(r),
+	}
+}
+
+type NumericColumnProjection[R any, D ScanDest[pgtype.Numeric]] struct {
+	*NumericColumnExpression
+	dest func(*R) D
+}
+
+func NewNumericColumnProjection[R any, D ScanDest[pgtype.Numeric]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *NumericColumnProjection[R, D] {
+	return &NumericColumnProjection[R, D]{
+		NumericColumnExpression: NewNumericColumnExpression(table, column),
+		dest:                    ref,
+	}
+}
+
+func (p *NumericColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[pgtype.Numeric, D]{
 		dest: p.dest(r),
 	}
 }

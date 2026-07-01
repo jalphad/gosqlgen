@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type ScanDest[T MappedTypes] interface {
@@ -180,6 +181,50 @@ func (p *IntColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	}
 }
 
+type FloatColumnProjection[R any, D ScanDest[float64]] struct {
+	*FloatColumnExpression
+	dest func(*R) D
+}
+
+func NewFloatColumnProjection[R any, D ScanDest[float64]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *FloatColumnProjection[R, D] {
+	return &FloatColumnProjection[R, D]{
+		FloatColumnExpression: NewFloatColumnExpression(table, column),
+		dest:                  ref,
+	}
+}
+
+func (p *FloatColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[float64, D]{
+		dest: p.dest(r),
+	}
+}
+
+type NumericColumnProjection[R any, D ScanDest[pgtype.Numeric]] struct {
+	*NumericColumnExpression
+	dest func(*R) D
+}
+
+func NewNumericColumnProjection[R any, D ScanDest[pgtype.Numeric]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *NumericColumnProjection[R, D] {
+	return &NumericColumnProjection[R, D]{
+		NumericColumnExpression: NewNumericColumnExpression(table, column),
+		dest:                    ref,
+	}
+}
+
+func (p *NumericColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[pgtype.Numeric, D]{
+		dest: p.dest(r),
+	}
+}
+
 type UUIDColumnProjection[R any, D ScanDest[uuid.UUID]] struct {
 	*UUIDColumnExpression
 	dest func(*R) D
@@ -241,6 +286,50 @@ func NewTimestampColumnProjection[R any, D ScanDest[time.Time]](
 }
 
 func (p *TimestampColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[time.Time, D]{
+		dest: p.dest(r),
+	}
+}
+
+type DateColumnProjection[R any, D ScanDest[time.Time]] struct {
+	*DateColumnExpression
+	dest func(*R) D
+}
+
+func NewDateColumnProjection[R any, D ScanDest[time.Time]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *DateColumnProjection[R, D] {
+	return &DateColumnProjection[R, D]{
+		DateColumnExpression: NewDateColumnExpression(table, column),
+		dest:                 ref,
+	}
+}
+
+func (p *DateColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[time.Time, D]{
+		dest: p.dest(r),
+	}
+}
+
+type TimeColumnProjection[R any, D ScanDest[time.Time]] struct {
+	*TimeColumnExpression
+	dest func(*R) D
+}
+
+func NewTimeColumnProjection[R any, D ScanDest[time.Time]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *TimeColumnProjection[R, D] {
+	return &TimeColumnProjection[R, D]{
+		TimeColumnExpression: NewTimeColumnExpression(table, column),
+		dest:                 ref,
+	}
+}
+
+func (p *TimeColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	return &scalarScanBinding[time.Time, D]{
 		dest: p.dest(r),
 	}

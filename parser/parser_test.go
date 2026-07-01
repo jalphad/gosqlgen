@@ -20,7 +20,8 @@ func TestParser_TypeMapping(t *testing.T) {
 		{"TIMESTAMP", "time.Time"},
 		{"DATE", "time.Time"},
 		{"FLOAT", "float64"},
-		{"DECIMAL(10,2)", "float64"},
+		{"DECIMAL(10,2)", "pgtype.Numeric"},
+		{"NUMERIC", "pgtype.Numeric"},
 		{"JSON", "json.RawMessage"},
 		{"BYTEA", "[]byte"},
 	}

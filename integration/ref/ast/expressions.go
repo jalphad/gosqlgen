@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func Render(e Expression, params *[]any) string {
@@ -214,6 +216,29 @@ func NewFloatColumnExpressionFromExpr(name string, expression Expression) *Float
 }
 
 func (e *FloatColumnExpression) Name() string {
+	return e.name
+}
+
+type NumericColumnExpression struct {
+	*numericType
+	name string
+}
+
+func NewNumericColumnExpression(table, column string) *NumericColumnExpression {
+	return &NumericColumnExpression{
+		numericType: &NumericType{sqlType[pgtype.Numeric]{NewColumnNode(table, column)}},
+		name:        column,
+	}
+}
+
+func NewNumericColumnExpressionFromExpr(name string, expression Expression) *NumericColumnExpression {
+	return &NumericColumnExpression{
+		numericType: &NumericType{sqlType[pgtype.Numeric]{expression}},
+		name:        name,
+	}
+}
+
+func (e *NumericColumnExpression) Name() string {
 	return e.name
 }
 
