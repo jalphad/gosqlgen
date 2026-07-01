@@ -17,7 +17,7 @@ type ResultSelectFromQuery[O any] interface {
 }
 
 type ResultSelectJoinQuery[O any] interface {
-	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) ResultSelectJoinQuery[O]
+	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) ResultSelectJoinQuery[O]
 	ResultSelectWhereQuery[O]
 }
 
@@ -138,8 +138,8 @@ type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 	ToSql() (string, error)
 }
 
-type KnownTableStartQuery[S DTOs[T, O], T any, O DTO[T]] interface {
-	WithTx(tx pgx.Tx) KnownTableStartQuery[S, T, O]
+type KnownTableStartQuery[T any, O DTO[T]] interface {
+	WithTx(tx pgx.Tx) KnownTableStartQuery[T, O]
 	KnownTableDeleteQuery[T, O]
 	InsertQuery[T, O]
 	UpdateQuery[T, O]

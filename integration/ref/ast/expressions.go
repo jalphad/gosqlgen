@@ -286,8 +286,14 @@ func (e *TimeColumnExpression) Name() string {
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	Table string      // Base table Name
+	table string      // Base table Name
 	joins []*JoinExpr // Optional joins
+}
+
+func NewTableSource(name string) *TableSource {
+	return &TableSource{
+		table: name,
+	}
 }
 
 func (s *TableSource) isTableExpression() {}
@@ -299,30 +305,30 @@ func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	// Track primary table
 	if ctx != nil {
 		if ctx.PrimaryTable == "" {
-			ctx.PrimaryTable = s.Table
+			ctx.PrimaryTable = s.table
 		}
 		// Add to AllTables if not already there
 		if ctx.AllTables == nil {
-			ctx.AllTables = []string{s.Table}
-		} else if !slices.Contains(ctx.AllTables, s.Table) {
-			ctx.AllTables = append(ctx.AllTables, s.Table)
+			ctx.AllTables = []string{s.table}
+		} else if !slices.Contains(ctx.AllTables, s.table) {
+			ctx.AllTables = append(ctx.AllTables, s.table)
 		}
 	}
 
-	builder.WriteString(" " + s.Table)
+	builder.WriteString(s.table)
 	for _, join := range s.joins {
 		join.toSQL(builder, params, ctx)
 	}
 }
 
 func (s *TableSource) Name() string {
-	return s.Table
+	return s.table
 }
 
-func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *TableSource {
+func (s *TableSource) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) *TableSource {
 	s.joins = append(s.joins, &JoinExpr{
 		Type:      jointype,
-		Right:     &TableSource{Table: table},
+		Right:     table,
 		Condition: on,
 	})
 	return s
@@ -330,9 +336,9 @@ func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *Ta
 
 // JoinExpr represents a JOIN operation.
 type JoinExpr struct {
-	Type      JoinType     // INNER, LEFT, RIGHT, FULL
-	Right     *TableSource // The table being joined
-	Condition OfType[bool] // ON condition
+	Type      JoinType             // INNER, LEFT, RIGHT, FULL
+	Right     NamedTableExpression // The table being joined
+	Condition OfType[bool]         // ON condition
 }
 
 func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -344,14 +350,16 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 		if ctx.JoinedTables == nil {
 			ctx.JoinedTables = make(map[string]JoinType)
 		}
-		ctx.JoinedTables[j.Right.Table] = j.Type
-		if !slices.Contains(ctx.AllTables, j.Right.Table) {
-			ctx.AllTables = append(ctx.AllTables, j.Right.Table)
+		ctx.JoinedTables[j.Right.Name()] = j.Type
+		if !slices.Contains(ctx.AllTables, j.Right.Name()) {
+			ctx.AllTables = append(ctx.AllTables, j.Right.Name())
 		}
 		ctx.CurrentPart = QueryPartJoin
 	}
 
-	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")
+	builder.WriteString(string(j.Type) + " JOIN ")
+	j.Right.toSQL(builder, params, ctx)
+	builder.WriteString(" ON ")
 	j.Condition.toSQL(builder, params, ctx)
 }
 
@@ -359,8 +367,10 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 type JoinType string
 
 const (
-	JoinInner JoinType = " INNER"
-	JoinLeft  JoinType = " LEFT"
-	JoinRight JoinType = " RIGHT"
-	JoinFull  JoinType = " FULL"
+	JoinInner   JoinType = " INNER"
+	JoinLeft    JoinType = " LEFT"
+	JoinRight   JoinType = " RIGHT"
+	JoinFull    JoinType = " FULL"
+	JoinLateral JoinType = " LATERAL"
+	JoinCross   JoinType = " CROSS"
 )

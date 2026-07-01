@@ -56,7 +56,7 @@ func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFi
 }
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewDTOQuery(pool, models.UsersDtos{}).
+	return models.NewDTOQuery[models.UsersDto](pool).
 		Update(
 			SetTo(dto,
 				users.Username(),
@@ -68,7 +68,11 @@ func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalize
 
 func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	dtos := models.UsersDtos(in)
-	v := ast.NewAlias("v")
+	v := ast.NewAlias("v",
+		users.Id(),
+		users.Username(),
+		users.Email(),
+		users.FullName())
 	return models.NewUsersQuery(pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
@@ -81,13 +85,13 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 				Cast(dtos.Username()).AsTextArray(),
 				Cast(dtos.Email()).AsTextArray(),
 				Cast(dtos.FullName()).AsTextArray(),
-			).As(v, users.Id(), users.Username(), users.Email(), users.FullName()),
+			).As(v),
 		).
 		Where(users.Id().Eq(Rel(v, users.Id())))
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewDTOQuery(pool, models.UsersDtos{}).
+	return models.NewDTOQuery[models.UsersDto](pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }

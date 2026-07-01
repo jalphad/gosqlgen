@@ -34,7 +34,7 @@ func (s *SelectStatement) GetQueryContext() *QueryContext {
 func (s *SelectStatement) GetJoinedTables() []string {
 	ret := make([]string, 0, len(s.From.joins))
 	for _, join := range s.From.joins {
-		ret = append(ret, join.Right.Table)
+		ret = append(ret, join.Right.Name())
 	}
 	return ret
 }
@@ -68,7 +68,7 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	if ctx != nil {
 		ctx.CurrentPart = QueryPartFrom
 	}
-	builder.WriteString(" FROM")
+	builder.WriteString(" FROM ")
 	s.From.toSQL(builder, params, ctx)
 
 	if s.Where != nil {
@@ -149,5 +149,5 @@ type LimitClause struct {
 // CTE represents a Common Table ExpressionNode (WITH clause).
 type CTE struct {
 	Name  string
-	Query *SelectStatement
+	Query SqlStatement
 }

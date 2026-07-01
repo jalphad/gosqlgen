@@ -52,7 +52,7 @@ func TestErrorExpression(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "username"),
 			},
-			From: &TableSource{Table: "users"},
+			From: &TableSource{table: "users"},
 		}
 
 		selectStmt.toSQL(&builder, &params, ctx)

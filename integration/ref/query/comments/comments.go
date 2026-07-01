@@ -15,7 +15,7 @@ type intoCommentsDto struct{}
 type columns struct{}
 
 func Table() *ast.TableSource {
-	return &ast.TableSource{Table: "comments"}
+	return ast.NewTableSource("comments")
 }
 
 func Id() *ast.IntColumnProjection[models.CommentsDto, **int64] {

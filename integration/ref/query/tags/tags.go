@@ -10,7 +10,7 @@ var Into = intoTagsDto{}
 type intoTagsDto struct{}
 
 func Table() *ast.TableSource {
-	return &ast.TableSource{Table: "tags"}
+	return ast.NewTableSource("tags")
 }
 
 func Id() *ast.IntColumnExpression {

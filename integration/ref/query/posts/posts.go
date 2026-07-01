@@ -9,13 +9,11 @@ import (
 )
 
 var Into = intoPostsDto{}
-var Column = columns{}
 
 type intoPostsDto struct{}
-type columns struct{}
 
 func Table() *ast.TableSource {
-	return &ast.TableSource{Table: "posts"}
+	return ast.NewTableSource("posts")
 }
 
 func Id() *ast.IntColumnProjection[models.PostsDto, **int64] {
@@ -86,34 +84,6 @@ func ViewCount() *ast.IntColumnProjection[models.PostsDto, **int64] {
 			return &p.ViewCount
 		},
 	)
-}
-
-func (columns) Id() *ast.IntColumnExpression {
-	return ast.NewIntColumnExpression("posts", "id")
-}
-
-func (columns) Title() *ast.StringColumnExpression {
-	return ast.NewStringColumnExpression("posts", "title")
-}
-
-func (columns) UserId() *ast.UUIDColumnExpression {
-	return ast.NewUUIDColumnExpression("posts", "user_id")
-}
-
-func (columns) Content() *ast.StringColumnExpression {
-	return ast.NewStringColumnExpression("posts", "content")
-}
-
-func (columns) Status() *ast.StringColumnExpression {
-	return ast.NewStringColumnExpression("posts", "status")
-}
-
-func (columns) PublishedAt() *ast.TimestampColumnExpression {
-	return ast.NewTimestampColumnExpression("posts", "published_at")
-}
-
-func (columns) ViewCount() *ast.IntColumnExpression {
-	return ast.NewIntColumnExpression("posts", "view_count")
 }
 
 func AllColumns() []ast.NamedExpression {

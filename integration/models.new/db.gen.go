@@ -20,8 +20,8 @@ func NewDB(pool *pgxpool.Pool) *DB {
 }
 
 // Comments returns a query builder for comments
-func (db *DB) Comments() *builder.KnownTableBuilder[CommentsDtos, CommentsDto, *CommentsDto] {
-	return NewDTOQuery(db.pool, CommentsDtos{})
+func (db *DB) Comments() *builder.KnownTableBuilder[CommentsDto, *CommentsDto] {
+	return NewDTOQuery[CommentsDto](db.pool)
 }
 
 //// PostTags returns a query builder for post_tags
@@ -30,8 +30,8 @@ func (db *DB) Comments() *builder.KnownTableBuilder[CommentsDtos, CommentsDto, *
 //}
 
 // Posts returns a query builder for posts
-func (db *DB) Posts() *builder.KnownTableBuilder[PostsDtos, PostsDto, *PostsDto] {
-	return NewDTOQuery(db.pool, PostsDtos{})
+func (db *DB) Posts() *builder.KnownTableBuilder[PostsDto, *PostsDto] {
+	return NewDTOQuery[PostsDto](db.pool)
 }
 
 //// Tags returns a query builder for tags
@@ -40,8 +40,8 @@ func (db *DB) Posts() *builder.KnownTableBuilder[PostsDtos, PostsDto, *PostsDto]
 //}
 
 // Users returns a query builder for users
-func (db *DB) Users() *builder.KnownTableBuilder[UsersDtos, UsersDto, *UsersDto] {
-	return NewDTOQuery(db.pool, UsersDtos{})
+func (db *DB) Users() *builder.KnownTableBuilder[UsersDto, *UsersDto] {
+	return NewDTOQuery[UsersDto](db.pool)
 }
 
 // Transaction executes a function within a transaction
@@ -63,8 +63,8 @@ func NewTx(tx pgx.Tx) *Tx {
 }
 
 // Comments returns a query builder within the transaction
-func (tx *Tx) Comments() builder.KnownTableStartQuery[CommentsDtos, CommentsDto, *CommentsDto] {
-	q := NewDTOQuery(nil, CommentsDtos{})
+func (tx *Tx) Comments() builder.KnownTableStartQuery[CommentsDto, *CommentsDto] {
+	q := NewDTOQuery[CommentsDto](nil)
 	return q.WithTx(tx.tx)
 }
 
@@ -75,8 +75,8 @@ func (tx *Tx) Comments() builder.KnownTableStartQuery[CommentsDtos, CommentsDto,
 //}
 
 // Posts returns a query builder within the transaction
-func (tx *Tx) Posts() builder.KnownTableStartQuery[PostsDtos, PostsDto, *PostsDto] {
-	q := NewDTOQuery(nil, PostsDtos{})
+func (tx *Tx) Posts() builder.KnownTableStartQuery[PostsDto, *PostsDto] {
+	q := NewDTOQuery[PostsDto](nil)
 	return q.WithTx(tx.tx)
 }
 
@@ -87,14 +87,14 @@ func (tx *Tx) Posts() builder.KnownTableStartQuery[PostsDtos, PostsDto, *PostsDt
 //}
 
 // Users returns a query builder within the transaction
-func (tx *Tx) Users() builder.KnownTableStartQuery[UsersDtos, UsersDto, *UsersDto] {
-	q := NewDTOQuery(nil, UsersDtos{})
+func (tx *Tx) Users() builder.KnownTableStartQuery[UsersDto, *UsersDto] {
+	q := NewDTOQuery[UsersDto](nil)
 	return q.WithTx(tx.tx)
 }
 
 // NewCommentsQuery returns a query builder for comments
-func NewCommentsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[CommentsDtos, CommentsDto, *CommentsDto] {
-	return builder.NewKnownTableBuilder(CommentsDtos{}, pool)
+func NewCommentsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[CommentsDto, *CommentsDto] {
+	return builder.NewKnownTableBuilder[CommentsDto](pool)
 }
 
 //// NewPostTagsQuery returns a query builder for post_tags
@@ -103,8 +103,8 @@ func NewCommentsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[CommentsDto
 //}
 
 // NewPostsQuery returns a query builder for posts
-func NewPostsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[PostsDtos, PostsDto, *PostsDto] {
-	return builder.NewKnownTableBuilder(PostsDtos{}, pool)
+func NewPostsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[PostsDto, *PostsDto] {
+	return builder.NewKnownTableBuilder[PostsDto](pool)
 }
 
 //// NewTagsQuery returns a query builder for tags
@@ -113,14 +113,14 @@ func NewPostsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[PostsDtos, Pos
 //}
 
 // NewUsersQuery returns a query builder for users
-func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[UsersDtos, UsersDto, *UsersDto] {
-	return builder.NewKnownTableBuilder(UsersDtos{}, pool)
+func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[UsersDto, *UsersDto] {
+	return builder.NewKnownTableBuilder[UsersDto](pool)
 }
 
 func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.ResultTableBuilder[T] {
 	return builder.NewResultTableBuilder[T](pool, table)
 }
 
-func NewDTOQuery[S builder.DTOs[T, O], T any, O builder.DTO[T]](pool *pgxpool.Pool, s S) *builder.KnownTableBuilder[S, T, O] {
-	return builder.NewKnownTableBuilder(s, pool)
+func NewDTOQuery[T any, O builder.DTO[T]](pool *pgxpool.Pool) *builder.KnownTableBuilder[T, O] {
+	return builder.NewKnownTableBuilder[T, O](pool)
 }

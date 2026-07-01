@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"errors"
 	"strings"
 	"time"
 
@@ -106,67 +105,6 @@ func (u UsersDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
 	return values
 }
 
-// TODO: return an ast.ErrorExpression when implemented
-func (u UsersDtos) GetArgs(column ast.NamedExpression) ast.Expression {
-	// Normalize column name for matching (lowercase)
-	columnLower := strings.ToLower(column.Name())
-
-	if columnLower == "id" {
-		out := u.Id()
-		return ast.NewLiteralExpression(out)
-	}
-
-	if columnLower == "username" {
-		out := make([]string, len(u))
-		for idx, dto := range u {
-			out[idx] = dto.Username
-		}
-		return ast.NewLiteralExpression(out)
-	}
-
-	if columnLower == "email" {
-		out := make([]string, len(u))
-		for idx, dto := range u {
-			out[idx] = dto.Email
-		}
-		return ast.NewLiteralExpression(out)
-	}
-
-	if columnLower == "full_name" || columnLower == "fullname" {
-		out := make([]*string, len(u))
-		for idx, dto := range u {
-			out[idx] = dto.FullName
-		}
-		return ast.NewLiteralExpression(out)
-	}
-
-	if columnLower == "created_at" || columnLower == "createdat" {
-		out := make([]*time.Time, len(u))
-		for idx, dto := range u {
-			out[idx] = dto.CreatedAt
-		}
-		return ast.NewLiteralExpression(out)
-	}
-
-	if columnLower == "updated_at" || columnLower == "updatedat" {
-		out := make([]*time.Time, len(u))
-		for idx, dto := range u {
-			out[idx] = dto.UpdatedAt
-		}
-		return ast.NewLiteralExpression(out)
-	}
-
-	if columnLower == "is_active" || columnLower == "isactive" {
-		out := make([]*bool, len(u))
-		for idx, dto := range u {
-			out[idx] = dto.IsActive
-		}
-		return ast.NewLiteralExpression(out)
-	}
-
-	return nil //, errors.New("unknown column")
-}
-
 // UsersDto represents the users table
 type UsersDto struct {
 	Id        *uuid.UUID `db:"id" json:"id"`
@@ -206,55 +144,4 @@ func (u *UsersDto) UnmarshalJSON(b []byte) error {
 	u.UpdatedAt = &wrapper.UpdatedAt.Time
 
 	return nil
-}
-
-// GetArg returns an expression which will be converted to a parameter in the SQL query
-func (u *UsersDto) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
-	// Normalize column name for matching (lowercase)
-	columnLower := strings.ToLower(ref.Name())
-
-	if columnLower == "id" {
-		if u.Id == nil {
-			return ast.NewLiteralExpression(nil), nil
-		}
-		return ast.NewSQLType(*u.Id), nil
-	}
-
-	if columnLower == "username" {
-		return ast.NewSQLType(u.Username), nil
-	}
-
-	if columnLower == "email" {
-		return ast.NewSQLType(u.Email), nil
-	}
-
-	if columnLower == "full_name" || columnLower == "fullname" {
-		if u.FullName == nil {
-			return ast.NewLiteralExpression(nil), nil
-		}
-		return ast.NewSQLType(*u.FullName), nil
-	}
-
-	if columnLower == "created_at" || columnLower == "createdat" {
-		if u.CreatedAt == nil {
-			return ast.NewLiteralExpression(nil), nil
-		}
-		return ast.NewSQLType(*u.CreatedAt), nil
-	}
-
-	if columnLower == "updated_at" || columnLower == "updatedat" {
-		if u.UpdatedAt == nil {
-			return ast.NewLiteralExpression(nil), nil
-		}
-		return ast.NewSQLType(*u.UpdatedAt), nil
-	}
-
-	if columnLower == "is_active" || columnLower == "isactive" {
-		if u.IsActive == nil {
-			return ast.NewLiteralExpression(nil), nil
-		}
-		return ast.NewSQLType(*u.IsActive), nil
-	}
-
-	return nil, errors.New("unknown column")
 }

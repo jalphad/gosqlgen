@@ -12,7 +12,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},
-			From: &TableSource{Table: "users"},
+			From: &TableSource{table: "users"},
 		}
 
 		ctx := &QueryContext{}
@@ -66,7 +66,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},
-			From:    &TableSource{Table: "users"},
+			From:    &TableSource{table: "users"},
 			Where:   NewSQLType(true),
 			GroupBy: []Expression{NewIntColumnExpression("users", "id")},
 			Having:  NewSQLType(true),
@@ -141,9 +141,9 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},
-			From: &TableSource{Table: "users"},
+			From: &TableSource{table: "users"},
 		}
-		selectStmt.From.Join(JoinLeft, "posts", NewSQLType(true))
+		selectStmt.From.Join(JoinLeft, &TableSource{table: "posts"}, NewSQLType(true))
 
 		ctx := &QueryContext{}
 		_, err := RenderWithContext(selectStmt, &[]any{}, ctx)

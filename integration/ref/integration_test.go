@@ -541,7 +541,7 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 				users.Id(),
 				users.Into.Posts(posts.Id(), posts.Title()),
 			).
-			Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
+			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(query.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
@@ -569,7 +569,7 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 				users.Id(),
 				users.Into.Posts(posts.Id(), posts.Title()),
 			).
-			Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
+			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(query.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
@@ -1084,7 +1084,7 @@ func TestContextTracking(t *testing.T) {
 				users.Id(),
 				users.Username(),
 			},
-			From: &ast.TableSource{Table: "users"},
+			From: users.Table(),
 		}
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
@@ -1105,9 +1105,9 @@ func TestContextTracking(t *testing.T) {
 				users.Username(),
 				posts.Title(),
 			},
-			From: &ast.TableSource{Table: "users"},
+			From: users.Table(),
 		}
-		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
+		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
@@ -1132,10 +1132,10 @@ func TestContextTracking(t *testing.T) {
 				posts.Title(),
 				comments.Content(),
 			},
-			From: &ast.TableSource{Table: "users"},
+			From: users.Table(),
 		}
-		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
-		selectStmt.From.Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id()))
+		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
+		selectStmt.From.Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id()))
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
@@ -1159,9 +1159,9 @@ func TestContextTracking(t *testing.T) {
 				users.Username(),
 				posts.Title(),
 			},
-			From: &ast.TableSource{Table: "users"},
+			From: users.Table(),
 		}
-		selectStmt.From.Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id()))
+		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
 
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
@@ -1206,7 +1206,7 @@ func TestContextTracking(t *testing.T) {
 			Title:   "Test Post",
 			Content: new("Test Content"),
 		}
-		err = models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
+		err = models.NewDTOQuery[models.PostsDto](testDB.pool).
 			Insert(
 				posts.UserId(),
 				posts.Title(),
@@ -1233,7 +1233,7 @@ func TestContextTracking(t *testing.T) {
 				query.Into(users.Username(), func(p *postWithUser) *string { return &p.Username }),
 				query.Into(users.Email(), func(p *postWithUser) *string { return &p.Email }),
 			).
-			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
+			Join(ast.JoinLeft, users.Table(), posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id))).
 			Find(context.Background())
 
@@ -1324,8 +1324,8 @@ func TestContextTracking(t *testing.T) {
 				query.Into(users.Username(), func(c *commentWithPostAndUser) *string { return &c.Username }),
 				query.Into(users.Email(), func(c *commentWithPostAndUser) *string { return &c.Email }),
 			).
-			Join(ast.JoinLeft, "posts", comments.PostId().Eq(posts.Id())).
-			Join(ast.JoinLeft, "users", comments.UserId().Eq(users.Id())).
+			Join(ast.JoinLeft, posts.Table(), comments.PostId().Eq(posts.Id())).
+			Join(ast.JoinLeft, users.Table(), comments.UserId().Eq(users.Id())).
 			Where(comments.Id().Eq(query.Val(*comment.Id))).
 			Find(context.Background())
 
@@ -1356,7 +1356,7 @@ func TestContextTracking(t *testing.T) {
 			UserId: *user.Id,
 			Title:  "SQL Verify Post",
 		}
-		err = models.NewDTOQuery(testDB.pool, models.PostsDtos{}).
+		err = models.NewDTOQuery[models.PostsDto](testDB.pool).
 			Insert(
 				posts.UserId(),
 				posts.Title(),
@@ -1378,7 +1378,7 @@ func TestContextTracking(t *testing.T) {
 				query.Into(posts.Title(), func(r *sqlVerifyRow) *string { return &r.Title }),
 				query.Into(users.Username(), func(r *sqlVerifyRow) *string { return &r.Username }),
 			).
-			Join(ast.JoinLeft, "users", posts.UserId().Eq(users.Id())).
+			Join(ast.JoinLeft, users.Table(), posts.UserId().Eq(users.Id())).
 			Where(posts.Id().Eq(query.Val(*post.Id)))
 
 		sql, err := queryBuilder.ToSql()

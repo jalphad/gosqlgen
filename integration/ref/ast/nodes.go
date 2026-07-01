@@ -22,10 +22,11 @@ func (n *ColumnNode) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext
 	}
 	// Track column reference in context
 	if ctx != nil {
-		ctx.ColumnReferences = append(ctx.ColumnReferences, ColumnReference{
+		currentColumn := ColumnReference{
 			Table:  n.Column.Table,
 			Column: n.Column.Column,
-		})
+		}
+		ctx.ColumnReferences = append(ctx.ColumnReferences, currentColumn)
 	}
 	builder.WriteString(n.Column.Table + "." + n.Column.Column)
 }

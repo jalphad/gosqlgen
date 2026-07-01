@@ -11,7 +11,7 @@ var Into = intoUsersDto{}
 type intoUsersDto struct{}
 
 func Table() *ast.TableSource {
-	return &ast.TableSource{Table: "users"}
+	return ast.NewTableSource("users")
 }
 
 func Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
