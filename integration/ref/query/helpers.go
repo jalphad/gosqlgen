@@ -3,6 +3,7 @@ package query
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
 )
@@ -31,6 +32,14 @@ func IntoJSON[R any, O any](expr ast.OfType[json.RawMessage], dest func(*R) *O) 
 	return ast.NewJSONProjection(expr, dest)
 }
 
+func CTE(alias *ast.Alias, stmt ast.SqlStatement) *ast.CTE {
+	return ast.NewCTE(alias, stmt)
+}
+
+func Table(alias *ast.Alias) *ast.TableSource {
+	return ast.NewTableSource(alias.Name())
+}
+
 func Rel[T ast.MappedTypes](r *ast.Alias, c ast.NamedAndTyped[T]) ast.OfType[T] {
 	return ast.SetType[T](ast.NewColumnNode(r.Name(), c.Name()))
 }
@@ -40,17 +49,26 @@ func Set[T ast.MappedTypes](field ast.NamedAndTyped[T]) *SetPart[T] {
 }
 
 func SetTo[T any](dto *T, fields ...ast.Projection[T]) ast.UpdateSetExpr {
+	if dto == nil {
+		return ast.NewUpdateSetError(errors.New("query.SetTo requires a non-nil dto"))
+	}
 	if len(fields) == 0 {
 		return ast.NewUpdateSetError(errors.New("query.SetTo requires at least one field"))
 	}
 
 	sets := make([]ast.UpdateSet, 0, len(fields))
 	for _, field := range fields {
+		if field == nil {
+			return ast.NewUpdateSetError(errors.New("query.SetTo received a nil field"))
+		}
 		binding := field.BindScan(dto)
-		ptr := binding.Destination()
+		value, err := binding.Value()
+		if err != nil {
+			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.Name(), err))
+		}
 		set := ast.UpdateSet{
 			Key:   field,
-			Value: ast.NewLiteralExpression(ptr),
+			Value: ast.NewLiteralExpression(value),
 		}
 		sets = append(sets, set)
 	}

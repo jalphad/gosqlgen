@@ -1,27 +1,84 @@
 package query
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 )
 
-func NVal[T ast.MappedTypes, N ast.NullableMappedTypes[T]](n N) ast.OfType[T] {
-	if n == nil {
+func Nullable[T ast.MappedTypes](nullable *T) ast.OfType[T] {
+	if nullable == nil {
 		return ast.SetType[T](ast.NewLiteralExpression(nil))
 	}
 
-	return ast.SetType[T](ast.NewLiteralExpression(n))
+	return ast.SetType[T](ast.NewLiteralExpression(nullable))
 }
 
 func Val[T ast.MappedTypes](t T) ast.OfType[T] {
 	return ast.NewSQLType(t)
 }
 
+func Into[R any, T ast.MappedTypes, D ast.ScanDest[T]](expr ast.OfType[T], dest func(*R) D) ast.Projection[R] {
+	return ast.NewProjection(expr, dest)
+}
+
+func IntoCustom[R any, I ast.MappedTypes, O any](expr ast.OfType[I], dest func(*R) *O, convert func(I) (O, error)) ast.Projection[R] {
+	return ast.NewCustomProjection(expr, dest, convert)
+}
+
+func IntoJSON[R any, O any](expr ast.OfType[json.RawMessage], dest func(*R) *O) ast.Projection[R] {
+	return ast.NewJSONProjection(expr, dest)
+}
+
+func CTE(alias *ast.Alias, stmt ast.SqlStatement) *ast.CTE {
+	return ast.NewCTE(alias, stmt)
+}
+
+func Table(alias *ast.Alias) *ast.TableSource {
+	return ast.NewTableSource(alias.Name())
+}
+
 func Rel[T ast.MappedTypes](r *ast.Alias, c ast.NamedAndTyped[T]) ast.OfType[T] {
 	return ast.SetType[T](ast.NewColumnNode(r.Name(), c.Name()))
 }
 
-func Set[T ast.MappedTypes](c ast.NamedAndTyped[T]) *SetPart[T] {
-	return &SetPart[T]{c}
+func Set[T ast.MappedTypes](field ast.NamedAndTyped[T]) *SetPart[T] {
+	return &SetPart[T]{field: field}
+}
+
+func SetTo[T any](dto *T, fields ...ast.Projection[T]) ast.UpdateSetExpr {
+	if dto == nil {
+		return ast.NewUpdateSetError(errors.New("query.SetTo requires a non-nil dto"))
+	}
+	if len(fields) == 0 {
+		return ast.NewUpdateSetError(errors.New("query.SetTo requires at least one field"))
+	}
+
+	sets := make([]ast.UpdateSet, 0, len(fields))
+	for _, field := range fields {
+		if field == nil {
+			return ast.NewUpdateSetError(errors.New("query.SetTo received a nil field"))
+		}
+		binding := field.BindScan(dto)
+		value, err := binding.Value()
+		if err != nil {
+			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.Name(), err))
+		}
+		set := ast.UpdateSet{
+			Key:   field,
+			Value: ast.NewLiteralExpression(value),
+		}
+		sets = append(sets, set)
+	}
+
+	return ast.UpdateSetList{Sets: sets}
+}
+
+type TypedTableExpression[T any] struct {
+	dto []T
+	ast.TableExpression
 }
 
 func As[T ast.MappedTypes, C ast.AsExprConstraint[T]](alias string, expression ast.AsExpression[T, C]) C {
@@ -29,13 +86,27 @@ func As[T ast.MappedTypes, C ast.AsExprConstraint[T]](alias string, expression a
 }
 
 type SetPart[T ast.MappedTypes] struct {
-	c ast.NamedAndTyped[T]
+	field ast.NamedAndTyped[T]
 }
 
-func (s *SetPart[T]) To(val ast.OfType[T]) ast.UpdateSet {
+func (s *SetPart[T]) To(expr ast.OfType[T]) ast.UpdateSetExpr {
 	return ast.UpdateSet{
-		Key:   s.c,
-		Value: val,
+		Key:   s.field,
+		Value: expr,
+	}
+}
+
+func (s *SetPart[T]) ToValue(val T) ast.UpdateSetExpr {
+	return ast.UpdateSet{
+		Key:   s.field,
+		Value: ast.NewSQLType(val),
+	}
+}
+
+func (s *SetPart[T]) ToNullable(val *T) ast.UpdateSetExpr {
+	return ast.UpdateSet{
+		Key:   s.field,
+		Value: Nullable(val),
 	}
 }
 

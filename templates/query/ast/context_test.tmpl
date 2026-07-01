@@ -12,7 +12,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},
-			From: &TableSource{Table: "users"},
+			From: &TableSource{table: "users"},
 		}
 
 		ctx := &QueryContext{}
@@ -66,7 +66,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},
-			From:    &TableSource{Table: "users"},
+			From:    &TableSource{table: "users"},
 			Where:   NewSQLType(true),
 			GroupBy: []Expression{NewIntColumnExpression("users", "id")},
 			Having:  NewSQLType(true),
@@ -141,9 +141,9 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			SelectList: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},
-			From: &TableSource{Table: "users"},
+			From: &TableSource{table: "users"},
 		}
-		selectStmt.From.Join(JoinLeft, "posts", NewSQLType(true))
+		selectStmt.From.Join(JoinLeft, &TableSource{table: "posts"}, NewSQLType(true))
 
 		ctx := &QueryContext{}
 		_, err := RenderWithContext(selectStmt, &[]any{}, ctx)
@@ -153,4 +153,25 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 		// After rendering, should be in JOIN part (last thing rendered was the JOIN)
 		assert.Equal(t, QueryPartJoin, ctx.CurrentPart)
 	})
+}
+
+func TestNullPredicatesRenderAsBinaryIsExpressions(t *testing.T) {
+	params := []any{}
+
+	isNullSQL, err := RenderWithContext(NewStringColumnExpression("users", "email").IsNull(), &params, &QueryContext{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isNullSQL != "users.email IS NULL" {
+		t.Fatalf("expected users.email IS NULL, got %q", isNullSQL)
+	}
+
+	params = []any{}
+	isNotNullSQL, err := RenderWithContext(NewStringColumnExpression("users", "email").IsNotNull(), &params, &QueryContext{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isNotNullSQL != "users.email IS NOT NULL" {
+		t.Fatalf("expected users.email IS NOT NULL, got %q", isNotNullSQL)
+	}
 }

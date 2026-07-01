@@ -6,6 +6,7 @@ import (
 )
 
 type InsertStatement struct {
+	With       []*CTE
 	Table      string
 	Into       []NamedExpression
 	Values     []Expression
@@ -29,6 +30,14 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	s.context = ctx
 	if ctx != nil {
 		ctx.Type = QueryTypeInsert
+	}
+
+	renderWithClause(s.With, builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(s.With) > 0 {
+		builder.WriteString(" ")
 	}
 
 	builder.WriteString("INSERT INTO " + s.Table)

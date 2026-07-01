@@ -14,6 +14,6 @@ func JsonAggObject(alias string, filter ast.OfType[bool], columns ...ast.NamedEx
 		aggregated = ast.SetType[json.RawMessage](aggregation.Filter(filter))
 	}
 
-	emptyJSON := Cast(ast.SetType[string](ast.NewStringConstant("[]"))).AsJson()
+	emptyJSON := Cast(ast.SetType[string](InlineStringLiteral("[]"))).AsJson()
 	return Coalesce(aggregated, emptyJSON).As(ast.NewAlias(alias))
 }

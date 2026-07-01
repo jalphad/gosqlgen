@@ -307,10 +307,36 @@ func RenderTableStruct(data TableStructData) (string, error) {
 		"isPtr": func(goType string) bool {
 			return strings.HasPrefix(goType, "*")
 		},
+		"baseType": func(goType string) string {
+			return strings.TrimPrefix(goType, "*")
+		},
+		"modelType": func(goType string) string {
+			if strings.HasPrefix(goType, "[]") {
+				return "[]models." + strings.TrimPrefix(goType, "[]")
+			}
+			if strings.HasPrefix(goType, "*") {
+				return "*models." + strings.TrimPrefix(goType, "*")
+			}
+			return "models." + goType
+		},
+		"sliceType": func(goType string) string {
+			if strings.HasPrefix(goType, "*") {
+				return "[]" + goType
+			}
+			return "[]" + goType
+		},
 		"hasSuffix":    strings.HasSuffix,
 		"toLower":      strings.ToLower,
 		"toPascalCase": ToPascalCase,
 		"join":         strings.Join,
+		"usesType": func(fields []StructField, needle string) bool {
+			for _, field := range fields {
+				if strings.Contains(field.GoType, needle) {
+					return true
+				}
+			}
+			return false
+		},
 		"needsCustomUnmarshal": func(fields []StructField) bool {
 			for _, field := range fields {
 				re := regexp.MustCompile(`(?i)^(date|time(stamp)?)( with(out)? time zone)?$`)
@@ -340,7 +366,20 @@ func RenderTableStruct(data TableStructData) (string, error) {
 func RenderColumnExpressions(data TableStructData) (string, error) {
 	funcMap := template.FuncMap{
 		"toTypeExpression": ToTypeExpression,
+		"toProjectionType": ToProjectionType,
 		"toLower":          strings.ToLower,
+		"baseType": func(goType string) string {
+			return strings.TrimPrefix(goType, "*")
+		},
+		"modelType": func(goType string) string {
+			if strings.HasPrefix(goType, "[]") {
+				return "[]models." + strings.TrimPrefix(goType, "[]")
+			}
+			if strings.HasPrefix(goType, "*") {
+				return "*models." + strings.TrimPrefix(goType, "*")
+			}
+			return "models." + goType
+		},
 		"scanDestType": func(goType string) string {
 			return "*" + goType
 		},
@@ -530,6 +569,11 @@ func ToTypeExpression(goType, sqlType string) string {
 	default:
 		return "<UnknownAstType>"
 	}
+}
+
+func ToProjectionType(goType, sqlType string) string {
+	expression := ToTypeExpression(goType, sqlType)
+	return strings.TrimSuffix(expression, "Expression") + "Projection"
 }
 
 // RenderASTPackage renders all AST package files

@@ -11,11 +11,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/models.new"
+	dbmodels "github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
-	"github.com/jalphad/gosqlgen/integration/ref/query"
+	q "github.com/jalphad/gosqlgen/integration/ref/query"
 	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
+	"github.com/jalphad/gosqlgen/integration/ref/query/post_tags"
 	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
+	"github.com/jalphad/gosqlgen/integration/ref/query/tags"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -25,7 +27,6 @@ import (
 
 var (
 	pgxPool  *pgxpool.Pool
-	testDB   *DB
 	pool     *dockertest.Pool
 	resource *dockertest.Resource
 )
@@ -33,18 +34,15 @@ var (
 func TestMain(m *testing.M) {
 	var err error
 
-	// Create a new pool for Docker
 	pool, err = dockertest.NewPool("")
 	if err != nil {
 		log.Fatalf("Could not construct pool: %s", err)
 	}
 
-	err = pool.Client.Ping()
-	if err != nil {
+	if err = pool.Client.Ping(); err != nil {
 		log.Fatalf("Could not connect to Docker: %s", err)
 	}
 
-	// Pull PostgreSQL docker image and run container
 	resource, err = pool.RunWithOptions(&dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        "15-alpine",
@@ -63,17 +61,13 @@ func TestMain(m *testing.M) {
 	}
 
 	hostAndPort := resource.GetHostPort("5432/tcp")
-	databaseUrl := fmt.Sprintf("postgres://testuser:secret@%s/testdb?sslmode=disable", hostAndPort)
+	databaseURL := fmt.Sprintf("postgres://testuser:secret@%s/testdb?sslmode=disable", hostAndPort)
+	log.Println("Connecting to database on url: ", databaseURL)
 
-	log.Println("Connecting to database on url: ", databaseUrl)
-
-	// Set expiry to 2 minutes to avoid hanging on failure
 	resource.Expire(120)
-
-	// Exponential backoff-retry to connect to database
 	pool.MaxWait = 120 * time.Second
 	if err = pool.Retry(func() error {
-		pgxPool, err = pgxpool.New(context.Background(), databaseUrl)
+		pgxPool, err = pgxpool.New(context.Background(), databaseURL)
 		if err != nil {
 			return err
 		}
@@ -82,18 +76,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
 
-	// Load schema
 	if err := loadSchema(pgxPool); err != nil {
 		log.Fatalf("Could not load schema: %s", err)
 	}
 
-	// Create DB wrapper
-	testDB = NewDB(pgxPool)
-
-	// Run tests
 	code := m.Run()
 
-	// Clean up
 	if err := pool.Purge(resource); err != nil {
 		log.Fatalf("Could not purge resource: %s", err)
 	}
@@ -115,405 +103,327 @@ func loadSchema(pool *pgxpool.Pool) error {
 	return nil
 }
 
-// Helper function to clean up tables between tests
 func cleanupTables(t *testing.T) {
 	t.Helper()
 
-	tables := []string{"post_tags", "comments", "posts", "tags", "users"}
-	for _, table := range tables {
+	for _, table := range []string{"post_tags", "comments", "posts", "tags", "users"} {
 		_, err := pgxPool.Exec(context.Background(), fmt.Sprintf("TRUNCATE TABLE %s RESTART IDENTITY CASCADE", table))
-		if err != nil {
-			t.Fatalf("Failed to truncate table %s: %v", table, err)
-		}
+		require.NoErrorf(t, err, "failed to truncate table %s", table)
 	}
 }
 
-// TestIntegration_UserCRUD tests basic CRUD operations on Users
+func insertUsers(t *testing.T, rows ...*dbmodels.UsersDto) {
+	t.Helper()
+	err := dbmodels.NewUsersQuery(pgxPool).
+		Insert(users.Username(), users.Email(), users.FullName(), users.IsActive()).
+		Returning(users.Id()).
+		Values(rows...).Exec(context.Background())
+	require.NoError(t, err)
+	for _, row := range rows {
+		require.NotNil(t, row.Id)
+	}
+}
+
+func insertPosts(t *testing.T, rows ...*dbmodels.PostsDto) {
+	t.Helper()
+	err := dbmodels.NewPostsQuery(pgxPool).
+		Insert(posts.UserId(), posts.Title(), posts.Content(), posts.Status(), posts.ViewCount()).
+		Returning(posts.Id()).
+		Values(rows...).Exec(context.Background())
+	require.NoError(t, err)
+	for _, row := range rows {
+		require.NotNil(t, row.Id)
+	}
+}
+
+func insertComments(t *testing.T, rows ...*dbmodels.CommentsDto) {
+	t.Helper()
+	err := dbmodels.NewCommentsQuery(pgxPool).
+		Insert(comments.PostId(), comments.UserId(), comments.Content(), comments.IsApproved()).
+		Returning(comments.Id()).
+		Values(rows...).Exec(context.Background())
+	require.NoError(t, err)
+	for _, row := range rows {
+		require.NotNil(t, row.Id)
+	}
+}
+
+func insertTags(t *testing.T, rows ...*dbmodels.TagsDto) {
+	t.Helper()
+	err := dbmodels.NewDTOQuery[dbmodels.TagsDto](pgxPool).
+		Insert(tags.Into.Name(), tags.Into.Slug()).
+		Returning(tags.Into.Id()).
+		Values(rows...).Exec(context.Background())
+	require.NoError(t, err)
+	for _, row := range rows {
+		require.NotNil(t, row.Id)
+	}
+}
+
+func findUserByID(t *testing.T, id uuid.UUID) dbmodels.UsersDto {
+	t.Helper()
+	user, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		Select(users.Into.AllColumns()...).
+		Where(users.Id().Eq(q.Val(id))).
+		FindOne(context.Background())
+	require.NoError(t, err)
+	return user
+}
+
+func findPostsByUserID(t *testing.T, userID uuid.UUID) []dbmodels.PostsDto {
+	t.Helper()
+	rows, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
+		Where(posts.UserId().Eq(q.Val(userID))).
+		Find(context.Background())
+	require.NoError(t, err)
+	return rows
+}
+
 func TestIntegration_UserCRUD(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Create User", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username:  "johndoe",
-			Email:     "john@example.com",
-			FullName:  new("John Doe"),
-			IsActive:  new(true),
-			CreatedAt: new(time.Now()),
-			UpdatedAt: new(time.Now()),
-		}
+		user := &dbmodels.UsersDto{Username: "johndoe", Email: "john@example.com", FullName: new("John Doe"), IsActive: new(true)}
 
-		// Act
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		//err := testDB.Users().Insert(context.Background(), user)
+		insertUsers(t, user)
 
-		// Assert
-		require.NoError(t, err)
-		require.NotNil(t, user.Id, "expected user ID to be set after insert")
-		assert.NotEmpty(t, *user.Id, "expected user ID to be set after insert")
+		assert.NotEqual(t, uuid.Nil, *user.Id)
 	})
 
 	t.Run("Create Users", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username:  "johndoe1",
-			Email:     "john1@example.com",
-			FullName:  new("John Doe"),
-			IsActive:  new(true),
-			CreatedAt: new(time.Now()),
-			UpdatedAt: new(time.Now()),
-		}
+		user1 := &dbmodels.UsersDto{Username: "johndoe1", Email: "john1@example.com", FullName: new("John Doe"), IsActive: new(true)}
+		user2 := &dbmodels.UsersDto{Username: "johndoe2", Email: "john2@example.com", FullName: new("John Doe 2"), IsActive: new(true)}
 
-		user2 := &models.UsersDto{
-			Username:  "johndoe2",
-			Email:     "john2@example.com",
-			FullName:  new("John Doe 2"),
-			IsActive:  new(true),
-			CreatedAt: new(time.Now()),
-			UpdatedAt: new(time.Now()),
-		}
+		insertUsers(t, user1, user2)
 
-		// Act
-		err := query.UsersDtoInsertMany(testDB.pool, user, user2).Exec(context.Background())
-		//err := testDB.Users().Insert(context.Background(), user)
-
-		// Assert
-		require.NoError(t, err)
-		require.NotNil(t, user.Id, "expected user ID to be set after insert")
-		assert.NotEmpty(t, *user.Id, "expected user ID to be set after insert")
-		require.NotNil(t, user2.Id, "expected user ID to be set after insert")
-		assert.NotEmpty(t, *user2.Id, "expected user ID to be set after insert")
+		assert.NotEqual(t, uuid.Nil, *user1.Id)
+		assert.NotEqual(t, uuid.Nil, *user2.Id)
 	})
 
 	t.Run("Find User by ID", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username: "janedoe",
-			Email:    "jane@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
+		user := &dbmodels.UsersDto{Username: "janedoe", Email: "jane@example.com"}
+		insertUsers(t, user)
 
-		// Act
-		//found, err := testDB.Users().Where(
-		//	UsersClause().Id.Eq(*user.Id),
-		//).FindOne(context.Background())
+		found := findUserByID(t, *user.Id)
 
-		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Into.AllColumns()...).
-			Where(
-				users.Id().Eq(query.Nullable(user.Id))).
-			FindOne(context.Background())
-
-		// Assert
-		require.NoError(t, err)
 		assert.Equal(t, user.Username, found.Username)
 		assert.Equal(t, user.Email, found.Email)
 	})
 
 	t.Run("Update User", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username: "updateme",
-			Email:    "update@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
-
+		user := &dbmodels.UsersDto{Username: "updateme", Email: "update@example.com"}
+		insertUsers(t, user)
 		user.Email = "updated@example.com"
 		user.FullName = new("Updated Name")
 
-		// Act
-		affected, _, err := query.UpdateUser(testDB.pool, user).Exec(context.Background())
+		affected, _, err := dbmodels.NewUsersQuery(pgxPool).
+			Update(q.SetTo(user, users.Email(), users.FullName())).
+			Where(users.Id().Eq(q.Val(*user.Id))).
+			Exec(context.Background())
 
-		//err = testDB.Users().Update(context.Background(), user)
-		require.NoError(t, err)
-		found, err := testDB.Users().
-			Where(UsersClause().Id.Eq(*user.Id)).
-			FindOne(context.Background())
-
-		// Assert
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), affected)
+		found := findUserByID(t, *user.Id)
 		assert.Equal(t, user.Email, found.Email)
 		assert.Equal(t, user.FullName, found.FullName)
 	})
 
 	t.Run("Update Users", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username: "updateme1",
-			Email:    "update@example.com",
-		}
-		user2 := &models.UsersDto{
-			Username: "updateme2",
-			Email:    "update2@example.com",
-		}
-		err := query.UsersDtoInsertMany(testDB.pool, user, user2).Exec(context.Background())
-		require.NoError(t, err)
-
-		user.Email = "updated1@example.com"
-		user.FullName = new("Updated Name")
+		user1 := &dbmodels.UsersDto{Username: "updatemany1", Email: "many1@example.com"}
+		user2 := &dbmodels.UsersDto{Username: "updatemany2", Email: "many2@example.com"}
+		insertUsers(t, user1, user2)
+		name1 := "Updated Name 1"
+		name2 := "Updated Name 2"
+		user1.Email = "updated1@example.com"
+		user1.FullName = &name1
 		user2.Email = "updated2@example.com"
-		user2.FullName = new("Updated Name 2")
+		user2.FullName = &name2
 
-		// Act
-		affected, _, err := query.UpdateUsers(testDB.pool, user, user2).Exec(context.Background())
+		dtos := dbmodels.UsersDtos{user1, user2}
+		v := ast.NewAlias("v", users.Id(), users.Email(), users.FullName())
+		affected, _, err := dbmodels.NewUsersQuery(pgxPool).
+			Update(
+				q.Set(users.Email()).To(q.Rel(v, users.Email())),
+				q.Set(users.FullName()).To(q.Rel(v, users.FullName())),
+			).
+			From(q.Unnest(
+				q.Cast(dtos.Id()).AsUUIDArray(),
+				q.Cast(dtos.Email()).AsTextArray(),
+				q.Cast(dtos.FullName()).AsTextArray(),
+			).As(v)).
+			Where(users.Id().Eq(q.Rel(v, users.Id()))).
+			Exec(context.Background())
 
-		//err = testDB.Users().Update(context.Background(), user)
-		require.NoError(t, err)
-		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Into.AllColumns()...).
-			Where(
-				users.Id().Eq(query.Val(*user.Id))).
-			FindOne(context.Background())
-		require.NoError(t, err)
-		found2, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Into.AllColumns()...).
-			Where(
-				users.Id().Eq(query.Val(*user2.Id))).
-			FindOne(context.Background())
-
-		// Assert
 		require.NoError(t, err)
 		assert.Equal(t, int64(2), affected)
-		assert.Equal(t, user.Email, found.Email)
-		assert.Equal(t, user.FullName, found.FullName)
-		assert.Equal(t, user2.Email, found2.Email)
-		assert.Equal(t, user2.FullName, found2.FullName)
+		assert.Equal(t, user1.Email, findUserByID(t, *user1.Id).Email)
+		assert.Equal(t, user2.Email, findUserByID(t, *user2.Id).Email)
 	})
 
 	t.Run("Delete User", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username: "deleteme",
-			Email:    "delete@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
+		user := &dbmodels.UsersDto{Username: "deleteme", Email: "delete@example.com"}
+		insertUsers(t, user)
 
-		// Act
-		deleted, details, err := query.DeleteUser(testDB.pool, *user.Id).Exec(context.Background())
-		if err != nil {
-			return
-		}
+		deleted, details, err := dbmodels.NewUsersQuery(pgxPool).
+			Delete().
+			Where(users.Id().Eq(q.Val(*user.Id))).
+			Exec(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, deleted)
 		assert.Nil(t, details)
-
-		_, err = models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
+		_, err = dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
 			Select(users.Id()).
-			Where(users.Id().Eq(query.Val(*user.Id))).
+			Where(users.Id().Eq(q.Val(*user.Id))).
 			FindOne(context.Background())
-		require.Error(t, err)
-		assert.ErrorIs(t, err, pgx.ErrNoRows)
+		require.ErrorIs(t, err, pgx.ErrNoRows)
 	})
 
 	t.Run("Create User with Conflict", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username:  "conflictedjohndoe",
-			Email:     "john@conflict.example.com",
-			FullName:  new("John Doe"),
-			IsActive:  new(true),
-			CreatedAt: new(time.Now()),
-			UpdatedAt: new(time.Now()),
-		}
-
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
-
+		user := &dbmodels.UsersDto{Username: "conflictedjohndoe", Email: "john@conflict.example.com", FullName: new("John Doe"), IsActive: new(true)}
+		insertUsers(t, user)
 		user.Email = "updated@conflict.example.com"
-		conflict := models.NewUsersQuery(testDB.pool).
-			Insert(
-				users.Email(),
-				users.Username(),
-				users.FullName(),
-				users.IsActive(),
-			).
+
+		err := dbmodels.NewUsersQuery(pgxPool).
+			Insert(users.Email(), users.Username(), users.FullName(), users.IsActive()).
 			OnConflict(users.Username()).Do(ast.Update(users.Email())).
 			Returning(users.Id()).
-			Values(user)
-		err = conflict.Exec(context.Background())
-		require.NoError(t, err)
-
-		// Act
-		found, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Into.AllColumns()...).
-			Where(
-				users.Id().Eq(query.Val(*user.Id))).
-			FindOne(context.Background())
+			Values(user).
+			Exec(context.Background())
 
 		require.NoError(t, err)
+		found := findUserByID(t, *user.Id)
 		assert.Equal(t, user.Email, found.Email)
 	})
 
 	t.Run("Update user returning full name", func(t *testing.T) {
-		// Arrange
 		fullName := "Update Me"
-		user := &models.UsersDto{
-			Username: "updatemeandreturn",
-			Email:    "updateme@returning.example.com",
-			FullName: &fullName,
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
+		user := &dbmodels.UsersDto{Username: "updatemeandreturn", Email: "updateme@returning.example.com", FullName: &fullName}
+		insertUsers(t, user)
 
-		user.Email = "updated@returning.example.com"
-		user.Username = "updatedname"
-
-		// Act
-		affected, details, err := models.NewUsersQuery(testDB.pool).
+		affected, details, err := dbmodels.NewUsersQuery(pgxPool).
 			Update(
-				query.Set(users.Email()).To(query.Val(user.Email)),
-				query.Set(users.Username()).To(query.Val(user.Username)),
+				q.Set(users.Email()).ToValue("updated@returning.example.com"),
+				q.Set(users.Username()).ToValue("updatedname"),
 			).
-			Where(users.Id().Eq(query.Val(*user.Id))).
+			Where(users.Id().Eq(q.Val(*user.Id))).
 			Returning(users.FullName()).
 			Exec(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), affected)
+		require.Len(t, details, 1)
 		assert.Equal(t, fullName, *details[0].FullName)
 	})
 
 	t.Run("Delete User returning id", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username: "deleteme",
-			Email:    "delete@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
+		user := &dbmodels.UsersDto{Username: "deletereturn", Email: "delete-return@example.com"}
+		insertUsers(t, user)
 
-		// Act
-		deleted, details, err := models.NewUsersQuery(testDB.pool).
+		deleted, details, err := dbmodels.NewUsersQuery(pgxPool).
 			Delete().
-			Where(users.Id().Eq(query.Val(*user.Id))).
+			Where(users.Id().Eq(q.Val(*user.Id))).
 			Returning(users.Id()).
 			Exec(context.Background())
-		require.NoError(t, err)
 
-		// Assert
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, deleted)
+		require.Len(t, details, 1)
 		assert.Equal(t, *user.Id, *details[0].Id)
-
-		_, err = models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(users.Id()).
-			Where(users.Id().Eq(query.Val(*user.Id))).FindOne(context.Background())
-		require.Error(t, err)
-		assert.ErrorIs(t, err, pgx.ErrNoRows)
 	})
 }
 
-// TestIntegration_QueryBuilder tests query builder features
 func TestIntegration_QueryBuilder(t *testing.T) {
 	cleanupTables(t)
 
-	// Insert test data
-	users := []*UsersDto{
+	seed := []*dbmodels.UsersDto{
 		{Username: "alice", Email: "alice@example.com", FullName: new("Alice Smith"), IsActive: new(true)},
 		{Username: "bob", Email: "bob@example.com", FullName: new("Bob Jones"), IsActive: new(true)},
 		{Username: "charlie", Email: "charlie@example.com", FullName: new("Charlie Brown"), IsActive: new(false)},
 		{Username: "david", Email: "david@example.com", FullName: new("David Wilson"), IsActive: new(true)},
 	}
-
-	for _, user := range users {
-		if err := testDB.Users().Insert(context.Background(), user); err != nil {
-			t.Fatalf("Failed to insert user: %v", err)
-		}
-	}
+	insertUsers(t, seed...)
 
 	t.Run("Where Equals", func(t *testing.T) {
-		// Act
-		results, err := testDB.Users().Where(
-			UsersClause().Username.Eq("alice"),
-		).Find(context.Background())
+		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			Where(users.Username().Eq(q.Val("alice"))).
+			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Len(t, results, 1)
 		assert.Equal(t, "alice", results[0].Username)
 	})
 
 	t.Run("Where LIKE", func(t *testing.T) {
-		// Act
-		results, err := testDB.Users().Where(
-			UsersClause().Username.Like("a%"),
-		).Find(context.Background())
+		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			Where(users.Username().Like("a%")).
+			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Len(t, results, 1)
 	})
 
 	t.Run("Where IN", func(t *testing.T) {
-		// Act
-		results, err := testDB.Users().Where(
-			UsersClause().Username.In("alice", "bob"),
-		).Find(context.Background())
+		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			Where(users.Username().Eq(q.Val("alice")).Or(users.Username().Eq(q.Val("bob")))).
+			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Len(t, results, 2)
 	})
 
 	t.Run("Where Boolean", func(t *testing.T) {
-		// Act
-		results, err := testDB.Users().Where(
-			UsersClause().IsActive.Eq(true),
-		).Find(context.Background())
+		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			Where(users.IsActive().IsTrue()).
+			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Len(t, results, 3)
 	})
 
 	t.Run("Order By", func(t *testing.T) {
-		// Arrange
 		expected := []string{"alice", "bob", "charlie", "david"}
-
-		// Act
-		results, err := testDB.Users().
-			OrderByUsername(ASC).
+		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			OrderBy(q.Asc(users.Username())).
 			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, results, 4)
+		require.Len(t, results, 4)
 		for i, result := range results {
 			assert.Equal(t, expected[i], result.Username)
 		}
 	})
 
 	t.Run("Limit and Offset", func(t *testing.T) {
-		// Act
-		results, err := testDB.Users().
-			OrderByUsername(ASC).
+		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			OrderBy(q.Asc(users.Username())).
 			Limit(2).
 			Offset(1).
 			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, results, 2)
+		require.Len(t, results, 2)
 		assert.Equal(t, "bob", results[0].Username)
 		assert.Equal(t, "charlie", results[1].Username)
 	})
 
 	t.Run("Count", func(t *testing.T) {
-		// Act
-		count, err := testDB.Users().Where(
-			UsersClause().IsActive.Eq(true),
-		).Count(context.Background())
+		type countRow struct{ Count int64 }
+		results, err := dbmodels.NewQuery[countRow](pgxPool, users.Table()).
+			Select(q.Into(q.Count(users.Id()).As(ast.NewAlias("count")), func(r *countRow) *int64 { return &r.Count })).
+			Where(users.IsActive().IsTrue()).
+			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
-		assert.EqualValues(t, 3, count)
+		require.Len(t, results, 1)
+		assert.EqualValues(t, 3, results[0].Count)
 	})
 }
 
@@ -521,56 +431,32 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Load posts into user DTO", func(t *testing.T) {
-		user := &models.UsersDto{
-			Username: "projectionuser",
-			Email:    "projection@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, user.Id)
+		user := &dbmodels.UsersDto{Username: "projectionuser", Email: "projection@example.com"}
+		insertUsers(t, user)
+		post1 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Projection Post 1"}
+		post2 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Projection Post 2"}
+		insertPosts(t, post1, post2)
 
-		post1 := &models.PostsDto{UserId: *user.Id, Title: "Projection Post 1"}
-		post2 := &models.PostsDto{UserId: *user.Id, Title: "Projection Post 2"}
-		err = query.InsertPost(testDB.pool, post1).Exec(context.Background())
-		require.NoError(t, err)
-		err = query.InsertPost(testDB.pool, post2).Exec(context.Background())
-		require.NoError(t, err)
-
-		result, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(
-				users.Id(),
-				users.Into.Posts(posts.Id(), posts.Title()),
-			).
+		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
-			Where(users.Id().Eq(query.Val(*user.Id))).
+			Where(users.Id().Eq(q.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
 
 		require.NoError(t, err)
-		require.NotNil(t, result.Posts)
 		require.Len(t, result.Posts, 2)
-		assert.ElementsMatch(t, []string{"Projection Post 1", "Projection Post 2"}, []string{
-			result.Posts[0].Title,
-			result.Posts[1].Title,
-		})
+		assert.ElementsMatch(t, []string{"Projection Post 1", "Projection Post 2"}, []string{result.Posts[0].Title, result.Posts[1].Title})
 	})
 
 	t.Run("Empty relationship becomes empty slice", func(t *testing.T) {
-		user := &models.UsersDto{
-			Username: "emptyprojectionuser",
-			Email:    "empty-projection@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, user.Id)
+		user := &dbmodels.UsersDto{Username: "emptyprojectionuser", Email: "empty-projection@example.com"}
+		insertUsers(t, user)
 
-		result, err := models.NewQuery[models.UsersDto](testDB.pool, users.Table()).
-			Select(
-				users.Id(),
-				users.Into.Posts(posts.Id(), posts.Title()),
-			).
+		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
-			Where(users.Id().Eq(query.Val(*user.Id))).
+			Where(users.Id().Eq(q.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
 
@@ -580,823 +466,449 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 	})
 }
 
-// TestIntegration_Joins tests foreign key joins
 func TestIntegration_Joins(t *testing.T) {
 	cleanupTables(t)
 
-	// Insert test data
-	user := &UsersDto{
-		Username: "blogger",
-		Email:    "blogger@example.com",
-	}
-	if err := testDB.Users().Insert(context.Background(), user); err != nil {
-		t.Fatalf("Failed to insert user: %v", err)
-	}
-
-	posts := []*PostsDto{
+	user := &dbmodels.UsersDto{Username: "blogger", Email: "blogger@example.com"}
+	insertUsers(t, user)
+	postRows := []*dbmodels.PostsDto{
 		{UserId: *user.Id, Title: "First Post", Content: new("Content 1"), Status: new("published")},
 		{UserId: *user.Id, Title: "Second Post", Content: new("Content 2"), Status: new("draft")},
 	}
-
-	for _, post := range posts {
-		if err := testDB.Posts().Insert(context.Background(), post); err != nil {
-			t.Fatalf("Failed to insert post: %v", err)
-		}
-	}
+	insertPosts(t, postRows...)
 
 	t.Run("Join Users", func(t *testing.T) {
-		// Act
-		results, err := testDB.Posts().
-			JoinUsers().
-			WhereUserIdEq(*user.Id).
+		type postWithUser struct {
+			PostID   int64
+			Title    string
+			Username string
+		}
+		results, err := dbmodels.NewQuery[postWithUser](pgxPool, posts.Table()).
+			Select(
+				q.Into(posts.Id(), func(p *postWithUser) *int64 { return &p.PostID }),
+				q.Into(posts.Title(), func(p *postWithUser) *string { return &p.Title }),
+				q.Into(users.Username(), func(p *postWithUser) *string { return &p.Username }),
+			).
+			Join(ast.JoinLeft, users.Table(), posts.UserId().Eq(users.Id())).
+			Where(posts.UserId().Eq(q.Val(*user.Id))).
+			OrderBy(q.Asc(posts.Id())).
 			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, results, 2)
-		for _, post := range results {
-			assert.Equal(t, *user.Id, post.UserId)
-		}
+		require.Len(t, results, 2)
+		assert.Equal(t, "blogger", results[0].Username)
 	})
 
 	t.Run("Filter by Related Table", func(t *testing.T) {
-		// Act
-		results, err := testDB.Posts().
-			WhereStatusEq("published").
+		results, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+			Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
+			Where(posts.Status().Eq(q.Val("published"))).
 			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, results, 1)
-		assert.Equal(t, posts[0].Title, results[0].Title)
-	})
-
-	t.Run("Join Returns User Data", func(t *testing.T) {
-		// Act
-		results, err := testDB.Posts().
-			JoinUsers().
-			WhereUserIdEq(*user.Id).
-			Find(context.Background())
-
-		// Assert
-		require.NoError(t, err)
-		assert.Len(t, results, 2)
-
-		// Verify User field is populated
-		for _, post := range results {
-			require.NotNil(t, post.User)
-			require.NotNil(t, post.User.Id)
-			assert.Equal(t, *user.Id, *post.User.Id)
-			assert.Equal(t, user.Username, post.User.Username)
-			assert.Equal(t, user.Email, post.User.Email)
-		}
-	})
-
-	t.Run("No Join Means No User Data", func(t *testing.T) {
-		// Act
-		results, err := testDB.Posts().
-			WhereUserIdEq(*user.Id).
-			Find(context.Background())
-
-		// Assert
-		require.NoError(t, err)
-		assert.Len(t, results, 2)
-		for _, post := range results {
-			assert.Nil(t, post.User)
-		}
+		require.Len(t, results, 1)
+		assert.Equal(t, postRows[0].Title, results[0].Title)
 	})
 }
 
-// TestIntegration_Transactions tests transaction support
 func TestIntegration_Transactions(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Successful Transaction", func(t *testing.T) {
-		// Arrange
-		var user *UsersDto
-		var post *PostsDto
+		var user *dbmodels.UsersDto
+		var post *dbmodels.PostsDto
 
-		// Act
-		err := testDB.Transaction(context.Background(), func(tx *Tx) error {
-			// Insert user
-			user = &UsersDto{
-				Username: "txuser",
-				Email:    "tx@example.com",
-			}
-			if err := tx.Users().Insert(context.Background(), user); err != nil {
+		err := pgx.BeginFunc(context.Background(), pgxPool, func(tx pgx.Tx) error {
+			user = &dbmodels.UsersDto{Username: "txuser", Email: "tx@example.com"}
+			if err := dbmodels.NewUsersQuery(nil).WithTx(tx).
+				Insert(users.Username(), users.Email()).
+				Returning(users.Id()).
+				Values(user).Exec(context.Background()); err != nil {
 				return err
 			}
 
-			// Insert post
-			post = &PostsDto{
-				UserId: *user.Id,
-				Title:  "Transaction Post",
-			}
-			if err := tx.Posts().Insert(context.Background(), post); err != nil {
-				return err
-			}
-
-			return nil
+			post = &dbmodels.PostsDto{UserId: *user.Id, Title: "Transaction Post"}
+			return dbmodels.NewPostsQuery(nil).WithTx(tx).
+				Insert(posts.UserId(), posts.Title()).
+				Returning(posts.Id()).
+				Values(post).Exec(context.Background())
 		})
 
-		// Assert
 		require.NoError(t, err)
-
-		users, err := testDB.Users().Where(
-			UsersClause().Username.Eq("txuser"),
-		).Find(context.Background())
+		usersFound, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			Where(users.Username().Eq(q.Val("txuser"))).
+			Find(context.Background())
 		require.NoError(t, err)
-		assert.Len(t, users, 1)
-
-		posts, err := testDB.Posts().WhereTitleEq("Transaction Post").Find(context.Background())
-		require.NoError(t, err)
-		assert.Len(t, posts, 1)
-		assert.Equal(t, post.UserId, posts[0].UserId)
+		assert.Len(t, usersFound, 1)
+		postsFound := findPostsByUserID(t, *user.Id)
+		require.Len(t, postsFound, 1)
+		assert.Equal(t, post.Title, postsFound[0].Title)
 	})
 
 	t.Run("Failed Transaction Rollback", func(t *testing.T) {
-		// Act
-		err := testDB.Transaction(context.Background(), func(tx *Tx) error {
-			// Insert user
-			user := &UsersDto{
-				Username: "rollbackuser",
-				Email:    "rollback@example.com",
-			}
-			if err := tx.Users().Insert(context.Background(), user); err != nil {
+		err := pgx.BeginFunc(context.Background(), pgxPool, func(tx pgx.Tx) error {
+			user := &dbmodels.UsersDto{Username: "rollbackuser", Email: "rollback@example.com"}
+			if err := dbmodels.NewUsersQuery(nil).WithTx(tx).
+				Insert(users.Username(), users.Email()).
+				Returning(users.Id()).
+				Values(user).Exec(context.Background()); err != nil {
 				return err
 			}
-
-			// Intentionally return error to trigger rollback
 			return assert.AnError
 		})
 
-		// Assert
 		require.Error(t, err)
-
-		users, err := testDB.Users().Where(
-			UsersClause().Username.Eq("rollbackuser"),
-		).Find(context.Background())
+		usersFound, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Into.AllColumns()...).
+			Where(users.Username().Eq(q.Val("rollbackuser"))).
+			Find(context.Background())
 		require.NoError(t, err)
-		assert.Len(t, users, 0)
+		assert.Empty(t, usersFound)
 	})
 }
 
-// TestIntegration_NullableFields tests nullable field handling
 func TestIntegration_NullableFields(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Insert with NULL values", func(t *testing.T) {
-		// Arrange
-		user := &UsersDto{
-			Username: "nulltest",
-			Email:    "null@example.com",
-			FullName: nil, // NULL value
-		}
+		user := &dbmodels.UsersDto{Username: "nulltest", Email: "null@example.com", FullName: nil}
+		insertUsers(t, user)
 
-		// Act
-		err := testDB.Users().Insert(context.Background(), user)
+		found := findUserByID(t, *user.Id)
 
-		// Assert
-		require.NoError(t, err)
-
-		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
-		).FindOne(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, found)
 		assert.Nil(t, found.FullName)
 	})
 
 	t.Run("Update to NULL", func(t *testing.T) {
-		// Arrange
-		user := &UsersDto{
-			Username: "nullupdate",
-			Email:    "nullupdate@example.com",
-			FullName: new("Initial Name"),
-		}
-		err := testDB.Users().Insert(context.Background(), user)
-		require.NoError(t, err)
-
+		user := &dbmodels.UsersDto{Username: "nullupdate", Email: "nullupdate@example.com", FullName: new("Initial Name")}
+		insertUsers(t, user)
 		user.FullName = nil
 
-		// Act
-		err = testDB.Users().Update(context.Background(), user)
+		affected, _, err := dbmodels.NewUsersQuery(pgxPool).
+			Update(q.Set(users.FullName()).ToNullable(user.FullName)).
+			Where(users.Id().Eq(q.Val(*user.Id))).
+			Exec(context.Background())
 
-		// Assert
 		require.NoError(t, err)
-
-		found, err := testDB.Users().Where(
-			UsersClause().Id.Eq(uuid.MustParse(*user.Id)),
-		).FindOne(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, found)
-		assert.Nil(t, found.FullName)
+		assert.Equal(t, int64(1), affected)
+		assert.Nil(t, findUserByID(t, *user.Id).FullName)
 	})
 }
 
-// TestIntegration_ComplexQueries tests more complex query scenarios
 func TestIntegration_ComplexQueries(t *testing.T) {
 	cleanupTables(t)
 
-	// Setup test data
-	user1 := &UsersDto{Username: "user1", Email: "user1@example.com"}
-	user2 := &UsersDto{Username: "user2", Email: "user2@example.com"}
-
-	testDB.Users().Insert(context.Background(), user1)
-	testDB.Users().Insert(context.Background(), user2)
-
-	// Create posts for both users
-	posts := []*PostsDto{
+	user1 := &dbmodels.UsersDto{Username: "user1", Email: "user1@example.com"}
+	user2 := &dbmodels.UsersDto{Username: "user2", Email: "user2@example.com"}
+	insertUsers(t, user1, user2)
+	postRows := []*dbmodels.PostsDto{
 		{UserId: *user1.Id, Title: "User1 Post 1", ViewCount: new(int64(100))},
 		{UserId: *user1.Id, Title: "User1 Post 2", ViewCount: new(int64(200))},
 		{UserId: *user2.Id, Title: "User2 Post 1", ViewCount: new(int64(50))},
 	}
-
-	for _, post := range posts {
-		testDB.Posts().Insert(context.Background(), post)
-	}
+	insertPosts(t, postRows...)
 
 	t.Run("Greater Than Query", func(t *testing.T) {
-		// Act
-		results, err := testDB.Posts().WhereViewCountGt(75).Find(context.Background())
+		results, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+			Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
+			Where(posts.ViewCount().Gt(q.Val(int64(75)))).
+			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Len(t, results, 2)
 	})
 
 	t.Run("Multiple Conditions", func(t *testing.T) {
-		// Act
-		results, err := testDB.Posts().
-			WhereUserIdEq(*user1.Id).
-			And().
-			WhereViewCountGte(100).
+		results, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+			Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
+			Where(posts.UserId().Eq(q.Val(*user1.Id)).And(posts.ViewCount().Gte(q.Val(int64(100))))).
 			Find(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.Len(t, results, 2)
 	})
 
 	t.Run("UpdateFields", func(t *testing.T) {
-		// Act
-		affected, err := testDB.Posts().
-			WhereUserIdEq(*user1.Id).
-			UpdateFields(context.Background(), map[*FieldRef]interface{}{
-				PostsTable.ViewCount(): int64(999),
-			})
+		affected, _, err := dbmodels.NewPostsQuery(pgxPool).
+			Update(q.Set(posts.ViewCount()).ToValue(int64(999))).
+			Where(posts.UserId().Eq(q.Val(*user1.Id))).
+			Exec(context.Background())
 
-		// Assert
 		require.NoError(t, err)
 		assert.EqualValues(t, 2, affected)
-
-		results, err := testDB.Posts().WhereUserIdEq(*user1.Id).Find(context.Background())
-		require.NoError(t, err)
-		for _, post := range results {
+		for _, post := range findPostsByUserID(t, *user1.Id) {
 			require.NotNil(t, post.ViewCount)
 			assert.EqualValues(t, 999, *post.ViewCount)
 		}
 	})
 }
 
-// TestIntegration_ReverseRelationships tests one-to-many reverse relationships
 func TestIntegration_ReverseRelationships(t *testing.T) {
 	cleanupTables(t)
 
-	// Setup test data
-	user1 := &models.UsersDto{Username: "author1", Email: "author1@example.com"}
-	user2 := &UsersDto{Username: "author2", Email: "author2@example.com"}
-	query.UsersDtoInsertOne(testDB.pool, user1).Exec(context.Background())
-	//testDB.Users().Insert(context.Background(), user1)
-	testDB.Users().Insert(context.Background(), user2)
-
-	// Create posts for user1
-	post1 := &PostsDto{UserId: user1.Id.String(), Title: "Post 1", Content: new("Content 1")}
-	post2 := &PostsDto{UserId: user1.Id.String(), Title: "Post 2", Content: new("Content 2")}
-	post3 := &PostsDto{UserId: *user2.Id, Title: "Post 3", Content: new("Content 3")}
-	testDB.Posts().Insert(context.Background(), post1)
-	testDB.Posts().Insert(context.Background(), post2)
-	testDB.Posts().Insert(context.Background(), post3)
-
-	// Create comments
-	comment1 := &CommentsDto{PostId: *post1.Id, UserId: user1.Id.String(), Content: "Comment 1"}
-	comment2 := &CommentsDto{PostId: *post1.Id, UserId: *user2.Id, Content: "Comment 2"}
-	testDB.Comments().Insert(context.Background(), comment1)
-	testDB.Comments().Insert(context.Background(), comment2)
+	user1 := &dbmodels.UsersDto{Username: "author1", Email: "author1@example.com"}
+	user2 := &dbmodels.UsersDto{Username: "author2", Email: "author2@example.com"}
+	insertUsers(t, user1, user2)
+	post1 := &dbmodels.PostsDto{UserId: *user1.Id, Title: "Post 1", Content: new("Content 1")}
+	post2 := &dbmodels.PostsDto{UserId: *user1.Id, Title: "Post 2", Content: new("Content 2")}
+	post3 := &dbmodels.PostsDto{UserId: *user2.Id, Title: "Post 3", Content: new("Content 3")}
+	insertPosts(t, post1, post2, post3)
+	comment1 := &dbmodels.CommentsDto{PostId: *post1.Id, UserId: *user1.Id, Content: "Comment 1"}
+	comment2 := &dbmodels.CommentsDto{PostId: *post1.Id, UserId: *user2.Id, Content: "Comment 2"}
+	insertComments(t, comment1, comment2)
 
 	t.Run("Load Posts for User", func(t *testing.T) {
-		// Arrange
-		user, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user1.Id),
-		).FindOne(context.Background())
-		require.NoError(t, err)
-		expectedTitles := []string{post1.Title, post2.Title}
+		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
+			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
+			Where(users.Id().Eq(q.Val(*user1.Id))).
+			GroupBy(users.Id()).
+			FindOne(context.Background())
 
-		// Act
-		err = user.LoadPosts(context.Background(), testDB)
-
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, user.Posts, 2)
-		assert.ElementsMatch(t, expectedTitles, func() []string {
-			ret := make([]string, 0, len(user.Posts))
-			for _, post := range user.Posts {
-				ret = append(ret, post.Title)
-			}
-			return ret
-		}())
+		require.Len(t, result.Posts, 2)
+		assert.ElementsMatch(t, []string{post1.Title, post2.Title}, []string{result.Posts[0].Title, result.Posts[1].Title})
 	})
 
 	t.Run("Load Comments for Post", func(t *testing.T) {
-		// Arrange
-		post, err := testDB.Posts().WhereIdEq(*post1.Id).FindOne(context.Background())
-		require.NoError(t, err)
-		expectedComments := []string{comment1.Content, comment2.Content}
+		result, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+			Select(posts.Id(), posts.Into.Comments(comments.Id(), comments.Content())).
+			Join(ast.JoinLeft, comments.Table(), comments.PostId().Eq(posts.Id())).
+			Where(posts.Id().Eq(q.Val(*post1.Id))).
+			GroupBy(posts.Id()).
+			FindOne(context.Background())
 
-		// Act
-		err = post.LoadComments(context.Background(), testDB)
-
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, post.Comments, 2)
-		assert.ElementsMatch(t, expectedComments, func() []string {
-			ret := make([]string, 0, len(post.Comments))
-			for _, comment := range post.Comments {
-				ret = append(ret, comment.Content)
-			}
-			return ret
-		}())
+		require.Len(t, result.Comments, 2)
+		assert.ElementsMatch(t, []string{comment1.Content, comment2.Content}, []string{result.Comments[0].Content, result.Comments[1].Content})
 	})
 
 	t.Run("Load Comments for User", func(t *testing.T) {
-		// Arrange
-		user, err := testDB.Users().Where(
-			UsersClause().Id.Eq(*user1.Id),
-		).FindOne(context.Background())
-		require.NoError(t, err)
+		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+			Select(users.Id(), users.Into.Comments(comments.Id(), comments.Content())).
+			Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id())).
+			Where(users.Id().Eq(q.Val(*user1.Id))).
+			GroupBy(users.Id()).
+			FindOne(context.Background())
 
-		// Act
-		err = user.LoadComments(context.Background(), testDB)
-
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, user.Comments, 1)
-		assert.Equal(t, comment1.Content, user.Comments[0].Content)
+		require.Len(t, result.Comments, 1)
+		assert.Equal(t, comment1.Content, result.Comments[0].Content)
 	})
-
 }
 
-// TestIntegration_ManyToMany tests many-to-many relationships through junction tables
 func TestIntegration_ManyToMany(t *testing.T) {
 	cleanupTables(t)
 
-	// Setup test data
-	user := &UsersDto{Username: "blogger", Email: "blogger@example.com"}
-	testDB.Users().Insert(context.Background(), user)
+	user := &dbmodels.UsersDto{Username: "blogger-many", Email: "blogger-many@example.com"}
+	insertUsers(t, user)
+	post1 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Go Programming", Content: new("Learn Go")}
+	post2 := &dbmodels.PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: new("Optimize queries")}
+	insertPosts(t, post1, post2)
+	tag1 := &dbmodels.TagsDto{Name: "programming", Slug: "programming"}
+	tag2 := &dbmodels.TagsDto{Name: "database", Slug: "database"}
+	tag3 := &dbmodels.TagsDto{Name: "golang", Slug: "golang"}
+	insertTags(t, tag1, tag2, tag3)
 
-	post1 := &PostsDto{UserId: *user.Id, Title: "Go Programming", Content: new("Learn Go")}
-	post2 := &PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: new("Optimize queries")}
-	testDB.Posts().Insert(context.Background(), post1)
-	testDB.Posts().Insert(context.Background(), post2)
-
-	tag1 := &TagsDto{Name: "programming", Slug: "programming"}
-	tag2 := &TagsDto{Name: "database", Slug: "database"}
-	tag3 := &TagsDto{Name: "golang", Slug: "golang"}
-	testDB.Tags().Insert(context.Background(), tag1)
-	testDB.Tags().Insert(context.Background(), tag2)
-	testDB.Tags().Insert(context.Background(), tag3)
-
-	// Create many-to-many associations
-	// post1 -> programming, golang
-	// post2 -> programming, database
-	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post1.Id, *tag1.Id)
-	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post1.Id, *tag3.Id)
-	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post2.Id, *tag1.Id)
-	pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)", *post2.Id, *tag2.Id)
+	_, err := pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2), ($3, $4), ($5, $6), ($7, $8)", *post1.Id, *tag1.Id, *post1.Id, *tag3.Id, *post2.Id, *tag1.Id, *post2.Id, *tag2.Id)
+	require.NoError(t, err)
 
 	t.Run("Load Tags for Post", func(t *testing.T) {
-		// Arrange
-		post, err := testDB.Posts().WhereIdEq(*post1.Id).FindOne(context.Background())
-		require.NoError(t, err)
+		result, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+			Select(posts.Id(), posts.Into.Tags(tags.Id(), tags.Name())).
+			Join(ast.JoinLeft, post_tags.Table(), posts.Id().Eq(post_tags.PostId())).
+			Join(ast.JoinLeft, tags.Table(), post_tags.TagId().Eq(tags.Id())).
+			Where(posts.Id().Eq(q.Val(*post1.Id))).
+			GroupBy(posts.Id()).
+			FindOne(context.Background())
 
-		// Act
-		err = post.LoadTags(context.Background(), testDB)
-
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, post.Tags, 2)
-		assert.ElementsMatch(t, []string{tag1.Name, tag3.Name}, func() []string {
-			ret := make([]string, 0, len(post.Tags))
-			for _, tag := range post.Tags {
-				ret = append(ret, tag.Name)
-			}
-			return ret
-		}())
+		require.Len(t, result.Tags, 2)
+		assert.ElementsMatch(t, []string{tag1.Name, tag3.Name}, []string{result.Tags[0].Name, result.Tags[1].Name})
 	})
 
 	t.Run("Load Posts for Tag", func(t *testing.T) {
-		// Arrange
-		tag, err := testDB.Tags().WhereNameEq("programming").FindOne(context.Background())
-		require.NoError(t, err)
+		result, err := dbmodels.NewQuery[dbmodels.TagsDto](pgxPool, tags.Table()).
+			Select(tags.Into.Id(), tags.Into.Posts(posts.Id(), posts.Title())).
+			Join(ast.JoinLeft, post_tags.Table(), tags.Id().Eq(post_tags.TagId())).
+			Join(ast.JoinLeft, posts.Table(), post_tags.PostId().Eq(posts.Id())).
+			Where(tags.Name().Eq(q.Val("programming"))).
+			GroupBy(tags.Id()).
+			FindOne(context.Background())
 
-		// Act
-		err = tag.LoadPosts(context.Background(), testDB)
-
-		// Assert
 		require.NoError(t, err)
-		assert.Len(t, tag.Posts, 2)
-		assert.ElementsMatch(t, []string{post1.Title, post2.Title}, func() []string {
-			ret := make([]string, 0, len(tag.Posts))
-			for _, post := range tag.Posts {
-				ret = append(ret, post.Title)
-			}
-			return ret
-		}())
+		require.Len(t, result.Posts, 2)
+		assert.ElementsMatch(t, []string{post1.Title, post2.Title}, []string{result.Posts[0].Title, result.Posts[1].Title})
 	})
 
 	t.Run("Load Empty Collection", func(t *testing.T) {
-		// Arrange
-		post3 := &PostsDto{UserId: *user.Id, Title: "Untagged Post"}
-		testDB.Posts().Insert(context.Background(), post3)
+		post3 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Untagged Post"}
+		insertPosts(t, post3)
 
-		post, err := testDB.Posts().WhereIdEq(*post3.Id).FindOne(context.Background())
+		result, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+			Select(posts.Id(), posts.Into.Tags(tags.Id(), tags.Name())).
+			Join(ast.JoinLeft, post_tags.Table(), posts.Id().Eq(post_tags.PostId())).
+			Join(ast.JoinLeft, tags.Table(), post_tags.TagId().Eq(tags.Id())).
+			Where(posts.Id().Eq(q.Val(*post3.Id))).
+			GroupBy(posts.Id()).
+			FindOne(context.Background())
+
 		require.NoError(t, err)
-
-		// Act
-		err = post.LoadTags(context.Background(), testDB)
-
-		// Assert
-		require.NoError(t, err)
-		require.NotNil(t, post.Tags)
-		assert.Len(t, post.Tags, 0)
+		require.NotNil(t, result.Tags)
+		assert.Empty(t, result.Tags)
 	})
 }
 
-// TestIntegration_ExpressionFromString tests custom SQL expressions
-func TestIntegration_ExpressionFromString(t *testing.T) {
+func TestIntegration_ExpressionHelpers(t *testing.T) {
 	cleanupTables(t)
 
-	// Setup test data
-	user := &UsersDto{Username: "testuser", Email: "test@example.com"}
-	testDB.Users().Insert(context.Background(), user)
+	user := &dbmodels.UsersDto{Username: "testuser", Email: "test@example.com"}
+	insertUsers(t, user)
+	insertPosts(t,
+		&dbmodels.PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: new(int64(100))},
+		&dbmodels.PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: new(int64(200))},
+		&dbmodels.PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: new(int64(300))},
+	)
 
-	post1 := &PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: new(int64(100))}
-	post2 := &PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: new(int64(200))}
-	post3 := &PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: new(int64(300))}
-	testDB.Posts().Insert(context.Background(), post1)
-	testDB.Posts().Insert(context.Background(), post2)
-	testDB.Posts().Insert(context.Background(), post3)
+	t.Run("Count expression", func(t *testing.T) {
+		type countRow struct{ Count int64 }
+		results, err := dbmodels.NewQuery[countRow](pgxPool, posts.Table()).
+			Select(q.Into(q.Count(posts.Id()).As(ast.NewAlias("total_count")), func(r *countRow) *int64 { return &r.Count })).
+			Where(posts.UserId().Eq(q.Val(*user.Id))).
+			Find(context.Background())
 
-	t.Run("Custom COUNT expression", func(t *testing.T) {
-		// Arrange
-		alias := "total_count"
-		expression := "COUNT(*)"
-		expectedSQL := "COUNT(*) AS total_count"
-
-		// Act
-		countExpr := ExpressionFromString(expression, alias)
-
-		// Assert
-		assert.Equal(t, expression, countExpr.Expression)
-		assert.Equal(t, alias, countExpr.Alias)
-		assert.Empty(t, countExpr.Table)
-		assert.Equal(t, expectedSQL, countExpr.String())
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.EqualValues(t, 3, results[0].Count)
 	})
-
-	t.Run("Custom AVG expression", func(t *testing.T) {
-		// Arrange
-		expectedSQL := "AVG(view_count) AS avg_views"
-
-		// Act
-		avgExpr := ExpressionFromString("AVG(view_count)", "avg_views")
-
-		// Assert
-		assert.Equal(t, expectedSQL, avgExpr.String())
-	})
-
 }
 
-// TestContextTracking tests that QueryContext properly tracks joins during SQL generation
 func TestContextTracking(t *testing.T) {
 	t.Run("Simple select without joins", func(t *testing.T) {
-		selectStmt := &ast.SelectStatement{
-			SelectList: []ast.NamedExpression{
-				users.Id(),
-				users.Username(),
-			},
-			From: users.Table(),
-		}
-
+		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Id(), users.Username()}, From: users.Table()}
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
-		require.NoError(t, err)
 
+		require.NoError(t, err)
 		assert.Contains(t, sql, "SELECT")
 		assert.Contains(t, sql, "FROM users")
 		assert.Equal(t, "users", ctx.PrimaryTable)
-		assert.Nil(t, ctx.JoinedTables, "expected no joined tables")
+		assert.Nil(t, ctx.JoinedTables)
 		assert.Equal(t, []string{"users"}, ctx.AllTables)
-		assert.Len(t, ctx.ColumnReferences, 2, "expected 2 column references")
+		assert.Len(t, ctx.ColumnReferences, 2)
 	})
 
 	t.Run("Select with LEFT JOIN", func(t *testing.T) {
-		selectStmt := &ast.SelectStatement{
-			SelectList: []ast.NamedExpression{
-				users.Username(),
-				posts.Title(),
-			},
-			From: users.Table(),
-		}
+		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title()}, From: users.Table()}
 		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
-
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
-		require.NoError(t, err)
 
-		assert.Contains(t, sql, "SELECT")
-		assert.Contains(t, sql, "FROM users")
+		require.NoError(t, err)
 		assert.Contains(t, sql, "LEFT JOIN posts")
-		assert.Contains(t, sql, "ON")
-		assert.Equal(t, "users", ctx.PrimaryTable)
-		assert.NotNil(t, ctx.JoinedTables, "expected joined tables map")
-		assert.Len(t, ctx.JoinedTables, 1, "expected 1 joined table")
-		assert.Contains(t, ctx.JoinedTables, "posts", "expected posts in joined tables")
 		assert.Equal(t, ast.JoinLeft, ctx.JoinedTables["posts"])
-		assert.Len(t, ctx.AllTables, 2, "expected 2 tables total")
+		assert.Len(t, ctx.AllTables, 2)
 	})
 
 	t.Run("Select with multiple JOINs", func(t *testing.T) {
-		selectStmt := &ast.SelectStatement{
-			SelectList: []ast.NamedExpression{
-				users.Username(),
-				posts.Title(),
-				comments.Content(),
-			},
-			From: users.Table(),
-		}
+		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title(), comments.Content()}, From: users.Table()}
 		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
 		selectStmt.From.Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id()))
-
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
-		require.NoError(t, err)
 
-		assert.Contains(t, sql, "SELECT")
-		assert.Contains(t, sql, "FROM users")
+		require.NoError(t, err)
 		assert.Contains(t, sql, "LEFT JOIN posts")
 		assert.Contains(t, sql, "LEFT JOIN comments")
-		assert.Equal(t, "users", ctx.PrimaryTable)
-		assert.NotNil(t, ctx.JoinedTables, "expected joined tables map")
-		assert.Len(t, ctx.JoinedTables, 2, "expected 2 joined tables")
-		assert.Contains(t, ctx.JoinedTables, "posts")
-		assert.Contains(t, ctx.JoinedTables, "comments")
-		assert.Len(t, ctx.AllTables, 3, "expected 3 tables total")
+		assert.Len(t, ctx.JoinedTables, 2)
 	})
+}
 
-	t.Run("Verify SQL includes proper table prefixes based on context", func(t *testing.T) {
-		selectStmt := &ast.SelectStatement{
-			SelectList: []ast.NamedExpression{
-				users.Username(),
-				posts.Title(),
-			},
-			From: users.Table(),
-		}
-		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
-
-		ctx := &ast.QueryContext{PrimaryTable: "users"}
-		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
-		require.NoError(t, err)
-
-		// The SELECT list should have proper prefixes (both primary and joined)
-		assert.Contains(t, sql, "users.username", "expected users.username with table prefix")
-		assert.Contains(t, sql, "posts.title", "expected posts.title with table prefix (joined table)")
-
-		// Verify context tracking
-		assert.Equal(t, "users", ctx.PrimaryTable)
-		assert.Len(t, ctx.JoinedTables, 1)
-		assert.Contains(t, ctx.JoinedTables, "posts")
-	})
-
-	t.Run("Execute query with JOIN and verify joined data", func(t *testing.T) {
+func TestIntegration_CTEs(t *testing.T) {
+	t.Run("Select CTE preserves parameter order and executes", func(t *testing.T) {
 		cleanupTables(t)
 
-		// Arrange - Create user
-		user := &models.UsersDto{
-			Username: "joinuser",
-			Email:    "join@example.com",
-			IsActive: new(true),
-		}
-		err := models.NewUsersQuery(testDB.pool).
-			Insert(
-				users.Username(),
-				users.Email(),
-				users.FullName(),
-				users.IsActive(),
-			).
-			Returning(users.Id()).
-			Values(user).
-			Exec(context.Background())
+		corpUser := &dbmodels.UsersDto{Username: "corp-user", Email: "corp@example.com", IsActive: new(true)}
+		otherUser := &dbmodels.UsersDto{Username: "other-user", Email: "other@example.org", IsActive: new(true)}
+		insertUsers(t, corpUser, otherUser)
+
+		type userSummary struct{ Email string }
+		activeUsers := users.As("active_users", users.Id(), users.Email())
+		cteBody := dbmodels.NewQuery[dbmodels.UsersDto](nil, users.Table()).
+			Select(users.Id(), users.Email()).
+			Where(users.Email().Like("%@example.com")).
+			Statement()
+
+		queryBuilder := dbmodels.NewQuery[userSummary](pgxPool, q.Table(activeUsers.Alias)).
+			With(q.CTE(activeUsers.Alias, cteBody)).
+			Select(q.Into(activeUsers.Email(), func(s *userSummary) *string { return &s.Email })).
+			Where(activeUsers.Id().Eq(q.Val(*corpUser.Id)))
+
+		sql, args, err := queryBuilder.ToSqlArgs()
 		require.NoError(t, err)
-		require.NotNil(t, user.Id)
-		t.Logf("User ID after insert: %v", user.Id)
+		assert.Equal(t, "WITH active_users(id, email) AS (SELECT users.id, users.email FROM users WHERE users.email LIKE $1) SELECT active_users.email FROM active_users WHERE active_users.id = $2", sql)
+		assert.Equal(t, []any{"%@example.com", *corpUser.Id}, args)
 
-		// Create post
-		post := &models.PostsDto{
-			UserId:  *user.Id,
-			Title:   "Test Post",
-			Content: new("Test Content"),
-		}
-		err = models.NewDTOQuery[models.PostsDto](testDB.pool).
-			Insert(
-				posts.UserId(),
-				posts.Title(),
-				posts.Content(),
-			).
-			Returning(posts.Id()).
-			Values(post).
-			Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, post.Id)
-
-		type postWithUser struct {
-			PostID   int64
-			Title    string
-			Username string
-			Email    string
-		}
-
-		// Act - Select explicit projections from posts and the joined users table.
-		results, err := models.NewQuery[postWithUser](testDB.pool, posts.Table()).
-			Select(
-				query.Into(posts.Id(), func(p *postWithUser) *int64 { return &p.PostID }),
-				query.Into(posts.Title(), func(p *postWithUser) *string { return &p.Title }),
-				query.Into(users.Username(), func(p *postWithUser) *string { return &p.Username }),
-				query.Into(users.Email(), func(p *postWithUser) *string { return &p.Email }),
-			).
-			Join(ast.JoinLeft, users.Table(), posts.UserId().Eq(users.Id())).
-			Where(posts.Id().Eq(query.Val(*post.Id))).
-			Find(context.Background())
-
-		// Assert
-		require.NoError(t, err)
-		require.Len(t, results, 1, "expected 1 result")
-
-		postResult := results[0]
-		assert.Equal(t, *post.Id, postResult.PostID)
-		assert.Equal(t, "Test Post", postResult.Title)
-		assert.Equal(t, "joinuser", postResult.Username)
-		assert.Equal(t, "join@example.com", postResult.Email)
-	})
-
-	t.Run("Execute query with multiple JOINs", func(t *testing.T) {
-		cleanupTables(t)
-
-		// Arrange - Create user using new API
-		user := &models.UsersDto{
-			Username: "multijoinuser",
-			Email:    "multi@example.com",
-			IsActive: new(true),
-		}
-		err := models.NewUsersQuery(testDB.pool).
-			Insert(
-				users.Username(),
-				users.Email(),
-				users.FullName(),
-				users.IsActive(),
-			).
-			Returning(users.Id()).
-			Values(user).
-			Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, user.Id)
-
-		post := &models.PostsDto{
-			UserId:  *user.Id,
-			Title:   "Multi Join Post",
-			Content: new("Multi Join Content"),
-		}
-		err = models.NewPostsQuery(testDB.pool).
-			Insert(
-				posts.UserId(),
-				posts.Title(),
-				posts.Content(),
-			).
-			Returning(posts.Id()).
-			Values(post).
-			Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, post.Id)
-
-		// Create comment using builder API
-		comment := &models.CommentsDto{
-			UserId:  *user.Id,
-			PostId:  *post.Id,
-			Content: "Test Comment",
-		}
-		err = models.NewCommentsQuery(testDB.pool).
-			Insert(
-				comments.PostId(),
-				comments.UserId(),
-				comments.Content(),
-			).
-			Returning(comments.Id()).
-			Values(comment).
-			Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, comment.Id)
-
-		type commentWithPostAndUser struct {
-			CommentID  int64
-			Content    string
-			PostTitle  string
-			PostUserID uuid.UUID
-			Username   string
-			Email      string
-		}
-
-		// Act - Select explicit projections from comments and both joined tables.
-		results, err := models.NewQuery[commentWithPostAndUser](testDB.pool, comments.Table()).
-			Select(
-				query.Into(comments.Id(), func(c *commentWithPostAndUser) *int64 { return &c.CommentID }),
-				query.Into(comments.Content(), func(c *commentWithPostAndUser) *string { return &c.Content }),
-				query.Into(posts.Title(), func(c *commentWithPostAndUser) *string { return &c.PostTitle }),
-				query.Into(posts.UserId(), func(c *commentWithPostAndUser) *uuid.UUID { return &c.PostUserID }),
-				query.Into(users.Username(), func(c *commentWithPostAndUser) *string { return &c.Username }),
-				query.Into(users.Email(), func(c *commentWithPostAndUser) *string { return &c.Email }),
-			).
-			Join(ast.JoinLeft, posts.Table(), comments.PostId().Eq(posts.Id())).
-			Join(ast.JoinLeft, users.Table(), comments.UserId().Eq(users.Id())).
-			Where(comments.Id().Eq(query.Val(*comment.Id))).
-			Find(context.Background())
-
-		// Assert
-		require.NoError(t, err)
-		require.Len(t, results, 1, "expected 1 result")
-
-		commentResult := results[0]
-		assert.Equal(t, *comment.Id, commentResult.CommentID)
-		assert.Equal(t, "Test Comment", commentResult.Content)
-		assert.Equal(t, "Multi Join Post", commentResult.PostTitle)
-		assert.Equal(t, *user.Id, commentResult.PostUserID)
-		assert.Equal(t, "multijoinuser", commentResult.Username)
-		assert.Equal(t, "multi@example.com", commentResult.Email)
-	})
-
-	t.Run("Verify SQL generation with actual query", func(t *testing.T) {
-		// Arrange
-		user := &models.UsersDto{
-			Username: "sqlverify",
-			Email:    "sqlverify@example.com",
-		}
-		err := query.UsersDtoInsertOne(testDB.pool, user).Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, user.Id)
-
-		post := &models.PostsDto{
-			UserId: *user.Id,
-			Title:  "SQL Verify Post",
-		}
-		err = models.NewDTOQuery[models.PostsDto](testDB.pool).
-			Insert(
-				posts.UserId(),
-				posts.Title(),
-			).
-			Returning(posts.Id()).
-			Values(post).
-			Exec(context.Background())
-		require.NoError(t, err)
-		require.NotNil(t, post.Id)
-
-		// Act - Build query and get SQL
-		type sqlVerifyRow struct {
-			Title    string
-			Username string
-		}
-
-		queryBuilder := models.NewQuery[sqlVerifyRow](testDB.pool, posts.Table()).
-			Select(
-				query.Into(posts.Title(), func(r *sqlVerifyRow) *string { return &r.Title }),
-				query.Into(users.Username(), func(r *sqlVerifyRow) *string { return &r.Username }),
-			).
-			Join(ast.JoinLeft, users.Table(), posts.UserId().Eq(users.Id())).
-			Where(posts.Id().Eq(query.Val(*post.Id)))
-
-		sql, err := queryBuilder.ToSql()
-
-		// Assert
-		require.NoError(t, err)
-		assert.Contains(t, sql, "SELECT")
-		assert.Contains(t, sql, "FROM posts")
-		assert.Contains(t, sql, "LEFT JOIN users")
-		assert.Contains(t, sql, "posts.title", "expected posts.title with table prefix")
-		assert.Contains(t, sql, "username", "expected username without table prefix (primary table of users)")
-		assert.Contains(t, sql, "ON posts.user_id = users.id")
-
-		// Verify it actually executes
 		results, err := queryBuilder.Find(context.Background())
 		require.NoError(t, err)
 		require.Len(t, results, 1)
-		assert.Equal(t, "SQL Verify Post", results[0].Title)
-		assert.Equal(t, "sqlverify", results[0].Username)
+		assert.Equal(t, "corp@example.com", results[0].Email)
+	})
+
+	t.Run("Update CTE with SetTo returns updated rows", func(t *testing.T) {
+		cleanupTables(t)
+
+		user := &dbmodels.UsersDto{Username: "cte-update-user", Email: "old@example.com", FullName: new("Old Name"), IsActive: new(true)}
+		insertUsers(t, user)
+		newName := "Updated Name"
+		updateDTO := &dbmodels.UsersDto{Id: user.Id, Email: "new@example.com", FullName: &newName}
+		type updatedUser struct {
+			Email    string
+			FullName *string
+		}
+
+		updatedUsers := users.As("updated_users", users.Id(), users.Email(), users.FullName())
+		cteBody := dbmodels.NewUsersQuery(nil).
+			Update(q.SetTo(updateDTO, users.Email(), users.FullName())).
+			Where(users.Id().Eq(q.Val(*updateDTO.Id))).
+			Returning(users.Id(), users.Email(), users.FullName()).
+			Statement()
+
+		queryBuilder := dbmodels.NewQuery[updatedUser](pgxPool, q.Table(updatedUsers.Alias)).
+			With(q.CTE(updatedUsers.Alias, cteBody)).
+			Select(
+				q.Into(updatedUsers.Email(), func(u *updatedUser) *string { return &u.Email }),
+				q.Into(updatedUsers.FullName(), func(u *updatedUser) **string { return &u.FullName }),
+			)
+
+		sql, args, err := queryBuilder.ToSqlArgs()
+		require.NoError(t, err)
+		assert.Equal(t, "WITH updated_users(id, email, full_name) AS (UPDATE users SET email = $1, full_name = $2 WHERE users.id = $3 RETURNING users.id, users.email, users.full_name) SELECT updated_users.email, updated_users.full_name FROM updated_users", sql)
+		assert.Equal(t, []any{"new@example.com", &newName, *user.Id}, args)
+
+		results, err := queryBuilder.Find(context.Background())
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.Equal(t, "new@example.com", results[0].Email)
+		require.NotNil(t, results[0].FullName)
+		assert.Equal(t, "Updated Name", *results[0].FullName)
+		assert.Equal(t, "new@example.com", findUserByID(t, *user.Id).Email)
+	})
+
+	t.Run("Unknown alias column returns render error", func(t *testing.T) {
+		activeUsers := users.As("active_users", users.Id())
+		cteBody := dbmodels.NewQuery[dbmodels.UsersDto](nil, users.Table()).Select(users.Id()).Statement()
+		type userSummary struct{ Email string }
+
+		queryBuilder := dbmodels.NewQuery[userSummary](nil, q.Table(activeUsers.Alias)).
+			With(q.CTE(activeUsers.Alias, cteBody)).
+			Select(q.Into(activeUsers.Email(), func(s *userSummary) *string { return &s.Email }))
+
+		sql, args, err := queryBuilder.ToSqlArgs()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown column 'email' in alias active_users")
+		assert.Empty(t, args)
+		assert.Contains(t, sql, "WITH active_users(id) AS")
 	})
 }

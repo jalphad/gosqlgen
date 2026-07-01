@@ -1,8 +1,6 @@
 package ast
 
-import (
-	"strings"
-)
+import "strings"
 
 type AliasedFunction[T MappedTypes] interface {
 	ofType[T]
@@ -78,22 +76,22 @@ func (f *NamedSetReturningFunction) isTableExpression() {}
 
 type SetReturningFunction struct {
 	function[[]any]
+	columns []NamedExpression
 }
 
 func NewSetReturningFunction(node *FunctionNode) *SetReturningFunction {
 	return &SetReturningFunction{function: function[[]any]{sqlType[[]any]{node}}}
 }
 
-func (f *SetReturningFunction) As(r *Alias, columns ...NamedExpression) *NamedSetReturningFunction {
+func (f *SetReturningFunction) As(alias *Alias) *NamedSetReturningFunction {
 	if f == nil {
 		return nil
 	}
-	r.columns = columns
 
 	return &NamedSetReturningFunction{
 		aliasedFunction: aliasedFunction[[]any]{
 			function: f.function,
-			alias:    r,
+			alias:    alias,
 		},
 	}
 }
@@ -124,8 +122,17 @@ func (r Alias) Name() string {
 	return r.name
 }
 
-func NewAlias(alias string) *Alias {
-	return &Alias{name: alias}
+func (r Alias) Columns() []NamedExpression {
+	if r.columns == nil {
+		return []NamedExpression{}
+	}
+
+	return r.columns
+}
+
+func NewAlias(alias string, columns ...NamedExpression) *Alias {
+	return &Alias{name: alias,
+		columns: columns}
 }
 
 type NamedAndTyped[T MappedTypes] interface {

@@ -103,12 +103,12 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 }
 
 type Alias struct {
-	ast.Alias
+	*ast.Alias
 }
 
 func As(name string, columns ...ast.NamedExpression) *Alias {
 	return &Alias{
-		Alias: *ast.NewAlias(name, columns...),
+		Alias: ast.NewAlias(name, columns...),
 	}
 }
 
@@ -125,7 +125,7 @@ func (a *Alias) Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
 	}) {
 		return alias
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'id' in alias %s", a.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.Name()))
 	alias.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
@@ -143,7 +143,7 @@ func (a *Alias) Username() *ast.StringColumnProjection[models.UsersDto, *string]
 	}) {
 		return alias
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'username' in alias %s", a.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'username' in alias %s", a.Name()))
 	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
@@ -154,14 +154,14 @@ func (a *Alias) Email() *ast.StringColumnProjection[models.UsersDto, *string] {
 		a.Name(),
 		column.Name(),
 		func(r *models.UsersDto) *string {
-			return &r.Username
+			return &r.Email
 		})
 	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == column.Name()
 	}) {
 		return alias
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'email' in alias %s", a.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'email' in alias %s", a.Name()))
 	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
@@ -179,7 +179,7 @@ func (a *Alias) FullName() *ast.StringColumnProjection[models.UsersDto, **string
 	}) {
 		return alias
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'full_name' in alias %s", a.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'full_name' in alias %s", a.Name()))
 	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
@@ -197,7 +197,7 @@ func (a *Alias) IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	}) {
 		return alias
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'is_active' in alias %s", a.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_active' in alias %s", a.Name()))
 	alias.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }

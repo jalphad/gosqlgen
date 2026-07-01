@@ -35,6 +35,10 @@ func TestUpdateSetToDTOToSQL(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "UPDATE users SET username = $1, email = $2, full_name = $3, is_active = $4 WHERE users.id = $5", sql)
+
+	_, args, err := q.ToSqlArgs()
+	require.NoError(t, err)
+	require.Equal(t, []any{"update-user", "update@example.com", &fullName, &active, id}, args)
 }
 
 func TestUpdateSetToExpressionToSQL(t *testing.T) {

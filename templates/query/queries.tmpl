@@ -13,7 +13,6 @@ import (
 
 {{ range $table := .Tables }}
 {{- $tablePkg := $table.PackageName }}
-{{- $receiver := $table.ReceiverName }}
 // {{ $table.StructName }}InsertOne inserts a single {{ $table.TableName }} DTO
 func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
 	return models.New{{ toPascalCase $table.TableName }}Query(pool).
@@ -25,7 +24,7 @@ func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.
 		{{- if $table.PrimaryKeyFields }}
 		Returning(
 			{{- range $index, $pkField := $table.PrimaryKeyFields }}
-			{{- if $index }}, {{ end }}{{ $tablePkg }}.Into.{{ $pkField }}()
+			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
 			{{- end -}}
 		).
 		{{- end }}
@@ -43,7 +42,7 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 		{{- if $table.PrimaryKeyFields }}
 		Returning(
 			{{- range $index, $pkField := $table.PrimaryKeyFields }}
-			{{- if $index }}, {{ end }}{{ $tablePkg }}.Into.{{ $pkField }}()
+			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
 			{{- end -}}
 		).
 		{{- end }}
@@ -51,65 +50,24 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 }
 {{ end }}
 
-func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
-		Insert(
-			users.Username(),
-			users.Email(),
-			users.FullName(),
-			users.IsActive(),
-		).
-		Returning(users.Into.Id()).
-		Values(dto)
-}
-
-func InsertUsers(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
-		Insert(
-			users.Username(),
-			users.Email(),
-			users.FullName(),
-			users.IsActive(),
-		).
-		Returning(users.Into.Id()).
-		Values(dtos...)
-}
-
-func InsertPost(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto, *models.PostsDto] {
-	return models.NewPostsQuery(pool).
-		Insert(
-			posts.UserId(),
-			posts.Title(),
-			posts.Content(),
-		).
-		Returning(posts.Into.Id()).
-		Values(dto)
-}
-
-func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto, *models.CommentsDto] {
-	return models.NewCommentsQuery(pool).
-		Insert(
-			comments.PostId(),
-			comments.UserId(),
-			comments.Content(),
-		).
-		Returning(comments.Into.Id()).
-		Values(dto)
-}
-
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
+	return models.NewDTOQuery[models.UsersDto](pool).
 		Update(
-			Set(users.Username()).To(Val(dto.Username)),
-			Set(users.Email()).To(Val(dto.Email)),
-			Set(users.FullName()).To(NVal(dto.FullName)),
-			Set(users.IsActive()).To(NVal(dto.IsActive)),
+			SetTo(dto,
+				users.Username(),
+				users.Email(),
+				users.FullName(),
+				users.IsActive()),
 		).Where(users.Id().Eq(Val(*dto.Id)))
 }
 
 func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	dtos := models.UsersDtos(in)
-	v := ast.NewAlias("v")
+	v := ast.NewAlias("v",
+		users.Id(),
+		users.Username(),
+		users.Email(),
+		users.FullName())
 	return models.NewUsersQuery(pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
@@ -122,13 +80,13 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 				Cast(dtos.Username()).AsTextArray(),
 				Cast(dtos.Email()).AsTextArray(),
 				Cast(dtos.FullName()).AsTextArray(),
-			).As(v, users.Id(), users.Username(), users.Email(), users.FullName()),
+			).As(v),
 		).
 		Where(users.Id().Eq(Rel(v, users.Id())))
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
+	return models.NewDTOQuery[models.UsersDto](pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }

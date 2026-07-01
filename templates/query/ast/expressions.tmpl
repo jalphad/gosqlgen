@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -24,82 +25,8 @@ func BuildQuery(e Expression, builder *strings.Builder, params *[]any) {
 	e.toSQL(builder, params, &QueryContext{})
 }
 
-func Null() Expression {
-	return nullExpression{}
-}
-
-func NewStringConstant(value string) Expression {
-	return stringConstantExpression{value: value}
-}
-
-func Cast[T MappedTypes](e Expression, sqlType string) OfType[T] {
-	return SetType[T](castExpression{
-		expression: e,
-		sqlType:    sqlType,
-	})
-}
-
-type nullExpression struct{}
-
-func (e nullExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
-	if ctx != nil && ctx.Error != nil {
-		return
-	}
-	builder.WriteString("NULL")
-}
-
-type stringConstantExpression struct {
-	value string
-}
-
-func (e stringConstantExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
-	if ctx != nil && ctx.Error != nil {
-		return
-	}
-	builder.WriteString("'")
-	builder.WriteString(strings.ReplaceAll(e.value, "'", "''"))
-	builder.WriteString("'")
-}
-
-type castExpression struct {
-	expression Expression
-	sqlType    string
-}
-
-func (e castExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	if ctx != nil && ctx.Error != nil {
-		return
-	}
-	builder.WriteString("CAST(")
-	e.expression.toSQL(builder, params, ctx)
-	builder.WriteString(" AS ")
-	builder.WriteString(e.sqlType)
-	builder.WriteString(")")
-}
-
-func IsNull(e Expression) OfType[bool] {
-	return Bool(&BinaryNode{
-		Op: "IS",
-		Args: []Expression{
-			e,
-			Null(),
-		},
-	})
-}
-
-func IsNotNull(e Expression) OfType[bool] {
-	return Bool(&BinaryNode{
-		Op: "IS",
-		Args: []Expression{
-			e,
-			&UnaryNode{
-				Op: "NOT",
-				Args: []Expression{
-					Null(),
-				},
-			},
-		},
-	})
+func BuildQueryWithContext(e Expression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	e.toSQL(builder, params, ctx)
 }
 
 // ErrorExpression represents an expression that sets an error in the context during rendering
@@ -119,7 +46,6 @@ func (e *ErrorExpression) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryCo
 
 // Expression represents any SQL Expression (binary, unary, function, literal).
 type Expression interface {
-	// TODO: refactor to allow returning an error
 	toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext)
 }
 type expression = Expression
@@ -224,153 +150,198 @@ func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any, ctx *
 
 type StringColumnExpression struct {
 	*stringType
+	name string
 }
 
 func NewStringColumnExpression(table, column string) *StringColumnExpression {
 	return &StringColumnExpression{
-		String(NewColumnNode(table, column)),
+		stringType: String(NewColumnNode(table, column)),
+		name:       column,
+	}
+}
+
+func NewStringColumnExpressionFromExpr(name string, expression Expression) *StringColumnExpression {
+	return &StringColumnExpression{
+		stringType: String(expression),
+		name:       name,
 	}
 }
 
 func (e *StringColumnExpression) Name() string {
-	if colNode, ok := e.stringType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type IntColumnExpression struct {
 	*intType
+	name string
 }
 
 func NewIntColumnExpression(table, column string) *IntColumnExpression {
 	return &IntColumnExpression{
-		Int(NewColumnNode(table, column)),
+		intType: Int(NewColumnNode(table, column)),
+		name:    column,
+	}
+}
+
+func NewIntColumnExpressionFromExpr(name string, expression Expression) *IntColumnExpression {
+	return &IntColumnExpression{
+		intType: Int(expression),
+		name:    name,
 	}
 }
 
 func (e *IntColumnExpression) Name() string {
-	if colNode, ok := e.intType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type FloatColumnExpression struct {
 	*floatType
+	name string
 }
 
 func NewFloatColumnExpression(table, column string) *FloatColumnExpression {
 	return &FloatColumnExpression{
-		Float(NewColumnNode(table, column)),
+		floatType: Float(NewColumnNode(table, column)),
+		name:      column,
+	}
+}
+
+func NewFloatColumnExpressionFromExpr(name string, expression Expression) *FloatColumnExpression {
+	return &FloatColumnExpression{
+		floatType: Float(expression),
+		name:      name,
 	}
 }
 
 func (e *FloatColumnExpression) Name() string {
-	if colNode, ok := e.floatType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type BoolColumnExpression struct {
 	*boolType
+	name string
 }
 
 func NewBoolColumnExpression(table, column string) *BoolColumnExpression {
 	return &BoolColumnExpression{
-		Bool(NewColumnNode(table, column)),
+		boolType: Bool(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewBoolColumnExpressionFromExpr(name string, expression Expression) *BoolColumnExpression {
+	return &BoolColumnExpression{
+		boolType: Bool(expression),
+		name:     name,
 	}
 }
 
 func (e *BoolColumnExpression) Name() string {
-	if colNode, ok := e.boolType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type UUIDColumnExpression struct {
 	*uuidType
+	name string
 }
 
 func NewUUIDColumnExpression(table, column string) *UUIDColumnExpression {
 	return &UUIDColumnExpression{
-		UUID(NewColumnNode(table, column)),
+		uuidType: UUID(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewUUIDColumnExpressionFromExpr(name string, expression Expression) *UUIDColumnExpression {
+	return &UUIDColumnExpression{
+		uuidType: UUID(expression),
+		name:     name,
 	}
 }
 
 func (e *UUIDColumnExpression) Name() string {
-	if colNode, ok := e.uuidType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type TimestampColumnExpression struct {
-	*TimestampType
+	*timestampType
+	name string
 }
 
 func NewTimestampColumnExpression(table, column string) *TimestampColumnExpression {
 	return &TimestampColumnExpression{
-		Timestamp(NewColumnNode(table, column)),
+		timestampType: Timestamp(NewColumnNode(table, column)),
+		name:          column,
+	}
+}
+
+func NewTimestampColumnExpressionFromExpr(name string, expression Expression) *TimestampColumnExpression {
+	return &TimestampColumnExpression{
+		timestampType: Timestamp(expression),
+		name:          name,
 	}
 }
 
 func (e *TimestampColumnExpression) Name() string {
-	if colNode, ok := e.TimestampType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type DateColumnExpression struct {
 	*dateType
+	name string
 }
 
 func NewDateColumnExpression(table, column string) *DateColumnExpression {
 	return &DateColumnExpression{
-		Date(NewColumnNode(table, column)),
+		dateType: Date(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewDateColumnExpressionFromExpr(name string, expression Expression) *DateColumnExpression {
+	return &DateColumnExpression{
+		dateType: Date(expression),
+		name:     name,
 	}
 }
 
 func (e *DateColumnExpression) Name() string {
-	if colNode, ok := e.dateType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type TimeColumnExpression struct {
 	*timeType
+	name string
 }
 
 func NewTimeColumnExpression(table, column string) *TimeColumnExpression {
 	return &TimeColumnExpression{
-		Time(NewColumnNode(table, column)),
+		timeType: Time(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewTimeColumnExpressionFromExpr(name string, expression Expression) *TimeColumnExpression {
+	return &TimeColumnExpression{
+		timeType: Time(expression),
+		name:     name,
 	}
 }
 
 func (e *TimeColumnExpression) Name() string {
-	if colNode, ok := e.timeType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+	return e.name
 }
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	Table string      // Base table Name
+	table string      // Base table Name
 	joins []*JoinExpr // Optional joins
+}
+
+func NewTableSource(name string) *TableSource {
+	return &TableSource{
+		table: name,
+	}
 }
 
 func (s *TableSource) isTableExpression() {}
@@ -382,30 +353,30 @@ func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	// Track primary table
 	if ctx != nil {
 		if ctx.PrimaryTable == "" {
-			ctx.PrimaryTable = s.Table
+			ctx.PrimaryTable = s.table
 		}
 		// Add to AllTables if not already there
 		if ctx.AllTables == nil {
-			ctx.AllTables = []string{s.Table}
-		} else if !contains(ctx.AllTables, s.Table) {
-			ctx.AllTables = append(ctx.AllTables, s.Table)
+			ctx.AllTables = []string{s.table}
+		} else if !slices.Contains(ctx.AllTables, s.table) {
+			ctx.AllTables = append(ctx.AllTables, s.table)
 		}
 	}
 
-	builder.WriteString(" " + s.Table)
+	builder.WriteString(s.table)
 	for _, join := range s.joins {
 		join.toSQL(builder, params, ctx)
 	}
 }
 
 func (s *TableSource) Name() string {
-	return s.Table
+	return s.table
 }
 
-func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *TableSource {
+func (s *TableSource) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) *TableSource {
 	s.joins = append(s.joins, &JoinExpr{
 		Type:      jointype,
-		Right:     &TableSource{Table: table},
+		Right:     table,
 		Condition: on,
 	})
 	return s
@@ -413,9 +384,9 @@ func (s *TableSource) Join(jointype JoinType, table string, on OfType[bool]) *Ta
 
 // JoinExpr represents a JOIN operation.
 type JoinExpr struct {
-	Type      JoinType     // INNER, LEFT, RIGHT, FULL
-	Right     *TableSource // The table being joined
-	Condition OfType[bool] // ON condition
+	Type      JoinType             // INNER, LEFT, RIGHT, FULL
+	Right     NamedTableExpression // The table being joined
+	Condition OfType[bool]         // ON condition
 }
 
 func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -427,14 +398,16 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 		if ctx.JoinedTables == nil {
 			ctx.JoinedTables = make(map[string]JoinType)
 		}
-		ctx.JoinedTables[j.Right.Table] = j.Type
-		if !contains(ctx.AllTables, j.Right.Table) {
-			ctx.AllTables = append(ctx.AllTables, j.Right.Table)
+		ctx.JoinedTables[j.Right.Name()] = j.Type
+		if !slices.Contains(ctx.AllTables, j.Right.Name()) {
+			ctx.AllTables = append(ctx.AllTables, j.Right.Name())
 		}
 		ctx.CurrentPart = QueryPartJoin
 	}
 
-	builder.WriteString(string(j.Type) + " JOIN " + j.Right.Table + " ON ")
+	builder.WriteString(string(j.Type) + " JOIN ")
+	j.Right.toSQL(builder, params, ctx)
+	builder.WriteString(" ON ")
 	j.Condition.toSQL(builder, params, ctx)
 }
 
@@ -442,8 +415,10 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 type JoinType string
 
 const (
-	JoinInner JoinType = " INNER"
-	JoinLeft  JoinType = " LEFT"
-	JoinRight JoinType = " RIGHT"
-	JoinFull  JoinType = " FULL"
+	JoinInner   JoinType = " INNER"
+	JoinLeft    JoinType = " LEFT"
+	JoinRight   JoinType = " RIGHT"
+	JoinFull    JoinType = " FULL"
+	JoinLateral JoinType = " LATERAL"
+	JoinCross   JoinType = " CROSS"
 )

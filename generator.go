@@ -255,11 +255,17 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 		fields := make([]templates.StructField, 0, len(table.Columns))
 		for _, col := range table.Columns {
 			fieldName := templates.ToPascalCase(col.Name)
+			goType := col.GoType
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
+			if isPointer {
+				goType = "*" + goType
+			}
 			fields = append(fields, templates.StructField{
 				FieldName:  fieldName,
 				ColumnName: col.Name,
-				GoType:     col.GoType,
+				GoType:     goType,
 				SQLType:    col.SQLType,
+				IsPointer:  isPointer,
 			})
 		}
 

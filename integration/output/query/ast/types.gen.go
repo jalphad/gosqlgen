@@ -8,23 +8,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ArrayTypes interface {
+type ArrayMappedTypes interface {
 	[]float64 | []int | []int64 | []string | []bool |
 		[]time.Time | []uuid.UUID | []pgtype.Numeric |
-		[]json.RawMessage | []any
+		[]json.RawMessage | [][]byte | []any
 }
 
 type NullableMappedTypes[T MappedTypes] interface {
 	*T
 }
 
-type MappedTypes interface {
+type BaseMappedTypes interface {
 	float64 | int | int64 | string | bool |
 		time.Time | time.Duration |
 		uuid.UUID |
 		pgtype.Numeric |
-		[]byte | json.RawMessage |
-		ArrayTypes
+		[]byte | json.RawMessage
+}
+
+type MappedTypes interface {
+	BaseMappedTypes | ArrayMappedTypes
 }
 
 type ofType[T MappedTypes] = OfType[T]
@@ -87,11 +90,11 @@ func (t *StringType) Between(start, end OfType[string]) *BoolType {
 }
 
 func (t *StringType) IsNull() *BoolType {
-	return Bool(&UnaryNode{Op: "IS NULL", Args: []Expression{t}})
+	return isNull(t)
 }
 
 func (t *StringType) IsNotNull() *BoolType {
-	return Bool(&UnaryNode{Op: "IS NOT NULL", Args: []Expression{t}})
+	return isNotNull(t)
 }
 
 func Int(e Expression) *IntType {
@@ -264,10 +267,7 @@ func (t *BoolType) IsFalse() *BoolType {
 }
 
 func (t *BoolType) IsNull() *BoolType {
-	return Bool(&UnaryNode{
-		Op:   "IS NULL",
-		Args: []Expression{t},
-	})
+	return isNull(t)
 }
 
 type TimestampType struct {
@@ -352,24 +352,18 @@ func (t *UUIDType) In(expr OfType[[]uuid.UUID]) *BoolType {
 }
 
 func (t *UUIDType) IsNull() *BoolType {
-	return Bool(&UnaryNode{
-		Op:   "IS NULL",
-		Args: []Expression{t},
-	})
+	return isNull(t)
 }
 
 func (t *UUIDType) IsNotNull() *BoolType {
-	return Bool(&UnaryNode{
-		Op:   "IS NOT NULL",
-		Args: []Expression{t},
-	})
+	return isNotNull(t)
 }
 
-func Array[T ArrayTypes](t T) *ArrayType[T] {
+func Array[T ArrayMappedTypes](t T) *ArrayType[T] {
 	return &ArrayType[T]{NewSQLType(t)}
 }
 
-type ArrayType[T ArrayTypes] struct {
+type ArrayType[T ArrayMappedTypes] struct {
 	ofType[T]
 }
 
@@ -386,14 +380,40 @@ type JsonType struct {
 }
 
 type (
-	stringType  = StringType
-	intType     = IntType
-	floatType   = FloatType
-	numericType = NumericType
-	boolType    = BoolType
-	timeType    = TimeType
-	dateType    = DateType
-	uuidType    = UUIDType
-	bytesType   = BytesType
-	jsonType    = JsonType
+	stringType    = StringType
+	intType       = IntType
+	floatType     = FloatType
+	numericType   = NumericType
+	boolType      = BoolType
+	timeType      = TimeType
+	dateType      = DateType
+	uuidType      = UUIDType
+	bytesType     = BytesType
+	jsonType      = JsonType
+	timestampType = TimestampType
 )
+
+func isNull(e Expression) *BoolType {
+	return Bool(&BinaryNode{
+		Op: "IS",
+		Args: []Expression{
+			e,
+			NewKeywordNode("NULL"),
+		},
+	})
+}
+
+func isNotNull(e Expression) *BoolType {
+	return Bool(&BinaryNode{
+		Op: "IS",
+		Args: []Expression{
+			e,
+			&UnaryNode{
+				Op: "NOT",
+				Args: []Expression{
+					NewKeywordNode("NULL"),
+				},
+			},
+		},
+	})
+}

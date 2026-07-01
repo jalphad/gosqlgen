@@ -7,54 +7,54 @@ import (
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 )
 
-type SelectQuery[O any] interface {
-	Select(columns ...ast.NamedExpression) SelectFromQuery[O]
+type ResultSelectQuery[O any] interface {
+	With(ctes ...*ast.CTE) ResultSelectQuery[O]
+	Select(projections ...ast.Projection[O]) ResultSelectJoinQuery[O]
 }
 
-type KnownTableSelectQuery[O any] interface {
-	Select(columns ...ast.NamedExpression) SelectJoinQuery[O]
+type ResultSelectFromQuery[O any] interface {
+	From(table *ast.TableSource) ResultSelectWhereQuery[O]
+	ResultSelectWhereQuery[O]
 }
 
-type SelectFromQuery[O any] interface {
-	From(table *ast.TableSource) SelectWhereQuery[O]
-	SelectWhereQuery[O]
+type ResultSelectJoinQuery[O any] interface {
+	With(ctes ...*ast.CTE) ResultSelectJoinQuery[O]
+	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) ResultSelectJoinQuery[O]
+	ResultSelectWhereQuery[O]
 }
 
-type SelectJoinQuery[O any] interface {
-	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) SelectJoinQuery[O]
-	SelectWhereQuery[O]
+type ResultSelectWhereQuery[O any] interface {
+	Where(expr ast.OfType[bool]) ResultSelectGroupByQuery[O]
+	ResultSelectGroupByQuery[O]
 }
 
-type SelectWhereQuery[O any] interface {
-	Where(expr ast.OfType[bool]) SelectGroupByQuery[O]
-	SelectGroupByQuery[O]
+type ResultSelectGroupByQuery[O any] interface {
+	GroupBy(columns ...ast.Expression) ResultSelectHavingQuery[O]
+	ResultSelectHavingQuery[O]
 }
 
-type SelectGroupByQuery[O any] interface {
-	GroupBy(columns ...ast.Expression) SelectHavingQuery[O]
-	SelectHavingQuery[O]
+type ResultSelectHavingQuery[O any] interface {
+	Having(expr ast.OfType[bool]) ResultSelectOrderByQuery[O]
+	ResultSelectOrderByQuery[O]
 }
 
-type SelectHavingQuery[O any] interface {
-	Having(expr ast.OfType[bool]) SelectOrderByQuery[O]
-	SelectOrderByQuery[O]
+type ResultSelectOrderByQuery[O any] interface {
+	OrderBy(orderBy ...*ast.OrderByItem) ResultSelectPagingQuery[O]
+	ResultSelectPagingQuery[O]
 }
 
-type SelectOrderByQuery[O any] interface {
-	OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[O]
-	SelectPagingQuery[O]
+type ResultSelectPagingQuery[O any] interface {
+	Limit(limit int) ResultSelectPagingQuery[O]
+	Offset(offset int) ResultSelectPagingQuery[O]
+	ResultSelectFinalizeQuery[O]
 }
 
-type SelectPagingQuery[O any] interface {
-	Limit(limit int) SelectPagingQuery[O]
-	Offset(offset int) SelectPagingQuery[O]
-	SelectFinalizeQuery[O]
-}
-
-type SelectFinalizeQuery[O any] interface {
+type ResultSelectFinalizeQuery[O any] interface {
 	Find(ctx context.Context) ([]O, error)
 	FindOne(ctx context.Context) (O, error)
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type InsertQuery[T any, O DTO[T]] interface {
@@ -72,7 +72,7 @@ type InsertOnConflictDoQuery[T any, O DTO[T]] interface {
 }
 
 type InsertReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) InsertValuesQuery[T, O]
+	Returning(projections ...ast.Projection[T]) InsertValuesQuery[T, O]
 	InsertValuesQuery[T, O]
 }
 
@@ -83,6 +83,8 @@ type InsertValuesQuery[T any, O DTO[T]] interface {
 type InsertFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) error
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type UpdateQuery[T any, O DTO[T]] interface {
@@ -105,13 +107,15 @@ type UpdateWhereQuery[T any, O DTO[T]] interface {
 }
 
 type UpdateReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) UpdateFinalizeQuery[T, O]
+	Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T, O]
 	UpdateFinalizeQuery[T, O]
 }
 
 type UpdateFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) (int64, []T, error)
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type DeleteQuery[T any, O DTO[T]] interface {
@@ -133,32 +137,21 @@ type DeleteWhereQuery[T any, O DTO[T]] interface {
 }
 
 type DeleteReturningQuery[T any, O DTO[T]] interface {
-	Returning(columns ...ast.NamedExpression) DeleteFinalizeQuery[T, O]
+	Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T, O]
 	DeleteFinalizeQuery[T, O]
 }
 
 type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(ctx context.Context) (int64, []T, error)
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
-type KnownTableStartQuery[S DTOs[T, O], T any, O DTO[T]] interface {
-	WithTx(tx pgx.Tx) KnownTableStartQuery[S, T, O]
-	KnownTableSelectQuery[T]
+type KnownTableStartQuery[T any, O DTO[T]] interface {
+	With(ctes ...*ast.CTE) KnownTableStartQuery[T, O]
+	WithTx(tx pgx.Tx) KnownTableStartQuery[T, O]
 	KnownTableDeleteQuery[T, O]
 	InsertQuery[T, O]
 	UpdateQuery[T, O]
-}
-
-type DTOs[T any, O DTO[T]] interface {
-	~[]O
-	GetArgs(column ast.NamedExpression) ast.Expression
-	GetValues(columns ...ast.NamedExpression) []ast.Expression
-}
-
-type DTO[T any] interface {
-	*T
-	ScanInto(row pgx.Row, stmt ast.SqlStatement) error
-	GetArg(column ast.NamedExpression) (ast.Expression, error)
-	TableName() string
 }

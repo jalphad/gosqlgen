@@ -55,7 +55,7 @@ func TestRelationshipProjectionToSQL(t *testing.T) {
 			users.Id(),
 			users.Into.Posts(posts.Id(), posts.Title()),
 		).
-		Join(ast.JoinLeft, "posts", posts.UserId().Eq(users.Id())).
+		Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 		GroupBy(users.Id())
 
 	sql, err := q.ToSql()

@@ -3,6 +3,7 @@ package ast
 import "strings"
 
 type DeleteStatement struct {
+	With      []*CTE
 	Table     string
 	Using     []NamedExpression
 	Where     OfType[bool]
@@ -25,6 +26,14 @@ func (s *DeleteStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	s.context = ctx
 	if ctx != nil {
 		ctx.Type = QueryTypeDelete
+	}
+
+	renderWithClause(s.With, builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(s.With) > 0 {
+		builder.WriteString(" ")
 	}
 
 	builder.WriteString("DELETE FROM " + s.Table)
@@ -54,10 +63,11 @@ func (s *DeleteStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		if ctx != nil {
 			ctx.CurrentPart = QueryPartReturning
 		}
-		returning := make([]string, 0, len(s.Returning))
-		for _, val := range s.Returning {
-			returning = append(returning, val.Name())
+		builder.WriteString(" RETURNING ")
+		for i := 0; i < len(s.Returning)-1; i++ {
+			s.Returning[i].toSQL(builder, params, ctx)
+			builder.WriteString(", ")
 		}
-		builder.WriteString(" RETURNING " + strings.Join(returning, ", "))
+		s.Returning[len(s.Returning)-1].toSQL(builder, params, ctx)
 	}
 }

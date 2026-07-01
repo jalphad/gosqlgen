@@ -8,6 +8,7 @@ import (
 )
 
 type ResultSelectQuery[O any] interface {
+	With(ctes ...*ast.CTE) ResultSelectQuery[O]
 	Select(projections ...ast.Projection[O]) ResultSelectJoinQuery[O]
 }
 
@@ -17,6 +18,7 @@ type ResultSelectFromQuery[O any] interface {
 }
 
 type ResultSelectJoinQuery[O any] interface {
+	With(ctes ...*ast.CTE) ResultSelectJoinQuery[O]
 	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) ResultSelectJoinQuery[O]
 	ResultSelectWhereQuery[O]
 }
@@ -51,6 +53,8 @@ type ResultSelectFinalizeQuery[O any] interface {
 	Find(ctx context.Context) ([]O, error)
 	FindOne(ctx context.Context) (O, error)
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type InsertQuery[T any, O DTO[T]] interface {
@@ -79,6 +83,8 @@ type InsertValuesQuery[T any, O DTO[T]] interface {
 type InsertFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) error
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type UpdateQuery[T any, O DTO[T]] interface {
@@ -108,6 +114,8 @@ type UpdateReturningQuery[T any, O DTO[T]] interface {
 type UpdateFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) (int64, []T, error)
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type DeleteQuery[T any, O DTO[T]] interface {
@@ -136,9 +144,12 @@ type DeleteReturningQuery[T any, O DTO[T]] interface {
 type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(ctx context.Context) (int64, []T, error)
 	ToSql() (string, error)
+	ToSqlArgs() (string, []any, error)
+	Statement() ast.SqlStatement
 }
 
 type KnownTableStartQuery[T any, O DTO[T]] interface {
+	With(ctes ...*ast.CTE) KnownTableStartQuery[T, O]
 	WithTx(tx pgx.Tx) KnownTableStartQuery[T, O]
 	KnownTableDeleteQuery[T, O]
 	InsertQuery[T, O]

@@ -48,13 +48,13 @@ func (w *TimeWithTZWrapper) UnmarshalJSON(b []byte) error {
 }
 
 type NoTimezoneWrapper struct {
-	  time.Time
+	time.Time
 }
 
 func (w *NoTimezoneWrapper) UnmarshalJSON(b []byte) error {
-    b[len(b)-1] = 'Z'
-    t, err := time.Parse(time.RFC3339, string(b[1:]))
-    w.Time = t
+	b[len(b)-1] = 'Z'
+	t, err := time.Parse(time.RFC3339, string(b[1:]))
+	w.Time = t
 
-    return err
+	return err
 }

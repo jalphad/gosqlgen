@@ -4,14 +4,62 @@ import (
 	{{- if needsCustomUnmarshal .Fields }}
 	"encoding/json"
 	{{- end }}
-	"errors"
-	"slices"
 	"strings"
+	{{- if usesType .Fields "time.Time" }}
 	"time"
+	{{- end }}
 
+	{{- if usesType .Fields "uuid.UUID" }}
 	"github.com/google/uuid"
+	{{- end }}
+	{{- if usesType .Fields "pgtype.Numeric" }}
+	"github.com/jackc/pgx/v5/pgtype"
+	{{- end }}
 	"{{ .PackagePath }}/query/ast"
 )
+
+type {{ .StructName }}s []*{{ .StructName }}
+
+{{ range .Fields }}
+func ({{ $.ReceiverName }} {{ $.StructName }}s) {{ .FieldName }}() ast.OfType[[]{{ baseType .GoType }}] {
+	out := make([]{{ if .IsPointer }}*{{ end }}{{ baseType .GoType }}, len({{ $.ReceiverName }}))
+	for idx, dto := range {{ $.ReceiverName }} {
+		out[idx] = dto.{{ .FieldName }}
+	}
+	{{- if .IsPointer }}
+	return ast.SetType[[]{{ baseType .GoType }}](ast.NewLiteralExpression(out))
+	{{- else }}
+	return ast.NewSQLType(out)
+	{{- end }}
+}
+{{ end }}
+
+func ({{ .ReceiverName }} {{ .StructName }}s) GetValues(columns ...ast.NamedExpression) []ast.Expression {
+	im := make([]ast.Expression, 0, len({{ .ReceiverName }})*len(columns))
+	for _, column := range columns {
+		columnLower := strings.ToLower(column.Name())
+
+		{{- range .Fields }}
+		{{ template "ifColumnLower" . }}
+			for _, dto := range {{ $.ReceiverName }} {
+				im = append(im, ast.NewLiteralExpression(dto.{{ .FieldName }}))
+			}
+		}
+		{{- end }}
+	}
+
+	values := make([]ast.Expression, 0, len({{ .ReceiverName }}))
+	for i := 0; i < len({{ .ReceiverName }}); i++ {
+		grouped := make([]ast.Expression, len(columns))
+		for j := range columns {
+			grouped[j] = im[j*len({{ .ReceiverName }})+i]
+		}
+
+		values = append(values, ast.NewGroupedExpression(grouped...))
+	}
+
+	return values
+}
 
 // {{ .StructName }} represents the {{ .TableName }} table
 type {{ .StructName }} struct {
@@ -57,9 +105,9 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 		{{ .FieldName }} DateWrapper {{ .StructTags }}
 		{{- else if or (eq .SQLType "TIME") (eq .SQLType "TIME WITHOUT TIME ZONE") }}
 		{{ .FieldName }} TimeWrapper {{ .StructTags }}
-        {{- else if eq .SQLType "TIME WITH TIME ZONE" }}
-        {{ .FieldName }} TimeWithTZWrapper {{ .StructTags }}
-		{{- else if or (eq .SQLType "TIMESTAMP") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") }}
+		{{- else if eq .SQLType "TIME WITH TIME ZONE" }}
+		{{ .FieldName }} TimeWithTZWrapper {{ .StructTags }}
+		{{- else if or (eq .SQLType "TIMESTAMP") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITH TIME ZONE") }}
 		{{ .FieldName }} NoTimezoneWrapper {{ .StructTags }}
 		{{- end }}
 		{{- end }}
@@ -72,48 +120,17 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	*{{ $.ReceiverName }} = {{ .StructName }}(wrapper.{{ .StructName }}_)
-    {{- range .Fields }}
-    {{- if (hasSuffix .GoType "time.Time") }}
-    {{- if or (eq .SQLType "DATE") (eq .SQLType "TIME") (eq .SQLType "TIMESTAMP") (eq .SQLType "TIME WITH TIME ZONE")
-        (eq .SQLType "TIME WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") }}
-    {{ $.ReceiverName }}.{{ .FieldName }} = {{ if isPtr .GoType }}&{{ end }}wrapper.{{ .FieldName }}.Time
-    {{- end }}
-    {{- end }}
-    {{- end }}
+	*{{ .ReceiverName }} = {{ .StructName }}(wrapper.{{ .StructName }}_)
+	{{- range .Fields }}
+	{{- if (hasSuffix .GoType "time.Time") }}
+	{{- if or (eq .SQLType "DATE") (eq .SQLType "TIME") (eq .SQLType "TIMESTAMP") (eq .SQLType "TIME WITH TIME ZONE") (eq .SQLType "TIME WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITH TIME ZONE") }}
+	{{ $.ReceiverName }}.{{ .FieldName }} = {{ if isPtr .GoType }}&{{ end }}wrapper.{{ .FieldName }}.Time
+	{{- end }}
+	{{- end }}
+	{{- end }}
 
 	return nil
 }
-{{- end }}
-
-
-// GetArg returns an expression which will be converted to a parameter in the SQL query
-func ({{ .ReceiverName }} *{{ .StructName }}) GetArg(ref ast.NamedExpression) (ast.Expression, error) {
-    // Normalize column name for matching (lowercase)
-    columnLower := strings.ToLower(ref.Name())
-
-    {{- range .Fields }}
-    {{ template "ifColumnLower" . }}
-        {{- if .IsPointer }}
-        if {{ $.ReceiverName }}.{{ .FieldName }} == nil {
-            return ast.NewLiteralExpression(nil), nil
-        }
-        return ast.NewSQLType(*{{ $.ReceiverName }}.{{ .FieldName }}), nil
-        {{- else }}
-        return ast.NewSQLType({{ $.ReceiverName }}.{{ .FieldName }}), nil
-        {{- end }}
-    }
-    {{- end }}
-
-    return nil, errors.New("unknown column")
-}
-
-{{- define "ifAliasLower" }}
-{{- if eq .ColumnName (.FieldName | toLower) }}
-if aliasLower == "{{ .ColumnName }}" {
-{{- else }}
-if aliasLower == "{{ .ColumnName }}" || aliasLower == "{{ .FieldName | toLower }}" {
-{{- end }}
 {{- end }}
 
 {{- define "ifColumnLower" }}

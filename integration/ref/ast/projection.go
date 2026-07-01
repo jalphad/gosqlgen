@@ -2,6 +2,7 @@ package ast
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ type ScanDest[T MappedTypes] interface {
 
 type ScanBinding interface {
 	Destination() any
+	Value() (any, error)
 	Assign() error
 }
 
@@ -53,6 +55,17 @@ type scalarScanBinding[T MappedTypes, D ScanDest[T]] struct {
 
 func (b scalarScanBinding[T, D]) Destination() any {
 	return b.dest
+}
+
+func (b scalarScanBinding[T, D]) Value() (any, error) {
+	switch dest := any(b.dest).(type) {
+	case *T:
+		return *dest, nil
+	case **T:
+		return *dest, nil
+	default:
+		return nil, fmt.Errorf("unsupported scan destination type %T", b.dest)
+	}
 }
 
 func (b scalarScanBinding[T, D]) Assign() error {
@@ -108,6 +121,10 @@ type customScanBinding[T MappedTypes, O any] struct {
 
 func (b *customScanBinding[T, O]) Destination() any {
 	return &b.input
+}
+
+func (b *customScanBinding[T, O]) Value() (any, error) {
+	return nil, fmt.Errorf("custom scan bindings do not expose source values")
 }
 
 func (b *customScanBinding[T, O]) Assign() error {

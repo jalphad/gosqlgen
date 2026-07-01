@@ -6,6 +6,7 @@ import (
 )
 
 type UpdateStatement struct {
+	With      []*CTE
 	Table     string
 	SetList   []UpdateSetExpr
 	From      TableExpression
@@ -29,6 +30,14 @@ func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	s.context = ctx
 	if ctx != nil {
 		ctx.Type = QueryTypeUpdate
+	}
+
+	renderWithClause(s.With, builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(s.With) > 0 {
+		builder.WriteString(" ")
 	}
 
 	builder.WriteString("UPDATE " + s.Table + " SET ")

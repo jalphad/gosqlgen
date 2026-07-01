@@ -6,6 +6,7 @@ import (
 )
 
 type SqlStatement interface {
+	Expression
 	Returns() []NamedExpression
 	GetQueryContext() *QueryContext
 }
@@ -46,6 +47,14 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	s.context = ctx
 	if ctx != nil {
 		ctx.Type = QueryTypeSelect
+	}
+
+	renderWithClause(s.With, builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(s.With) > 0 {
+		builder.WriteString(" ")
 	}
 
 	builder.WriteString("SELECT ")
@@ -148,6 +157,68 @@ type LimitClause struct {
 
 // CTE represents a Common Table ExpressionNode (WITH clause).
 type CTE struct {
-	Name  string
+	Alias *Alias
 	Query SqlStatement
+}
+
+func NewCTE(alias *Alias, query SqlStatement) *CTE {
+	return &CTE{
+		Alias: alias,
+		Query: query,
+	}
+}
+
+func renderWithClause(ctes []*CTE, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if len(ctes) == 0 {
+		return
+	}
+	builder.WriteString("WITH ")
+	for i := 0; i < len(ctes); i++ {
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		ctes[i].toSQL(builder, params, ctx)
+		if ctx != nil && ctx.Error != nil {
+			return
+		}
+	}
+}
+
+func (c *CTE) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if c == nil {
+		if ctx != nil {
+			ctx.Error = fmt.Errorf("nil CTE")
+		}
+		return
+	}
+	if c.Alias == nil {
+		if ctx != nil {
+			ctx.Error = fmt.Errorf("CTE requires an alias")
+		}
+		return
+	}
+	if c.Query == nil {
+		if ctx != nil {
+			ctx.Error = fmt.Errorf("CTE %q requires a query", c.Alias.Name())
+		}
+		return
+	}
+
+	c.Alias.toSQL(builder, params, ctx)
+	builder.WriteString(" AS (")
+	savedType := QueryType("")
+	savedPart := QueryPart("")
+	if ctx != nil {
+		savedType = ctx.Type
+		savedPart = ctx.CurrentPart
+	}
+	c.Query.toSQL(builder, params, ctx)
+	if ctx != nil {
+		ctx.Type = savedType
+		ctx.CurrentPart = savedPart
+	}
+	builder.WriteString(")")
 }

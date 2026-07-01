@@ -1,10 +1,12 @@
 package ast
 
 import (
+	"fmt"
 	"strings"
 )
 
 type UpdateStatement struct {
+	With      []*CTE
 	Table     string
 	SetList   []UpdateSetExpr
 	From      TableExpression
@@ -28,6 +30,14 @@ func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	s.context = ctx
 	if ctx != nil {
 		ctx.Type = QueryTypeUpdate
+	}
+
+	renderWithClause(s.With, builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if len(s.With) > 0 {
+		builder.WriteString(" ")
 	}
 
 	builder.WriteString("UPDATE " + s.Table + " SET ")
@@ -62,11 +72,12 @@ func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		if ctx != nil {
 			ctx.CurrentPart = QueryPartReturning
 		}
-		returning := make([]string, 0, len(s.Returning))
-		for _, val := range s.Returning {
-			returning = append(returning, val.Name())
+		builder.WriteString(" RETURNING ")
+		for i := 0; i < len(s.Returning)-1; i++ {
+			s.Returning[i].toSQL(builder, params, ctx)
+			builder.WriteString(", ")
 		}
-		builder.WriteString(" RETURNING " + strings.Join(returning, ", "))
+		s.Returning[len(s.Returning)-1].toSQL(builder, params, ctx)
 	}
 }
 
@@ -84,6 +95,40 @@ func (s UpdateSet) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 }
 
 func (s UpdateSet) forUpdate() {}
+
+type UpdateSetList struct {
+	Sets []UpdateSet
+	Err  error
+}
+
+func NewUpdateSetError(err error) UpdateSetList {
+	return UpdateSetList{Err: err}
+}
+
+func (s UpdateSetList) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if s.Err != nil {
+		if ctx != nil {
+			ctx.Error = s.Err
+		}
+		return
+	}
+	if len(s.Sets) == 0 {
+		if ctx != nil {
+			ctx.Error = fmt.Errorf("UpdateSetList has no sets")
+		}
+		return
+	}
+	for i := 0; i < len(s.Sets)-1; i++ {
+		s.Sets[i].toSQL(builder, params, ctx)
+		builder.WriteString(", ")
+	}
+	s.Sets[len(s.Sets)-1].toSQL(builder, params, ctx)
+}
+
+func (s UpdateSetList) forUpdate() {}
 
 type UpdateSetExpr interface {
 	expression

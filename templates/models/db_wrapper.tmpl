@@ -5,7 +5,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"{{ .PackagePath }}/models"
 	"{{ .PackagePath }}/query/ast"
 	"{{ .PackagePath }}/query/builder"
 )
@@ -23,7 +22,7 @@ func NewDB(pool *pgxpool.Pool) *DB {
 {{- range .Tables }}
 
 // {{ .MethodName }} returns a query builder for {{ .TableName }}
-func (db *DB) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}s, {{ .StructName }}, *{{ .StructName }}] {
+func (db *DB) {{ .MethodName }}() *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
 	return New{{ .BuilderName }}(db.pool)
 }
 {{- end }}
@@ -49,7 +48,7 @@ func NewTx(tx pgx.Tx) *Tx {
 {{- range .Tables }}
 
 // {{ .MethodName }} returns a query builder within the transaction
-func (tx *Tx) {{ .MethodName }}() builder.KnownTableStartQuery[{{ .StructName }}s, {{ .StructName }}, *{{ .StructName }}] {
+func (tx *Tx) {{ .MethodName }}() builder.KnownTableStartQuery[{{ .StructName }}, *{{ .StructName }}] {
 	q := New{{ .BuilderName }}(nil)
 	return q.WithTx(tx.tx)
 }
@@ -58,8 +57,8 @@ func (tx *Tx) {{ .MethodName }}() builder.KnownTableStartQuery[{{ .StructName }}
 {{- range .Tables }}
 
 // New{{ .BuilderName }} returns a query builder for {{ .TableName }}
-func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[{{ .StructName }}s, {{ .StructName }}, *{{ .StructName }}] {
-	return builder.NewKnownTableBuilder({{ .StructName }}s{}, pool)
+func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[{{ .StructName }}, *{{ .StructName }}] {
+	return builder.NewKnownTableBuilder[{{ .StructName }}](pool)
 }
 {{- end }}
 
@@ -67,6 +66,6 @@ func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.Result
 	return builder.NewResultTableBuilder[T](pool, table)
 }
 
-func NewDTOQuery[S builder.DTOs[T, O], T any, O builder.DTO[T]](pool *pgxpool.Pool, s S) *builder.KnownTableBuilder[S, T, O] {
-	return builder.NewKnownTableBuilder(s, pool)
+func NewDTOQuery[T any, O builder.DTO[T]](pool *pgxpool.Pool) *builder.KnownTableBuilder[T, O] {
+	return builder.NewKnownTableBuilder[T, O](pool)
 }

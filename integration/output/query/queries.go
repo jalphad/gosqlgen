@@ -131,65 +131,24 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 		Values(dtos...)
 }
 
-func InsertUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
-		Insert(
-			users.Username(),
-			users.Email(),
-			users.FullName(),
-			users.IsActive(),
-		).
-		Returning(users.Id()).
-		Values(dto)
-}
-
-func InsertUsers(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
-		Insert(
-			users.Username(),
-			users.Email(),
-			users.FullName(),
-			users.IsActive(),
-		).
-		Returning(users.Id()).
-		Values(dtos...)
-}
-
-func InsertPost(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto, *models.PostsDto] {
-	return models.NewPostsQuery(pool).
-		Insert(
-			posts.UserId(),
-			posts.Title(),
-			posts.Content(),
-		).
-		Returning(posts.Id()).
-		Values(dto)
-}
-
-func InsertComment(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto, *models.CommentsDto] {
-	return models.NewCommentsQuery(pool).
-		Insert(
-			comments.PostId(),
-			comments.UserId(),
-			comments.Content(),
-		).
-		Returning(comments.Id()).
-		Values(dto)
-}
-
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
+	return models.NewDTOQuery[models.UsersDto](pool).
 		Update(
-			Set(users.Username()).To(Val(dto.Username)),
-			Set(users.Email()).To(Val(dto.Email)),
-			Set(users.FullName()).To(NVal(dto.FullName)),
-			Set(users.IsActive()).To(NVal(dto.IsActive)),
+			SetTo(dto,
+				users.Username(),
+				users.Email(),
+				users.FullName(),
+				users.IsActive()),
 		).Where(users.Id().Eq(Val(*dto.Id)))
 }
 
 func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
 	dtos := models.UsersDtos(in)
-	v := ast.NewAlias("v")
+	v := ast.NewAlias("v",
+		users.Id(),
+		users.Username(),
+		users.Email(),
+		users.FullName())
 	return models.NewUsersQuery(pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
@@ -202,54 +161,13 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 				Cast(dtos.Username()).AsTextArray(),
 				Cast(dtos.Email()).AsTextArray(),
 				Cast(dtos.FullName()).AsTextArray(),
-			).As(v, users.Id(), users.Username(), users.Email(), users.FullName()),
+			).As(v),
 		).
 		Where(users.Id().Eq(Rel(v, users.Id())))
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
+	return models.NewDTOQuery[models.UsersDto](pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
-}
-
-func RetrieveUserWithComments(id uuid.UUID, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.UsersDto] {
-	c := ast.NewAlias("comments")
-	return models.NewUsersQuery(pool).
-		Select(
-			users.Id(),
-			Coalesce(
-				JsonAgg(
-					Distinct(JsonbBuildObject(
-						comments.Id(),
-						comments.UserId(),
-						comments.Content(),
-						comments.CreatedAt(),
-					)),
-				),
-			).As(c)).
-		Join(ast.JoinLeft, "comments", comments.UserId().Eq(users.Id())).
-		Where(users.Id().Eq(Val(id))).
-		GroupBy(users.Id())
-}
-
-func RetrievePostWithTags(id int64, pool *pgxpool.Pool) builder.SelectFinalizeQuery[models.PostsDto] {
-	return models.NewPostsQuery(pool).
-		Select(
-			posts.Id(),
-			posts.Title(),
-			posts.UserId(),
-			As("tags", Coalesce(
-				JsonAgg(
-					Distinct(JsonbBuildObject(
-						tags.Id(),
-						tags.Name(),
-						tags.Slug(),
-					)),
-				),
-			))).
-		Join(ast.JoinLeft, "post_tags", post_tags.PostId().Eq(posts.Id())).
-		Join(ast.JoinLeft, "tags", tags.Id().Eq(post_tags.TagId())).
-		Where(posts.Id().Eq(Val(id))).
-		GroupBy(posts.Id(), posts.Title(), posts.UserId())
 }

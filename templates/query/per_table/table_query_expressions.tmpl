@@ -1,23 +1,27 @@
 package {{ .TableName }}
 
 import (
-	{{- if usesType .Fields "json.RawMessage" }}
+	{{ if usesType .Fields "json.RawMessage" -}}
 	"encoding/json"
-	{{- end }}
-	{{- if usesType .Fields "time.Time" }}
+	{{ end -}}
+	"fmt"
+	"slices"
+	{{ if usesType .Fields "time.Time" -}}
 	"time"
-	{{- end }}
-	{{- if usesType .Fields "uuid.UUID" }}
+	{{ end }}
+
+	{{ if usesType .Fields "uuid.UUID" -}}
 	"github.com/google/uuid"
-	{{- end }}
-	{{- if usesType .Fields "pgtype.Numeric" }}
+	{{ end -}}
+	{{ if usesType .Fields "pgtype.Numeric" -}}
 	"github.com/jackc/pgx/v5/pgtype"
-	{{- end }}
+	{{ end }}
+
 	"{{ .PackagePath }}/models"
 	"{{ .PackagePath }}/query/ast"
-	{{- if or .ReverseRelFields .ManyToManyFields }}
+	{{ if or .ReverseRelFields .ManyToManyFields -}}
 	"{{ .PackagePath }}/query/expr"
-	{{- end }}
+	{{ end -}}
 )
 
 var Into = into{{ .StructName }}{}
@@ -25,12 +29,18 @@ var Into = into{{ .StructName }}{}
 type into{{ .StructName }} struct{}
 
 func Table() *ast.TableSource {
-	return &ast.TableSource{Table: "{{ .TableName }}"}
+	return ast.NewTableSource("{{ .TableName }}")
 }
 
 {{ range .Fields }}
-func {{ .FieldName }}() *ast.{{ toTypeExpression .GoType .SQLType }} {
-	return ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $.TableName }}", "{{ .ColumnName }}")
+func {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}] {
+	return ast.New{{ toProjectionType .GoType .SQLType }}(
+		"{{ $.TableName }}",
+		"{{ .ColumnName }}",
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
+			return &{{ $.ReceiverName }}.{{ .FieldName }}
+		},
+	)
 }
 {{ end }}
 
@@ -44,9 +54,7 @@ func AllColumns() []ast.NamedExpression {
 
 {{ range .Fields }}
 func (into{{ $.StructName }}) {{ .FieldName }}() ast.Projection[models.{{ $.StructName }}] {
-	return ast.NewProjection({{ .FieldName }}(), func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
-		return &{{ $.ReceiverName }}.{{ .FieldName }}
-	})
+	return {{ .FieldName }}()
 }
 {{ end }}
 
@@ -58,6 +66,37 @@ func (into{{ .StructName }}) AllColumns() []ast.Projection[models.{{ .StructName
 	}
 }
 
+type Alias struct {
+	*ast.Alias
+}
+
+func As(name string, columns ...ast.NamedExpression) *Alias {
+	return &Alias{
+		Alias: ast.NewAlias(name, columns...),
+	}
+}
+
+{{ range .Fields }}
+func (a *Alias) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}] {
+	column := {{ .FieldName }}()
+	alias := ast.New{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}](
+		a.Alias.Name(),
+		column.Name(),
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
+			return &{{ $.ReceiverName }}.{{ .FieldName }}
+		},
+	)
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.Alias.Name()))
+	alias.{{ toTypeExpression .GoType .SQLType }} = ast.New{{ toTypeExpression .GoType .SQLType }}FromExpr(column.Name(), errExpr)
+	return alias
+}
+{{ end }}
+
 {{ range .ReverseRelFields }}
 {{- $rel := . }}
 func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[models.{{ $.StructName }}] {
@@ -66,8 +105,8 @@ func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) a
 	}
 	{{- $filter := filterColumn .FromColumns .FromPKField .FKColumn }}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("{{ .FieldName | toLower }}", ast.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
-		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ .GoType }} {
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ modelType .GoType }} {
 			return &{{ $.ReceiverName }}.{{ .FieldName }}
 		},
 	)
@@ -90,8 +129,8 @@ func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) a
 	}
 	{{- $filter := filterColumn .ReferencedColumns .ReferencedPKField .RightFKColumn }}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("{{ .FieldName | toLower }}", ast.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
-		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ .GoType }} {
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ modelType .GoType }} {
 			return &{{ $.ReceiverName }}.{{ .FieldName }}
 		},
 	)
