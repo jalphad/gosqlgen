@@ -150,138 +150,186 @@ func (e *KeywordExpression) toSQL(builder *strings.Builder, params *[]any, ctx *
 
 type StringColumnExpression struct {
 	*stringType
+	name string
 }
 
 func NewStringColumnExpression(table, column string) *StringColumnExpression {
 	return &StringColumnExpression{
-		String(NewColumnNode(table, column)),
+		stringType: String(NewColumnNode(table, column)),
+		name:       column,
+	}
+}
+
+func NewStringColumnExpressionFromExpr(name string, expression Expression) *StringColumnExpression {
+	return &StringColumnExpression{
+		stringType: String(expression),
+		name:       name,
 	}
 }
 
 func (e *StringColumnExpression) Name() string {
-	if colNode, ok := e.stringType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type IntColumnExpression struct {
 	*intType
+	name string
 }
 
 func NewIntColumnExpression(table, column string) *IntColumnExpression {
 	return &IntColumnExpression{
-		Int(NewColumnNode(table, column)),
+		intType: Int(NewColumnNode(table, column)),
+		name:    column,
+	}
+}
+
+func NewIntColumnExpressionFromExpr(name string, expression Expression) *IntColumnExpression {
+	return &IntColumnExpression{
+		intType: Int(expression),
+		name:    name,
 	}
 }
 
 func (e *IntColumnExpression) Name() string {
-	if colNode, ok := e.intType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type FloatColumnExpression struct {
 	*floatType
+	name string
 }
 
 func NewFloatColumnExpression(table, column string) *FloatColumnExpression {
 	return &FloatColumnExpression{
-		Float(NewColumnNode(table, column)),
+		floatType: Float(NewColumnNode(table, column)),
+		name:      column,
+	}
+}
+
+func NewFloatColumnExpressionFromExpr(name string, expression Expression) *FloatColumnExpression {
+	return &FloatColumnExpression{
+		floatType: Float(expression),
+		name:      name,
 	}
 }
 
 func (e *FloatColumnExpression) Name() string {
-	if colNode, ok := e.floatType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type BoolColumnExpression struct {
 	*boolType
+	name string
 }
 
 func NewBoolColumnExpression(table, column string) *BoolColumnExpression {
 	return &BoolColumnExpression{
-		Bool(NewColumnNode(table, column)),
+		boolType: Bool(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewBoolColumnExpressionFromExpr(name string, expression Expression) *BoolColumnExpression {
+	return &BoolColumnExpression{
+		boolType: Bool(expression),
+		name:     name,
 	}
 }
 
 func (e *BoolColumnExpression) Name() string {
-	if colNode, ok := e.boolType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type UUIDColumnExpression struct {
 	*uuidType
+	name string
 }
 
 func NewUUIDColumnExpression(table, column string) *UUIDColumnExpression {
 	return &UUIDColumnExpression{
-		UUID(NewColumnNode(table, column)),
+		uuidType: UUID(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewUUIDColumnExpressionFromExpr(name string, expression Expression) *UUIDColumnExpression {
+	return &UUIDColumnExpression{
+		uuidType: UUID(expression),
+		name:     name,
 	}
 }
 
 func (e *UUIDColumnExpression) Name() string {
-	if colNode, ok := e.uuidType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type TimestampColumnExpression struct {
-	*TimestampType
+	*timestampType
+	name string
 }
 
 func NewTimestampColumnExpression(table, column string) *TimestampColumnExpression {
 	return &TimestampColumnExpression{
-		Timestamp(NewColumnNode(table, column)),
+		timestampType: Timestamp(NewColumnNode(table, column)),
+		name:          column,
+	}
+}
+
+func NewTimestampColumnExpressionFromExpr(name string, expression Expression) *TimestampColumnExpression {
+	return &TimestampColumnExpression{
+		timestampType: Timestamp(expression),
+		name:          name,
 	}
 }
 
 func (e *TimestampColumnExpression) Name() string {
-	if colNode, ok := e.TimestampType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type DateColumnExpression struct {
 	*dateType
+	name string
 }
 
 func NewDateColumnExpression(table, column string) *DateColumnExpression {
 	return &DateColumnExpression{
-		Date(NewColumnNode(table, column)),
+		dateType: Date(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewDateColumnExpressionFromExpr(name string, expression Expression) *DateColumnExpression {
+	return &DateColumnExpression{
+		dateType: Date(expression),
+		name:     name,
 	}
 }
 
 func (e *DateColumnExpression) Name() string {
-	if colNode, ok := e.dateType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 type TimeColumnExpression struct {
 	*timeType
+	name string
 }
 
 func NewTimeColumnExpression(table, column string) *TimeColumnExpression {
 	return &TimeColumnExpression{
-		Time(NewColumnNode(table, column)),
+		timeType: Time(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewTimeColumnExpressionFromExpr(name string, expression Expression) *TimeColumnExpression {
+	return &TimeColumnExpression{
+		timeType: Time(expression),
+		name:     name,
 	}
 }
 
 func (e *TimeColumnExpression) Name() string {
-	if colNode, ok := e.timeType.sqlType.expression.(*ColumnNode); ok {
-		return colNode.Column.Column
-	}
-	return ""
+	return e.name
 }
 
 // TableSource represents a table or a join in the FROM clause.

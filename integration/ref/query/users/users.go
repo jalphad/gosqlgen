@@ -1,6 +1,9 @@
 package users
 
 import (
+	"fmt"
+	"slices"
+
 	"github.com/google/uuid"
 	"github.com/jalphad/gosqlgen/integration/models.new"
 	"github.com/jalphad/gosqlgen/integration/ref/ast"
@@ -97,4 +100,104 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 		Into.FullName(),
 		Into.IsActive(),
 	}
+}
+
+type Alias struct {
+	ast.Alias
+}
+
+func As(name string, columns ...ast.NamedExpression) *Alias {
+	return &Alias{
+		Alias: *ast.NewAlias(name, columns...),
+	}
+}
+
+func (a *Alias) Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
+	column := Id()
+	alias := ast.NewUUIDColumnProjection[models.UsersDto, **uuid.UUID](
+		a.Name(),
+		column.Name(),
+		func(r *models.UsersDto) **uuid.UUID {
+			return &r.Id
+		})
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'id' in alias %s", a.Name()))
+	alias.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
+	return alias
+}
+
+func (a *Alias) Username() *ast.StringColumnProjection[models.UsersDto, *string] {
+	column := Username()
+	alias := ast.NewStringColumnProjection[models.UsersDto, *string](
+		a.Name(),
+		column.Name(),
+		func(r *models.UsersDto) *string {
+			return &r.Username
+		})
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'username' in alias %s", a.Name()))
+	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return alias
+}
+
+func (a *Alias) Email() *ast.StringColumnProjection[models.UsersDto, *string] {
+	column := Email()
+	alias := ast.NewStringColumnProjection[models.UsersDto, *string](
+		a.Name(),
+		column.Name(),
+		func(r *models.UsersDto) *string {
+			return &r.Username
+		})
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'email' in alias %s", a.Name()))
+	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return alias
+}
+
+func (a *Alias) FullName() *ast.StringColumnProjection[models.UsersDto, **string] {
+	column := FullName()
+	alias := ast.NewStringColumnProjection[models.UsersDto, **string](
+		a.Name(),
+		column.Name(),
+		func(r *models.UsersDto) **string {
+			return &r.FullName
+		})
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'full_name' in alias %s", a.Name()))
+	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return alias
+}
+
+func (a *Alias) IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
+	column := IsActive()
+	alias := ast.NewBoolColumnProjection[models.UsersDto, **bool](
+		a.Name(),
+		column.Name(),
+		func(r *models.UsersDto) **bool {
+			return &r.IsActive
+		})
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown colummn 'is_active' in alias %s", a.Name()))
+	alias.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(column.Name(), errExpr)
+	return alias
 }

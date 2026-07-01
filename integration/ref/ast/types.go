@@ -380,16 +380,17 @@ type JsonType struct {
 }
 
 type (
-	stringType  = StringType
-	intType     = IntType
-	floatType   = FloatType
-	numericType = NumericType
-	boolType    = BoolType
-	timeType    = TimeType
-	dateType    = DateType
-	uuidType    = UUIDType
-	bytesType   = BytesType
-	jsonType    = JsonType
+	stringType    = StringType
+	intType       = IntType
+	floatType     = FloatType
+	numericType   = NumericType
+	boolType      = BoolType
+	timeType      = TimeType
+	dateType      = DateType
+	uuidType      = UUIDType
+	bytesType     = BytesType
+	jsonType      = JsonType
+	timestampType = TimestampType
 )
 
 func isNull(e Expression) *BoolType {
