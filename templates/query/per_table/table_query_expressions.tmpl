@@ -66,37 +66,6 @@ func (into{{ .StructName }}) AllColumns() []ast.Projection[models.{{ .StructName
 	}
 }
 
-type Alias struct {
-	*ast.Alias
-}
-
-func As(name string, columns ...ast.NamedExpression) *Alias {
-	return &Alias{
-		Alias: ast.NewAlias(name, columns...),
-	}
-}
-
-{{ range .Fields }}
-func (a *Alias) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}] {
-	column := {{ .FieldName }}()
-	alias := ast.New{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}](
-		a.Alias.Name(),
-		column.Name(),
-		func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
-			return &{{ $.ReceiverName }}.{{ .FieldName }}
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return alias
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.Alias.Name()))
-	alias.{{ toTypeExpression .GoType .SQLType }} = ast.New{{ toTypeExpression .GoType .SQLType }}FromExpr(column.Name(), errExpr)
-	return alias
-}
-{{ end }}
-
 {{ range .ReverseRelFields }}
 {{- $rel := . }}
 func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[models.{{ $.StructName }}] {
@@ -142,5 +111,36 @@ func default{{ .FieldName }}Columns() []ast.NamedExpression {
 		ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $rel.ReferencedTable }}", "{{ .ColumnName }}"),
 	{{- end }}
 	}
+}
+{{ end }}
+
+type Alias struct {
+	*ast.Alias
+}
+
+func As(name string, columns ...ast.NamedExpression) *Alias {
+	return &Alias{
+		Alias: ast.NewAlias(name, columns...),
+	}
+}
+
+{{ range .Fields }}
+func (a *Alias) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}] {
+	column := {{ .FieldName }}()
+	alias := ast.New{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}](
+		a.Alias.Name(),
+		column.Name(),
+		func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
+			return &{{ $.ReceiverName }}.{{ .FieldName }}
+		},
+	)
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.Alias.Name()))
+	alias.{{ toTypeExpression .GoType .SQLType }} = ast.New{{ toTypeExpression .GoType .SQLType }}FromExpr(column.Name(), errExpr)
+	return alias
 }
 {{ end }}

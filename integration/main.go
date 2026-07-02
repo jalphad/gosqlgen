@@ -14,7 +14,7 @@ func main() {
 }
 
 func generateModels() {
-	inputPath := "./integration/dump.sql"
+	inputPath := "./dump.sql"
 	outputPath := "./output"
 	packagePath := "github.com/jalphad/gosqlgen/output"
 	// Define your SQL schema
