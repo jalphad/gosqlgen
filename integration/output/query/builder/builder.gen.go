@@ -10,14 +10,8 @@ import (
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 )
 
-// type DTOs[T any, O DTO[T]] interface {
-// 	~[]O
-// 	GetValues(columns ...ast.NamedExpression) []ast.Expression
-// }
-
 type DTO[T any] interface {
 	*T
-	// GetArg(column ast.NamedExpression) (ast.Expression, error)
 	TableName() string
 }
 
@@ -40,12 +34,12 @@ func (b *ResultTableBuilder[T]) WithTx(tx pgx.Tx) *ResultTableBuilder[T] {
 	return b
 }
 
-func (b *ResultTableBuilder[T]) With(ctes ...*ast.CTE) ResultSelectQuery[T] {
+func (b *ResultTableBuilder[T]) With(ctes ...*ast.CTE) SelectQuery[T] {
 	b.with = append(b.with, ctes...)
 	return b
 }
 
-func (b *ResultTableBuilder[T]) Select(projections ...ast.Projection[T]) ResultSelectJoinQuery[T] {
+func (b *ResultTableBuilder[T]) Select(projections ...ast.Projection[T]) SelectJoinQuery[T] {
 	selectList := make([]ast.NamedExpression, 0, len(projections))
 	for _, projection := range projections {
 		selectList = append(selectList, projection)
@@ -135,42 +129,42 @@ func (b *ResultSelectBuilder[T]) WithTx(tx pgx.Tx) *ResultSelectBuilder[T] {
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) With(ctes ...*ast.CTE) ResultSelectJoinQuery[T] {
+func (b *ResultSelectBuilder[T]) With(ctes ...*ast.CTE) SelectJoinQuery[T] {
 	b.stmt.With = append(b.stmt.With, ctes...)
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) From(table *ast.TableSource) ResultSelectWhereQuery[T] {
+func (b *ResultSelectBuilder[T]) From(table *ast.TableSource) SelectWhereQuery[T] {
 	b.stmt.From = table
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) ResultSelectJoinQuery[T] {
+func (b *ResultSelectBuilder[T]) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) SelectJoinQuery[T] {
 	b.stmt.From.Join(joinType, table, expr)
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) Where(expr ast.OfType[bool]) ResultSelectGroupByQuery[T] {
+func (b *ResultSelectBuilder[T]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
 	b.stmt.Where = expr
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) GroupBy(columns ...ast.Expression) ResultSelectHavingQuery[T] {
+func (b *ResultSelectBuilder[T]) GroupBy(columns ...ast.Expression) SelectHavingQuery[T] {
 	b.stmt.GroupBy = columns
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) Having(expr ast.OfType[bool]) ResultSelectOrderByQuery[T] {
+func (b *ResultSelectBuilder[T]) Having(expr ast.OfType[bool]) SelectOrderByQuery[T] {
 	b.stmt.Having = expr
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) OrderBy(orderBy ...*ast.OrderByItem) ResultSelectPagingQuery[T] {
+func (b *ResultSelectBuilder[T]) OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[T] {
 	b.stmt.OrderBy = orderBy
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) Limit(limit int) ResultSelectPagingQuery[T] {
+func (b *ResultSelectBuilder[T]) Limit(limit int) SelectPagingQuery[T] {
 	if b.stmt.Limit == nil {
 		b.stmt.Limit = &ast.LimitClause{}
 	}
@@ -178,7 +172,7 @@ func (b *ResultSelectBuilder[T]) Limit(limit int) ResultSelectPagingQuery[T] {
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) Offset(offset int) ResultSelectPagingQuery[T] {
+func (b *ResultSelectBuilder[T]) Offset(offset int) SelectPagingQuery[T] {
 	if b.stmt.Limit == nil {
 		b.stmt.Limit = &ast.LimitClause{}
 	}
@@ -186,12 +180,7 @@ func (b *ResultSelectBuilder[T]) Offset(offset int) ResultSelectPagingQuery[T] {
 	return b
 }
 
-func (b *ResultSelectBuilder[T]) ToSql() (string, error) {
-	sql, _, err := b.ToSqlArgs()
-	return sql, err
-}
-
-func (b *ResultSelectBuilder[T]) ToSqlArgs() (string, []any, error) {
+func (b *ResultSelectBuilder[T]) ToSql() (string, []any, error) {
 	params := make([]any, 0)
 	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.From.Name()})
 	return sql, params, err
@@ -447,12 +436,7 @@ func (b *InsertBuilder[T, O]) query(records []O) func(ctx context.Context) (int6
 	}
 }
 
-func (b *InsertBuilder[T, O]) ToSql() (string, error) {
-	sql, _, err := b.ToSqlArgs()
-	return sql, err
-}
-
-func (b *InsertBuilder[T, O]) ToSqlArgs() (string, []any, error) {
+func (b *InsertBuilder[T, O]) ToSql() (string, []any, error) {
 	args := make([]any, 0)
 	sql, err := ast.RenderWithContext(b.stmt, &args, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 	return sql, args, err
@@ -598,12 +582,7 @@ func (b *UpdateBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
-func (b *UpdateBuilder[T, O]) ToSql() (string, error) {
-	sql, _, err := b.ToSqlArgs()
-	return sql, err
-}
-
-func (b *UpdateBuilder[T, O]) ToSqlArgs() (string, []any, error) {
+func (b *UpdateBuilder[T, O]) ToSql() (string, []any, error) {
 	params := make([]any, 0, len(b.stmt.SetList)+1)
 	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 	return sql, params, err
@@ -691,12 +670,7 @@ func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
-func (b *DeleteBuilder[T, O]) ToSql() (string, error) {
-	sql, _, err := b.ToSqlArgs()
-	return sql, err
-}
-
-func (b *DeleteBuilder[T, O]) ToSqlArgs() (string, []any, error) {
+func (b *DeleteBuilder[T, O]) ToSql() (string, []any, error) {
 	params := make([]any, 0)
 	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 	return sql, params, err

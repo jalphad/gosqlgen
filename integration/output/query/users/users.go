@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"slices"
 	"time"
+	
 
 	"github.com/google/uuid"
+	
 
 	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 	"github.com/jalphad/gosqlgen/integration/output/query/expr"
-)
+	)
 
 var Into = intoUsersDto{}
 
@@ -19,6 +21,7 @@ type intoUsersDto struct{}
 func Table() *ast.TableSource {
 	return ast.NewTableSource("users")
 }
+
 
 func Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
 	return ast.NewUUIDColumnProjection(
@@ -90,6 +93,7 @@ func IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	)
 }
 
+
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
@@ -101,6 +105,7 @@ func AllColumns() []ast.NamedExpression {
 		IsActive(),
 	}
 }
+
 
 func (intoUsersDto) Id() ast.Projection[models.UsersDto] {
 	return Id()
@@ -130,6 +135,7 @@ func (intoUsersDto) IsActive() ast.Projection[models.UsersDto] {
 	return IsActive()
 }
 
+
 func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	return []ast.Projection[models.UsersDto]{
 		Into.Id(),
@@ -142,6 +148,60 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	}
 }
 
+
+func (intoUsersDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
+	if len(columns) == 0 {
+		columns = defaultCommentsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		func(u *models.UsersDto) *[]models.CommentsDto {
+			return &u.Comments
+		},
+	)
+}
+
+func defaultCommentsColumns() []ast.NamedExpression {
+	return []ast.NamedExpression{
+		ast.NewIntColumnExpression("comments", "id"),
+		ast.NewIntColumnExpression("comments", "post_id"),
+		ast.NewUUIDColumnExpression("comments", "user_id"),
+		ast.NewStringColumnExpression("comments", "content"),
+		ast.NewBoolColumnExpression("comments", "is_approved"),
+		ast.NewTimestampColumnExpression("comments", "created_at"),
+		ast.NewDateColumnExpression("comments", "test_date"),
+	}
+}
+
+func (intoUsersDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
+	if len(columns) == 0 {
+		columns = defaultPostsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		func(u *models.UsersDto) *[]models.PostsDto {
+			return &u.Posts
+		},
+	)
+}
+
+func defaultPostsColumns() []ast.NamedExpression {
+	return []ast.NamedExpression{
+		ast.NewIntColumnExpression("posts", "id"),
+		ast.NewUUIDColumnExpression("posts", "user_id"),
+		ast.NewStringColumnExpression("posts", "title"),
+		ast.NewStringColumnExpression("posts", "content"),
+		ast.NewStringColumnExpression("posts", "status"),
+		ast.NewTimestampColumnExpression("posts", "published_at"),
+		ast.NewIntColumnExpression("posts", "view_count"),
+		ast.NewTimestampColumnExpression("posts", "created_at"),
+		ast.NewTimestampColumnExpression("posts", "updated_at"),
+	}
+}
+
+
+
+
 type Alias struct {
 	*ast.Alias
 }
@@ -151,6 +211,7 @@ func As(name string, columns ...ast.NamedExpression) *Alias {
 		Alias: ast.NewAlias(name, columns...),
 	}
 }
+
 
 func (a *Alias) Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
 	column := Id()
@@ -285,52 +346,3 @@ func (a *Alias) IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	return alias
 }
 
-func (intoUsersDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
-	if len(columns) == 0 {
-		columns = defaultCommentsColumns()
-	}
-	return ast.NewJSONProjection(
-		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
-		func(u *models.UsersDto) *[]models.CommentsDto {
-			return &u.Comments
-		},
-	)
-}
-
-func defaultCommentsColumns() []ast.NamedExpression {
-	return []ast.NamedExpression{
-		ast.NewIntColumnExpression("comments", "id"),
-		ast.NewIntColumnExpression("comments", "post_id"),
-		ast.NewUUIDColumnExpression("comments", "user_id"),
-		ast.NewStringColumnExpression("comments", "content"),
-		ast.NewBoolColumnExpression("comments", "is_approved"),
-		ast.NewTimestampColumnExpression("comments", "created_at"),
-		ast.NewDateColumnExpression("comments", "test_date"),
-	}
-}
-
-func (intoUsersDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
-	if len(columns) == 0 {
-		columns = defaultPostsColumns()
-	}
-	return ast.NewJSONProjection(
-		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
-		func(u *models.UsersDto) *[]models.PostsDto {
-			return &u.Posts
-		},
-	)
-}
-
-func defaultPostsColumns() []ast.NamedExpression {
-	return []ast.NamedExpression{
-		ast.NewIntColumnExpression("posts", "id"),
-		ast.NewUUIDColumnExpression("posts", "user_id"),
-		ast.NewStringColumnExpression("posts", "title"),
-		ast.NewStringColumnExpression("posts", "content"),
-		ast.NewStringColumnExpression("posts", "status"),
-		ast.NewTimestampColumnExpression("posts", "published_at"),
-		ast.NewIntColumnExpression("posts", "view_count"),
-		ast.NewTimestampColumnExpression("posts", "created_at"),
-		ast.NewTimestampColumnExpression("posts", "updated_at"),
-	}
-}

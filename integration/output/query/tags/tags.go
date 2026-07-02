@@ -3,11 +3,14 @@ package tags
 import (
 	"fmt"
 	"slices"
+	
+
+	
 
 	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 	"github.com/jalphad/gosqlgen/integration/output/query/expr"
-)
+	)
 
 var Into = intoTagsDto{}
 
@@ -16,6 +19,7 @@ type intoTagsDto struct{}
 func Table() *ast.TableSource {
 	return ast.NewTableSource("tags")
 }
+
 
 func Id() *ast.IntColumnProjection[models.TagsDto, **int64] {
 	return ast.NewIntColumnProjection(
@@ -47,6 +51,7 @@ func Slug() *ast.StringColumnProjection[models.TagsDto, *string] {
 	)
 }
 
+
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
@@ -54,6 +59,7 @@ func AllColumns() []ast.NamedExpression {
 		Slug(),
 	}
 }
+
 
 func (intoTagsDto) Id() ast.Projection[models.TagsDto] {
 	return Id()
@@ -67,6 +73,7 @@ func (intoTagsDto) Slug() ast.Projection[models.TagsDto] {
 	return Slug()
 }
 
+
 func (intoTagsDto) AllColumns() []ast.Projection[models.TagsDto] {
 	return []ast.Projection[models.TagsDto]{
 		Into.Id(),
@@ -74,6 +81,36 @@ func (intoTagsDto) AllColumns() []ast.Projection[models.TagsDto] {
 		Into.Slug(),
 	}
 }
+
+
+
+
+func (intoTagsDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.TagsDto] {
+	if len(columns) == 0 {
+		columns = defaultPostsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		func(t *models.TagsDto) *[]models.PostsDto {
+			return &t.Posts
+		},
+	)
+}
+
+func defaultPostsColumns() []ast.NamedExpression {
+	return []ast.NamedExpression{
+		ast.NewIntColumnExpression("posts", "id"),
+		ast.NewUUIDColumnExpression("posts", "user_id"),
+		ast.NewStringColumnExpression("posts", "title"),
+		ast.NewStringColumnExpression("posts", "content"),
+		ast.NewStringColumnExpression("posts", "status"),
+		ast.NewTimestampColumnExpression("posts", "published_at"),
+		ast.NewIntColumnExpression("posts", "view_count"),
+		ast.NewTimestampColumnExpression("posts", "created_at"),
+		ast.NewTimestampColumnExpression("posts", "updated_at"),
+	}
+}
+
 
 type Alias struct {
 	*ast.Alias
@@ -84,6 +121,7 @@ func As(name string, columns ...ast.NamedExpression) *Alias {
 		Alias: ast.NewAlias(name, columns...),
 	}
 }
+
 
 func (a *Alias) Id() *ast.IntColumnProjection[models.TagsDto, **int64] {
 	column := Id()
@@ -142,28 +180,3 @@ func (a *Alias) Slug() *ast.StringColumnProjection[models.TagsDto, *string] {
 	return alias
 }
 
-func (intoTagsDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.TagsDto] {
-	if len(columns) == 0 {
-		columns = defaultPostsColumns()
-	}
-	return ast.NewJSONProjection(
-		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
-		func(t *models.TagsDto) *[]models.PostsDto {
-			return &t.Posts
-		},
-	)
-}
-
-func defaultPostsColumns() []ast.NamedExpression {
-	return []ast.NamedExpression{
-		ast.NewIntColumnExpression("posts", "id"),
-		ast.NewUUIDColumnExpression("posts", "user_id"),
-		ast.NewStringColumnExpression("posts", "title"),
-		ast.NewStringColumnExpression("posts", "content"),
-		ast.NewStringColumnExpression("posts", "status"),
-		ast.NewTimestampColumnExpression("posts", "published_at"),
-		ast.NewIntColumnExpression("posts", "view_count"),
-		ast.NewTimestampColumnExpression("posts", "created_at"),
-		ast.NewTimestampColumnExpression("posts", "updated_at"),
-	}
-}
