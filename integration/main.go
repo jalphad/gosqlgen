@@ -16,7 +16,7 @@ func main() {
 func generateModels() {
 	inputPath := "./dump.sql"
 	outputPath := "./output"
-	packagePath := "github.com/jalphad/gosqlgen/output"
+	packagePath := "github.com/jalphad/gosqlgen/integration/output"
 	// Define your SQL schema
 	bts, err := os.ReadFile(inputPath)
 	if err != nil {

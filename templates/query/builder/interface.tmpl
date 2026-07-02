@@ -7,53 +7,52 @@ import (
 	"{{ .PackagePath }}/query/ast"
 )
 
-type ResultSelectQuery[O any] interface {
-	With(ctes ...*ast.CTE) ResultSelectQuery[O]
-	Select(projections ...ast.Projection[O]) ResultSelectJoinQuery[O]
+type SelectQuery[O any] interface {
+	With(ctes ...*ast.CTE) SelectQuery[O]
+	Select(projections ...ast.Projection[O]) SelectJoinQuery[O]
 }
 
-type ResultSelectFromQuery[O any] interface {
-	From(table *ast.TableSource) ResultSelectWhereQuery[O]
-	ResultSelectWhereQuery[O]
+type SelectFromQuery[O any] interface {
+	From(table *ast.TableSource) SelectWhereQuery[O]
+	SelectWhereQuery[O]
 }
 
-type ResultSelectJoinQuery[O any] interface {
-	With(ctes ...*ast.CTE) ResultSelectJoinQuery[O]
-	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) ResultSelectJoinQuery[O]
-	ResultSelectWhereQuery[O]
+type SelectJoinQuery[O any] interface {
+	With(ctes ...*ast.CTE) SelectJoinQuery[O]
+	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) SelectJoinQuery[O]
+	SelectWhereQuery[O]
 }
 
-type ResultSelectWhereQuery[O any] interface {
-	Where(expr ast.OfType[bool]) ResultSelectGroupByQuery[O]
-	ResultSelectGroupByQuery[O]
+type SelectWhereQuery[O any] interface {
+	Where(expr ast.OfType[bool]) SelectGroupByQuery[O]
+	SelectGroupByQuery[O]
 }
 
-type ResultSelectGroupByQuery[O any] interface {
-	GroupBy(columns ...ast.Expression) ResultSelectHavingQuery[O]
-	ResultSelectHavingQuery[O]
+type SelectGroupByQuery[O any] interface {
+	GroupBy(columns ...ast.Expression) SelectHavingQuery[O]
+	SelectHavingQuery[O]
 }
 
-type ResultSelectHavingQuery[O any] interface {
-	Having(expr ast.OfType[bool]) ResultSelectOrderByQuery[O]
-	ResultSelectOrderByQuery[O]
+type SelectHavingQuery[O any] interface {
+	Having(expr ast.OfType[bool]) SelectOrderByQuery[O]
+	SelectOrderByQuery[O]
 }
 
-type ResultSelectOrderByQuery[O any] interface {
-	OrderBy(orderBy ...*ast.OrderByItem) ResultSelectPagingQuery[O]
-	ResultSelectPagingQuery[O]
+type SelectOrderByQuery[O any] interface {
+	OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[O]
+	SelectPagingQuery[O]
 }
 
-type ResultSelectPagingQuery[O any] interface {
-	Limit(limit int) ResultSelectPagingQuery[O]
-	Offset(offset int) ResultSelectPagingQuery[O]
-	ResultSelectFinalizeQuery[O]
+type SelectPagingQuery[O any] interface {
+	Limit(limit int) SelectPagingQuery[O]
+	Offset(offset int) SelectPagingQuery[O]
+	SelectFinalizeQuery[O]
 }
 
-type ResultSelectFinalizeQuery[O any] interface {
+type SelectFinalizeQuery[O any] interface {
 	Find(ctx context.Context) ([]O, error)
 	FindOne(ctx context.Context) (O, error)
-	ToSql() (string, error)
-	ToSqlArgs() (string, []any, error)
+	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
@@ -82,8 +81,7 @@ type InsertValuesQuery[T any, O DTO[T]] interface {
 
 type InsertFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) error
-	ToSql() (string, error)
-	ToSqlArgs() (string, []any, error)
+	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
@@ -113,8 +111,7 @@ type UpdateReturningQuery[T any, O DTO[T]] interface {
 
 type UpdateFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(context.Context) (int64, []T, error)
-	ToSql() (string, error)
-	ToSqlArgs() (string, []any, error)
+	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
@@ -143,8 +140,7 @@ type DeleteReturningQuery[T any, O DTO[T]] interface {
 
 type DeleteFinalizeQuery[T any, O DTO[T]] interface {
 	Exec(ctx context.Context) (int64, []T, error)
-	ToSql() (string, error)
-	ToSqlArgs() (string, []any, error)
+	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
