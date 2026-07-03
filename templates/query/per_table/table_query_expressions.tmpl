@@ -35,6 +35,12 @@ var Into = into{{ .StructName }}{}
 
 type into{{ .StructName }} struct{}
 
+type for{{ .StructName }}[E models.Exports{{ .StructName }}[T], T any] struct{}
+
+func For[E models.Exports{{ .StructName }}[T], T any]() for{{ .StructName }}[E, T] {
+	return for{{ .StructName }}[E, T]{}
+}
+
 func Table() *ast.TableSource {
 	return ast.NewTableSource("{{ .TableName }}")
 }
@@ -73,6 +79,28 @@ func (into{{ .StructName }}) AllColumns() []ast.Projection[models.{{ .StructName
 	}
 }
 
+{{ range .Fields }}
+func (for{{ $.StructName }}[E, T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
+	return ast.New{{ toProjectionType .GoType .SQLType }}(
+		"{{ $.TableName }}",
+		"{{ .ColumnName }}",
+		func(t *T) {{ scanDestType .GoType }} {
+			e := E(t)
+			dto := e.Get{{ $.StructName }}()
+			return &dto.{{ .FieldName }}
+		},
+	)
+}
+{{ end }}
+
+func (f for{{ .StructName }}[E, T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+	{{- range .Fields }}
+		f.{{ .FieldName }}(),
+	{{- end }}
+	}
+}
+
 {{ range .ReverseRelFields }}
 {{- $rel := . }}
 func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[models.{{ $.StructName }}] {
@@ -97,6 +125,24 @@ func default{{ .FieldName }}Columns() []ast.NamedExpression {
 }
 {{ end }}
 
+{{ range .ReverseRelFields }}
+{{- $rel := . }}
+func (for{{ $.StructName }}[E, T]) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = default{{ .FieldName }}Columns()
+	}
+	{{- $filter := filterColumn .FromColumns .FromPKField .FKColumn }}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
+		func(t *T) *{{ modelType .GoType }} {
+			e := E(t)
+			dto := e.Get{{ $.StructName }}()
+			return &dto.{{ .FieldName }}
+		},
+	)
+}
+{{ end }}
+
 {{ range .ManyToManyFields }}
 {{- $rel := . }}
 func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[models.{{ $.StructName }}] {
@@ -118,6 +164,24 @@ func default{{ .FieldName }}Columns() []ast.NamedExpression {
 		ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $rel.ReferencedTable }}", "{{ .ColumnName }}"),
 	{{- end }}
 	}
+}
+{{ end }}
+
+{{ range .ManyToManyFields }}
+{{- $rel := . }}
+func (for{{ $.StructName }}[E, T]) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = default{{ .FieldName }}Columns()
+	}
+	{{- $filter := filterColumn .ReferencedColumns .ReferencedPKField .RightFKColumn }}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
+		func(t *T) *{{ modelType .GoType }} {
+			e := E(t)
+			dto := e.Get{{ $.StructName }}()
+			return &dto.{{ .FieldName }}
+		},
+	)
 }
 {{ end }}
 

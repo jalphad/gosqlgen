@@ -31,6 +31,15 @@ var (
 	resource *dockertest.Resource
 )
 
+type userCountRow struct {
+	models.UsersDto
+	Count int64
+}
+
+func (u *userCountRow) GetUsersDto() *models.UsersDto {
+	return &u.UsersDto
+}
+
 func TestMain(m *testing.M) {
 	var err error
 
@@ -424,6 +433,28 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, results, 1)
 		assert.EqualValues(t, 3, results[0].Count)
+	})
+
+	t.Run("Count With Embedded DTO", func(t *testing.T) {
+		count := q.Into(q.Count(users.Id()).As(ast.NewAlias("count")), func(r *userCountRow) *int64 { return &r.Count })
+		user := users.For[*userCountRow]()
+		results, err := NewQuery[userCountRow](pgxPool, users.Table()).
+			Select(user.Id(), user.Username(), user.Email(), count).
+			Where(users.IsActive().IsTrue()).
+			GroupBy(users.Id(), users.Username(), users.Email()).
+			OrderBy(q.Asc(users.Username())).
+			Find(context.Background())
+
+		require.NoError(t, err)
+		require.Len(t, results, 3)
+		assert.Equal(t, "alice", results[0].Username)
+		assert.Equal(t, "bob", results[1].Username)
+		assert.Equal(t, "david", results[2].Username)
+		for _, result := range results {
+			require.NotNil(t, result.Id)
+			assert.NotEmpty(t, result.Email)
+			assert.EqualValues(t, 1, result.Count)
+		}
 	})
 }
 

@@ -94,6 +94,11 @@ func ({{ .ReceiverName }} *{{ .StructName }}) TableName() string {
 	return "{{ .TableName }}"
 }
 
+type Exports{{ .StructName }}[T any] interface {
+	*T
+	Get{{ .StructName }}() *{{ .StructName }}
+}
+
 {{- if needsCustomUnmarshal .Fields }}
 func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 	type {{ .StructName }}_ {{ .StructName }}
