@@ -10,36 +10,44 @@ import (
 	"{{ .PackagePath }}/query/ast"
 )
 
-type DTO[T any] interface {
-	*T
-	TableName() string
-}
-
-type ResultTableBuilder[T any] struct {
+// KnownTableBuilder is the builder for known tables
+type KnownTableBuilder[T any] struct {
 	pool  *pgxpool.Pool
 	tx    pgx.Tx
 	table *ast.TableSource
 	with  []*ast.CTE
 }
 
-func NewResultTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *ResultTableBuilder[T] {
-	return &ResultTableBuilder[T]{
+func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *KnownTableBuilder[T] {
+	return &KnownTableBuilder[T]{
 		pool:  pool,
 		table: table,
 	}
 }
 
-func (b *ResultTableBuilder[T]) WithTx(tx pgx.Tx) *ResultTableBuilder[T] {
+func (b *KnownTableBuilder[T]) WithTx(tx pgx.Tx) KnownTableStartQuery[T] {
 	b.tx = tx
 	return b
 }
 
-func (b *ResultTableBuilder[T]) With(ctes ...*ast.CTE) SelectQuery[T] {
+func (b *KnownTableBuilder[T]) With(ctes ...*ast.CTE) KnownTableStartQuery[T] {
 	b.with = append(b.with, ctes...)
 	return b
 }
 
-func (b *ResultTableBuilder[T]) Select(projections ...ast.Projection[T]) SelectJoinQuery[T] {
+func (b *KnownTableBuilder[T]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T] {
+	return &InsertBuilder[T]{
+		pool: b.pool,
+		tx:   b.tx,
+		stmt: &ast.InsertStatement{
+			With:  b.with,
+			Table: b.table.Name(),
+			Into:  columns,
+		},
+	}
+}
+
+func (b *KnownTableBuilder[T]) Select(projections ...ast.Projection[T]) SelectJoinQuery[T] {
 	selectList := make([]ast.NamedExpression, 0, len(projections))
 	for _, projection := range projections {
 		selectList = append(selectList, projection)
@@ -56,63 +64,25 @@ func (b *ResultTableBuilder[T]) Select(projections ...ast.Projection[T]) SelectJ
 	}
 }
 
-// KnownTableBuilder is the builder for known tables
-type KnownTableBuilder[T any, O DTO[T]] struct {
-	pool      *pgxpool.Pool
-	tx        pgx.Tx
-	tableName string
-	with      []*ast.CTE
-}
-
-func NewKnownTableBuilder[T any, O DTO[T]](pool *pgxpool.Pool) *KnownTableBuilder[T, O] {
-	var dto O
-	return &KnownTableBuilder[T, O]{
-		pool:      pool,
-		tableName: dto.TableName(),
-	}
-}
-
-func (b *KnownTableBuilder[T, O]) WithTx(tx pgx.Tx) KnownTableStartQuery[T, O] {
-	b.tx = tx
-	return b
-}
-
-func (b *KnownTableBuilder[T, O]) With(ctes ...*ast.CTE) KnownTableStartQuery[T, O] {
-	b.with = append(b.with, ctes...)
-	return b
-}
-
-func (b *KnownTableBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
-	return &InsertBuilder[T, O]{
-		pool: b.pool,
-		tx:   b.tx,
-		stmt: &ast.InsertStatement{
-			With:  b.with,
-			Table: b.tableName,
-			Into:  columns,
-		},
-	}
-}
-
-func (b *KnownTableBuilder[T, O]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T, O] {
-	return &UpdateBuilder[T, O]{
+func (b *KnownTableBuilder[T]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T] {
+	return &UpdateBuilder[T]{
 		pool: b.pool,
 		tx:   b.tx,
 		stmt: &ast.UpdateStatement{
 			With:    b.with,
-			Table:   b.tableName,
+			Table:   b.table.Name(),
 			SetList: toSet,
 		},
 	}
 }
 
-func (b *KnownTableBuilder[T, O]) Delete() DeleteUsingQuery[T, O] {
-	return &DeleteBuilder[T, O]{
+func (b *KnownTableBuilder[T]) Delete() DeleteUsingQuery[T] {
+	return &DeleteBuilder[T]{
 		pool: b.pool,
 		tx:   b.tx,
 		stmt: &ast.DeleteStatement{
 			With:  b.with,
-			Table: b.tableName,
+			Table: b.table.Name(),
 		},
 	}
 }
@@ -283,7 +253,7 @@ func assignProjections(bindings []ast.ScanBinding) error {
 	return nil
 }
 
-type InsertBuilder[T any, O DTO[T]] struct {
+type InsertBuilder[T any] struct {
 	pool      *pgxpool.Pool
 	tx        pgx.Tx
 	stmt      *ast.InsertStatement
@@ -291,35 +261,35 @@ type InsertBuilder[T any, O DTO[T]] struct {
 	execFn    func(ctx context.Context) (int64, error)
 }
 
-func (b *InsertBuilder[T, O]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O] {
+func (b *InsertBuilder[T]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T] {
 	b.stmt.Into = append(b.stmt.Into, columns...)
 	return b
 }
 
-func (b *InsertBuilder[T, O]) With(ctes ...*ast.CTE) InsertQuery[T, O] {
+func (b *InsertBuilder[T]) With(ctes ...*ast.CTE) InsertQuery[T] {
 	b.stmt.With = append(b.stmt.With, ctes...)
 	return b
 }
 
-func (b *InsertBuilder[T, O]) OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T, O] {
+func (b *InsertBuilder[T]) OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T] {
 	b.stmt.OnConflict = &ast.Conflict{
 		Columns: columns,
 	}
 	return b
 }
 
-func (b *InsertBuilder[T, O]) Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T, O] {
+func (b *InsertBuilder[T]) Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T] {
 	b.stmt.OnConflict.Action = expr
 	return b
 }
 
-func (b *InsertBuilder[T, O]) Returning(projections ...ast.Projection[T]) InsertValuesQuery[T, O] {
+func (b *InsertBuilder[T]) Returning(projections ...ast.Projection[T]) InsertValuesQuery[T] {
 	b.returning = projections
 	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
 }
 
-func (b *InsertBuilder[T, O]) Values(values ...O) InsertFinalizeQuery[T, O] {
+func (b *InsertBuilder[T]) Values(values ...*T) InsertFinalizeQuery[T] {
 	columns := b.stmt.Into
 	projections := make([]ast.Projection[T], 0, len(columns))
 	for _, column := range columns {
@@ -351,12 +321,12 @@ func (b *InsertBuilder[T, O]) Values(values ...O) InsertFinalizeQuery[T, O] {
 }
 
 // Exec inserts a new record
-func (b *InsertBuilder[T, O]) Exec(ctx context.Context) error {
+func (b *InsertBuilder[T]) Exec(ctx context.Context) error {
 	_, err := b.execFn(ctx)
 	return err
 }
 
-func (b *InsertBuilder[T, O]) exec() func(ctx context.Context) (int64, error) {
+func (b *InsertBuilder[T]) exec() func(ctx context.Context) (int64, error) {
 	return func(ctx context.Context) (int64, error) {
 		args := make([]any, 0)
 		qry := ast.Render(b.stmt, &args)
@@ -373,7 +343,7 @@ func (b *InsertBuilder[T, O]) exec() func(ctx context.Context) (int64, error) {
 	}
 }
 
-func (b *InsertBuilder[T, O]) queryRow(record O) func(ctx context.Context) (int64, error) {
+func (b *InsertBuilder[T]) queryRow(record *T) func(ctx context.Context) (int64, error) {
 	return func(ctx context.Context) (int64, error) {
 		args := make([]any, 0)
 		queryCtx := &ast.QueryContext{
@@ -401,7 +371,7 @@ func (b *InsertBuilder[T, O]) queryRow(record O) func(ctx context.Context) (int6
 	}
 }
 
-func (b *InsertBuilder[T, O]) query(records []O) func(ctx context.Context) (int64, error) {
+func (b *InsertBuilder[T]) query(records []*T) func(ctx context.Context) (int64, error) {
 	return func(ctx context.Context) (int64, error) {
 		args := make([]any, 0)
 		queryCtx := &ast.QueryContext{
@@ -436,18 +406,18 @@ func (b *InsertBuilder[T, O]) query(records []O) func(ctx context.Context) (int6
 	}
 }
 
-func (b *InsertBuilder[T, O]) ToSql() (string, []any, error) {
+func (b *InsertBuilder[T]) ToSql() (string, []any, error) {
 	args := make([]any, 0)
 	sql, err := ast.RenderWithContext(b.stmt, &args, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 	return sql, args, err
 }
 
-func (b *InsertBuilder[T, O]) Statement() ast.SqlStatement {
+func (b *InsertBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
 }
 
 // ExecBatch inserts multiple records efficiently using pgx batch
-func (b *InsertBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error {
+func (b *InsertBuilder[T]) ExecBatch(ctx context.Context, records []T) error {
 	if len(records) == 0 {
 		return nil
 	}
@@ -490,15 +460,15 @@ func (b *InsertBuilder[T, O]) ExecBatch(ctx context.Context, records []T) error 
 	return br.Close()
 }
 
-type UpdateBuilder[T any, O DTO[T]] struct {
+type UpdateBuilder[T any] struct {
 	pool      *pgxpool.Pool
 	tx        pgx.Tx
 	stmt      *ast.UpdateStatement
 	returning []ast.Projection[T]
 }
 
-func NewUpdateBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *UpdateBuilder[T, O] {
-	return &UpdateBuilder[T, O]{
+func NewUpdateBuilder[T any](pool *pgxpool.Pool, table string) *UpdateBuilder[T] {
+	return &UpdateBuilder[T]{
 		pool: pool,
 		stmt: &ast.UpdateStatement{
 			Table: table,
@@ -506,27 +476,27 @@ func NewUpdateBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *Update
 	}
 }
 
-func (b *UpdateBuilder[T, O]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T, O] {
+func (b *UpdateBuilder[T]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T] {
 	b.stmt.SetList = toSet
 	return b
 }
 
-func (b *UpdateBuilder[T, O]) With(ctes ...*ast.CTE) UpdateQuery[T, O] {
+func (b *UpdateBuilder[T]) With(ctes ...*ast.CTE) UpdateQuery[T] {
 	b.stmt.With = append(b.stmt.With, ctes...)
 	return b
 }
 
-func (b *UpdateBuilder[T, O]) From(expr ast.NamedTableExpression) UpdateWhereQuery[T, O] {
+func (b *UpdateBuilder[T]) From(expr ast.NamedTableExpression) UpdateWhereQuery[T] {
 	b.stmt.From = expr
 	return b
 }
 
-func (b *UpdateBuilder[T, O]) Where(expr ast.OfType[bool]) UpdateReturningQuery[T, O] {
+func (b *UpdateBuilder[T]) Where(expr ast.OfType[bool]) UpdateReturningQuery[T] {
 	b.stmt.Where = expr
 	return b
 }
 
-func (b *UpdateBuilder[T, O]) Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T, O] {
+func (b *UpdateBuilder[T]) Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T] {
 	b.returning = projections
 	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
@@ -539,7 +509,7 @@ func (b *UpdateBuilder[T, O]) Returning(projections ...ast.Projection[T]) Update
 //
 // Note that it's possible to affect multiple rows in a single query. In this case,
 // values provided through 'update' are applied to all rows.
-func (b *UpdateBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
+func (b *UpdateBuilder[T]) Exec(ctx context.Context) (int64, []T, error) {
 	args := make([]any, 0, len(b.stmt.SetList)+1) // pre-allocate provided values to set + 1 where clause
 	queryCtx := &ast.QueryContext{
 		PrimaryTable: b.stmt.Table,
@@ -582,25 +552,25 @@ func (b *UpdateBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
-func (b *UpdateBuilder[T, O]) ToSql() (string, []any, error) {
+func (b *UpdateBuilder[T]) ToSql() (string, []any, error) {
 	params := make([]any, 0, len(b.stmt.SetList)+1)
 	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 	return sql, params, err
 }
 
-func (b *UpdateBuilder[T, O]) Statement() ast.SqlStatement {
+func (b *UpdateBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
 }
 
-type DeleteBuilder[T any, O DTO[T]] struct {
+type DeleteBuilder[T any] struct {
 	pool      *pgxpool.Pool
 	tx        pgx.Tx
 	stmt      *ast.DeleteStatement
 	returning []ast.Projection[T]
 }
 
-func NewDeleteBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *DeleteBuilder[T, O] {
-	return &DeleteBuilder[T, O]{
+func NewDeleteBuilder[T any](pool *pgxpool.Pool, table string) *DeleteBuilder[T] {
+	return &DeleteBuilder[T]{
 		pool: pool,
 		stmt: &ast.DeleteStatement{
 			Table: table,
@@ -608,28 +578,28 @@ func NewDeleteBuilder[T any, O DTO[T]](pool *pgxpool.Pool, table string) *Delete
 	}
 }
 
-func (b *DeleteBuilder[T, O]) Delete(from string) DeleteUsingQuery[T, O] {
+func (b *DeleteBuilder[T]) Delete(from string) DeleteUsingQuery[T] {
 	b.stmt.Table = from
 	return b
 }
 
-func (b *DeleteBuilder[T, O]) Using(tables ...ast.NamedExpression) DeleteWhereQuery[T, O] {
+func (b *DeleteBuilder[T]) Using(tables ...ast.NamedExpression) DeleteWhereQuery[T] {
 	b.stmt.Using = tables
 	return b
 }
 
-func (b *DeleteBuilder[T, O]) Where(expr ast.OfType[bool]) DeleteReturningQuery[T, O] {
+func (b *DeleteBuilder[T]) Where(expr ast.OfType[bool]) DeleteReturningQuery[T] {
 	b.stmt.Where = expr
 	return b
 }
 
-func (b *DeleteBuilder[T, O]) Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T, O] {
+func (b *DeleteBuilder[T]) Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T] {
 	b.returning = projections
 	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
 }
 
-func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
+func (b *DeleteBuilder[T]) Exec(ctx context.Context) (int64, []T, error) {
 	args := make([]any, 0)
 	queryCtx := &ast.QueryContext{}
 	query, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
@@ -670,12 +640,12 @@ func (b *DeleteBuilder[T, O]) Exec(ctx context.Context) (int64, []T, error) {
 	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
-func (b *DeleteBuilder[T, O]) ToSql() (string, []any, error) {
+func (b *DeleteBuilder[T]) ToSql() (string, []any, error) {
 	params := make([]any, 0)
 	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.Table})
 	return sql, params, err
 }
 
-func (b *DeleteBuilder[T, O]) Statement() ast.SqlStatement {
+func (b *DeleteBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
 }

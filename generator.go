@@ -290,7 +290,11 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 
 		// Add to files map with query package path
 		filename := fmt.Sprintf("query/%s/%s.go", table.Name, table.Name)
-		files[filename] = content
+		formatted, err := g.format(filename, []byte(content))
+		if err != nil {
+			return fmt.Errorf("failed to format %s: %w", filename, err)
+		}
+		files[filename] = string(formatted)
 	}
 
 	return nil

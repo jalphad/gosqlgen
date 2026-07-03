@@ -7,8 +7,7 @@ import (
 	"{{ .PackagePath }}/query/ast"
 )
 
-type SelectQuery[O any] interface {
-	With(ctes ...*ast.CTE) SelectQuery[O]
+type KnownTableSelectQuery[O any] interface {
 	Select(projections ...ast.Projection[O]) SelectJoinQuery[O]
 }
 
@@ -56,98 +55,99 @@ type SelectFinalizeQuery[O any] interface {
 	Statement() ast.SqlStatement
 }
 
-type InsertQuery[T any, O DTO[T]] interface {
-	Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T, O]
+type InsertQuery[T any] interface {
+	Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T]
 }
 
-type InsertOnConflictQuery[T any, O DTO[T]] interface {
-	OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T, O]
-	InsertReturningQuery[T, O]
+type InsertOnConflictQuery[T any] interface {
+	OnConflict(columns ...ast.NamedExpression) InsertOnConflictDoQuery[T]
+	InsertReturningQuery[T]
 }
 
-type InsertOnConflictDoQuery[T any, O DTO[T]] interface {
-	Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T, O]
-	InsertReturningQuery[T, O]
+type InsertOnConflictDoQuery[T any] interface {
+	Do(expr ast.OnConflictDoExpression) InsertReturningQuery[T]
+	InsertReturningQuery[T]
 }
 
-type InsertReturningQuery[T any, O DTO[T]] interface {
-	Returning(projections ...ast.Projection[T]) InsertValuesQuery[T, O]
-	InsertValuesQuery[T, O]
+type InsertReturningQuery[T any] interface {
+	Returning(projections ...ast.Projection[T]) InsertValuesQuery[T]
+	InsertValuesQuery[T]
 }
 
-type InsertValuesQuery[T any, O DTO[T]] interface {
-	Values(values ...O) InsertFinalizeQuery[T, O]
+type InsertValuesQuery[T any] interface {
+	Values(values ...*T) InsertFinalizeQuery[T]
 }
 
-type InsertFinalizeQuery[T any, O DTO[T]] interface {
+type InsertFinalizeQuery[T any] interface {
 	Exec(context.Context) error
 	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
-type UpdateQuery[T any, O DTO[T]] interface {
-	Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T, O]
+type UpdateQuery[T any] interface {
+	Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T]
 }
 
-type UpdateFromQuery[T any, O DTO[T]] interface {
-	From(table ast.NamedTableExpression) UpdateWhereQuery[T, O]
-	UpdateWhereQuery[T, O]
+type UpdateFromQuery[T any] interface {
+	From(table ast.NamedTableExpression) UpdateWhereQuery[T]
+	UpdateWhereQuery[T]
 }
 
-type UpdateJoinQuery[T any, O DTO[T]] interface {
-	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) UpdateJoinQuery[T, O]
-	UpdateWhereQuery[T, O]
+type UpdateJoinQuery[T any] interface {
+	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) UpdateJoinQuery[T]
+	UpdateWhereQuery[T]
 }
 
-type UpdateWhereQuery[T any, O DTO[T]] interface {
-	Where(expr ast.OfType[bool]) UpdateReturningQuery[T, O]
-	UpdateReturningQuery[T, O]
+type UpdateWhereQuery[T any] interface {
+	Where(expr ast.OfType[bool]) UpdateReturningQuery[T]
+	UpdateReturningQuery[T]
 }
 
-type UpdateReturningQuery[T any, O DTO[T]] interface {
-	Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T, O]
-	UpdateFinalizeQuery[T, O]
+type UpdateReturningQuery[T any] interface {
+	Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T]
+	UpdateFinalizeQuery[T]
 }
 
-type UpdateFinalizeQuery[T any, O DTO[T]] interface {
+type UpdateFinalizeQuery[T any] interface {
 	Exec(context.Context) (int64, []T, error)
 	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
-type DeleteQuery[T any, O DTO[T]] interface {
-	Delete(from string) DeleteUsingQuery[T, O]
+type DeleteQuery[T any] interface {
+	Delete(from string) DeleteUsingQuery[T]
 }
 
-type KnownTableDeleteQuery[T any, O DTO[T]] interface {
-	Delete() DeleteUsingQuery[T, O]
+type KnownTableDeleteQuery[T any] interface {
+	Delete() DeleteUsingQuery[T]
 }
 
-type DeleteUsingQuery[T any, O DTO[T]] interface {
-	Using(tables ...ast.NamedExpression) DeleteWhereQuery[T, O]
-	DeleteWhereQuery[T, O]
+type DeleteUsingQuery[T any] interface {
+	Using(tables ...ast.NamedExpression) DeleteWhereQuery[T]
+	DeleteWhereQuery[T]
 }
 
-type DeleteWhereQuery[T any, O DTO[T]] interface {
-	Where(expr ast.OfType[bool]) DeleteReturningQuery[T, O]
-	DeleteReturningQuery[T, O]
+type DeleteWhereQuery[T any] interface {
+	Where(expr ast.OfType[bool]) DeleteReturningQuery[T]
+	DeleteReturningQuery[T]
 }
 
-type DeleteReturningQuery[T any, O DTO[T]] interface {
-	Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T, O]
-	DeleteFinalizeQuery[T, O]
+type DeleteReturningQuery[T any] interface {
+	Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T]
+	DeleteFinalizeQuery[T]
 }
 
-type DeleteFinalizeQuery[T any, O DTO[T]] interface {
+type DeleteFinalizeQuery[T any] interface {
 	Exec(ctx context.Context) (int64, []T, error)
 	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
 
-type KnownTableStartQuery[T any, O DTO[T]] interface {
-	With(ctes ...*ast.CTE) KnownTableStartQuery[T, O]
-	WithTx(tx pgx.Tx) KnownTableStartQuery[T, O]
-	KnownTableDeleteQuery[T, O]
-	InsertQuery[T, O]
-	UpdateQuery[T, O]
+type KnownTableStartQuery[T any] interface {
+	With(ctes ...*ast.CTE) KnownTableStartQuery[T]
+	WithTx(tx pgx.Tx) KnownTableStartQuery[T]
+	KnownTableSelectQuery[T]
+	KnownTableDeleteQuery[T]
+	InsertQuery[T]
+	UpdateQuery[T]
 }

@@ -1,28 +1,35 @@
 package {{ .TableName }}
 
 import (
-	{{ if usesType .Fields "json.RawMessage" -}}
+	{{- if usesType .Fields "json.RawMessage" }}
 	"encoding/json"
-	{{ end -}}
+	{{- end }}
 	"fmt"
 	"slices"
-	{{ if usesType .Fields "time.Time" -}}
+	{{- if usesType .Fields "time.Time" }}
 	"time"
-	{{ end }}
+	{{- end }}
 
-	{{ if usesType .Fields "uuid.UUID" -}}
+	{{- if usesType .Fields "uuid.UUID" }}
 	"github.com/google/uuid"
-	{{ end -}}
-	{{ if usesType .Fields "pgtype.Numeric" -}}
+	{{- end }}
+	{{- if usesType .Fields "pgtype.Numeric" }}
 	"github.com/jackc/pgx/v5/pgtype"
-	{{ end }}
+	{{- end }}
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"{{ .PackagePath }}/models"
 	"{{ .PackagePath }}/query/ast"
-	{{ if or .ReverseRelFields .ManyToManyFields -}}
+	"{{ .PackagePath }}/query/builder"
+	{{- if or .ReverseRelFields .ManyToManyFields }}
 	"{{ .PackagePath }}/query/expr"
-	{{ end -}}
+	{{- end }}
 )
+
+// NewQuery returns a query builder for {{ .TableName }}
+func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.{{ .StructName }}] {
+	return builder.NewKnownTableBuilder[models.{{ .StructName }}](pool, Table())
+}
 
 var Into = into{{ .StructName }}{}
 

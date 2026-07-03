@@ -14,8 +14,8 @@ import (
 {{ range $table := .Tables }}
 {{- $tablePkg := $table.PackageName }}
 // {{ $table.StructName }}InsertOne inserts a single {{ $table.TableName }} DTO
-func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
-	return builder.NewKnownTableBuilder[models.{{ $table.StructName }}](pool).
+func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}] {
+	return {{ $tablePkg }}.NewQuery(pool).
 		Insert(
 			{{- range $table.InsertColumns }}
 			{{ $tablePkg }}.{{ .FieldName }}(),
@@ -32,8 +32,8 @@ func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.
 }
 
 // {{ $table.StructName }}InsertMany inserts multiple {{ $table.TableName }} DTOs
-func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
-	return builder.NewKnownTableBuilder[models.{{ $table.StructName }}](pool).
+func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}] {
+	return {{ $tablePkg }}.NewQuery(pool).
 		Insert(
 			{{- range $table.InsertColumns }}
 			{{ $tablePkg }}.{{ .FieldName }}(),
@@ -50,8 +50,8 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 }
 {{ end }}
 
-func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return builder.NewKnownTableBuilder[models.UsersDto](pool).
+func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto] {
+	return users.NewQuery(pool).
 		Update(
 			SetTo(dto,
 				users.Username(),
@@ -61,14 +61,14 @@ func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalize
 		).Where(users.Id().Eq(Val(*dto.Id)))
 }
 
-func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
+func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto] {
 	dtos := models.UsersDtos(in)
 	v := ast.NewAlias("v",
 		users.Id(),
 		users.Username(),
 		users.Email(),
 		users.FullName())
-	return builder.NewKnownTableBuilder[models.UsersDto](pool).
+	return users.NewQuery(pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
 			Set(users.Email()).To(Rel(v, users.Email())),
@@ -85,8 +85,8 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 		Where(users.Id().Eq(Rel(v, users.Id())))
 }
 
-func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return builder.NewKnownTableBuilder[models.UsersDto](pool).
+func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto] {
+	return users.NewQuery(pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }
