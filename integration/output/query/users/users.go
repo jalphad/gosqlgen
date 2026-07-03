@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"slices"
 	"time"
-	
 
 	"github.com/google/uuid"
-	
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/output/query/builder"
 	"github.com/jalphad/gosqlgen/integration/output/query/expr"
-	)
+)
+
+// NewQuery returns a query builder for users
+func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto] {
+	return builder.NewKnownTableBuilder[models.UsersDto](pool, Table())
+}
 
 var Into = intoUsersDto{}
 
@@ -21,7 +26,6 @@ type intoUsersDto struct{}
 func Table() *ast.TableSource {
 	return ast.NewTableSource("users")
 }
-
 
 func Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
 	return ast.NewUUIDColumnProjection(
@@ -93,7 +97,6 @@ func IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	)
 }
 
-
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
@@ -105,7 +108,6 @@ func AllColumns() []ast.NamedExpression {
 		IsActive(),
 	}
 }
-
 
 func (intoUsersDto) Id() ast.Projection[models.UsersDto] {
 	return Id()
@@ -135,7 +137,6 @@ func (intoUsersDto) IsActive() ast.Projection[models.UsersDto] {
 	return IsActive()
 }
 
-
 func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	return []ast.Projection[models.UsersDto]{
 		Into.Id(),
@@ -147,7 +148,6 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 		Into.IsActive(),
 	}
 }
-
 
 func (intoUsersDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
 	if len(columns) == 0 {
@@ -199,9 +199,6 @@ func defaultPostsColumns() []ast.NamedExpression {
 	}
 }
 
-
-
-
 type Alias struct {
 	*ast.Alias
 }
@@ -211,7 +208,6 @@ func As(name string, columns ...ast.NamedExpression) *Alias {
 		Alias: ast.NewAlias(name, columns...),
 	}
 }
-
 
 func (a *Alias) Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
 	column := Id()
@@ -345,4 +341,3 @@ func (a *Alias) IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	alias.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
-

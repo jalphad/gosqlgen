@@ -3,13 +3,17 @@ package post_tags
 import (
 	"fmt"
 	"slices"
-	
 
-	
-
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	)
+	"github.com/jalphad/gosqlgen/integration/output/query/builder"
+)
+
+// NewQuery returns a query builder for post_tags
+func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostTagsDto] {
+	return builder.NewKnownTableBuilder[models.PostTagsDto](pool, Table())
+}
 
 var Into = intoPostTagsDto{}
 
@@ -18,7 +22,6 @@ type intoPostTagsDto struct{}
 func Table() *ast.TableSource {
 	return ast.NewTableSource("post_tags")
 }
-
 
 func PostId() *ast.IntColumnProjection[models.PostTagsDto, *int64] {
 	return ast.NewIntColumnProjection(
@@ -40,14 +43,12 @@ func TagId() *ast.IntColumnProjection[models.PostTagsDto, *int64] {
 	)
 }
 
-
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		PostId(),
 		TagId(),
 	}
 }
-
 
 func (intoPostTagsDto) PostId() ast.Projection[models.PostTagsDto] {
 	return PostId()
@@ -57,17 +58,12 @@ func (intoPostTagsDto) TagId() ast.Projection[models.PostTagsDto] {
 	return TagId()
 }
 
-
 func (intoPostTagsDto) AllColumns() []ast.Projection[models.PostTagsDto] {
 	return []ast.Projection[models.PostTagsDto]{
 		Into.PostId(),
 		Into.TagId(),
 	}
 }
-
-
-
-
 
 type Alias struct {
 	*ast.Alias
@@ -78,7 +74,6 @@ func As(name string, columns ...ast.NamedExpression) *Alias {
 		Alias: ast.NewAlias(name, columns...),
 	}
 }
-
 
 func (a *Alias) PostId() *ast.IntColumnProjection[models.PostTagsDto, *int64] {
 	column := PostId()
@@ -117,4 +112,3 @@ func (a *Alias) TagId() *ast.IntColumnProjection[models.PostTagsDto, *int64] {
 	alias.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
-

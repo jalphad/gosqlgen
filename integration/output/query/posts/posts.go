@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"slices"
 	"time"
-	
 
 	"github.com/google/uuid"
-	
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/output/query/builder"
 	"github.com/jalphad/gosqlgen/integration/output/query/expr"
-	)
+)
+
+// NewQuery returns a query builder for posts
+func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostsDto] {
+	return builder.NewKnownTableBuilder[models.PostsDto](pool, Table())
+}
 
 var Into = intoPostsDto{}
 
@@ -21,7 +26,6 @@ type intoPostsDto struct{}
 func Table() *ast.TableSource {
 	return ast.NewTableSource("posts")
 }
-
 
 func Id() *ast.IntColumnProjection[models.PostsDto, **int64] {
 	return ast.NewIntColumnProjection(
@@ -113,7 +117,6 @@ func UpdatedAt() *ast.TimestampColumnProjection[models.PostsDto, **time.Time] {
 	)
 }
 
-
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
@@ -127,7 +130,6 @@ func AllColumns() []ast.NamedExpression {
 		UpdatedAt(),
 	}
 }
-
 
 func (intoPostsDto) Id() ast.Projection[models.PostsDto] {
 	return Id()
@@ -165,7 +167,6 @@ func (intoPostsDto) UpdatedAt() ast.Projection[models.PostsDto] {
 	return UpdatedAt()
 }
 
-
 func (intoPostsDto) AllColumns() []ast.Projection[models.PostsDto] {
 	return []ast.Projection[models.PostsDto]{
 		Into.Id(),
@@ -179,7 +180,6 @@ func (intoPostsDto) AllColumns() []ast.Projection[models.PostsDto] {
 		Into.UpdatedAt(),
 	}
 }
-
 
 func (intoPostsDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.PostsDto] {
 	if len(columns) == 0 {
@@ -205,8 +205,6 @@ func defaultCommentsColumns() []ast.NamedExpression {
 	}
 }
 
-
-
 func (intoPostsDto) Tags(columns ...ast.NamedExpression) ast.Projection[models.PostsDto] {
 	if len(columns) == 0 {
 		columns = defaultTagsColumns()
@@ -227,7 +225,6 @@ func defaultTagsColumns() []ast.NamedExpression {
 	}
 }
 
-
 type Alias struct {
 	*ast.Alias
 }
@@ -237,7 +234,6 @@ func As(name string, columns ...ast.NamedExpression) *Alias {
 		Alias: ast.NewAlias(name, columns...),
 	}
 }
-
 
 func (a *Alias) Id() *ast.IntColumnProjection[models.PostsDto, **int64] {
 	column := Id()
@@ -409,4 +405,3 @@ func (a *Alias) UpdatedAt() *ast.TimestampColumnProjection[models.PostsDto, **ti
 	alias.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
-

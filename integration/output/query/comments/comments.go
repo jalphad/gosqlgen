@@ -4,14 +4,19 @@ import (
 	"fmt"
 	"slices"
 	"time"
-	
 
 	"github.com/google/uuid"
-	
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	)
+	"github.com/jalphad/gosqlgen/integration/output/query/builder"
+)
+
+// NewQuery returns a query builder for comments
+func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.CommentsDto] {
+	return builder.NewKnownTableBuilder[models.CommentsDto](pool, Table())
+}
 
 var Into = intoCommentsDto{}
 
@@ -20,7 +25,6 @@ type intoCommentsDto struct{}
 func Table() *ast.TableSource {
 	return ast.NewTableSource("comments")
 }
-
 
 func Id() *ast.IntColumnProjection[models.CommentsDto, **int64] {
 	return ast.NewIntColumnProjection(
@@ -92,7 +96,6 @@ func TestDate() *ast.DateColumnProjection[models.CommentsDto, **time.Time] {
 	)
 }
 
-
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
@@ -104,7 +107,6 @@ func AllColumns() []ast.NamedExpression {
 		TestDate(),
 	}
 }
-
 
 func (intoCommentsDto) Id() ast.Projection[models.CommentsDto] {
 	return Id()
@@ -134,7 +136,6 @@ func (intoCommentsDto) TestDate() ast.Projection[models.CommentsDto] {
 	return TestDate()
 }
 
-
 func (intoCommentsDto) AllColumns() []ast.Projection[models.CommentsDto] {
 	return []ast.Projection[models.CommentsDto]{
 		Into.Id(),
@@ -147,10 +148,6 @@ func (intoCommentsDto) AllColumns() []ast.Projection[models.CommentsDto] {
 	}
 }
 
-
-
-
-
 type Alias struct {
 	*ast.Alias
 }
@@ -160,7 +157,6 @@ func As(name string, columns ...ast.NamedExpression) *Alias {
 		Alias: ast.NewAlias(name, columns...),
 	}
 }
-
 
 func (a *Alias) Id() *ast.IntColumnProjection[models.CommentsDto, **int64] {
 	column := Id()
@@ -294,4 +290,3 @@ func (a *Alias) TestDate() *ast.DateColumnProjection[models.CommentsDto, **time.
 	alias.DateColumnExpression = ast.NewDateColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }
-

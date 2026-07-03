@@ -150,7 +150,7 @@ func insertComments(t *testing.T, rows ...*models.CommentsDto) {
 
 func insertTags(t *testing.T, rows ...*models.TagsDto) {
 	t.Helper()
-	err := NewDTOQuery[models.TagsDto](pgxPool).
+	err := NewTagsQuery(pgxPool).
 		Insert(tags.Into.Name(), tags.Into.Slug()).
 		Returning(tags.Into.Id()).
 		Values(rows...).Exec(context.Background())
