@@ -28,7 +28,7 @@ var fieldReferencesTemplate string
 //go:embed join_builders.tmpl
 var joinBuildersTemplate string
 
-//go:embed models/db_wrapper.tmpl
+//go:embed db/db_wrapper.tmpl
 var dbWrapperTemplate string
 
 //go:embed models/collection_loaders.tmpl

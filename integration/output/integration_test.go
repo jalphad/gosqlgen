@@ -1,4 +1,4 @@
-package models
+package output
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	dbmodels "github.com/jalphad/gosqlgen/integration/output/models"
+	"github.com/jalphad/gosqlgen/integration/output/models"
 	q "github.com/jalphad/gosqlgen/integration/output/query"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 	"github.com/jalphad/gosqlgen/integration/output/query/comments"
@@ -112,9 +112,9 @@ func cleanupTables(t *testing.T) {
 	}
 }
 
-func insertUsers(t *testing.T, rows ...*dbmodels.UsersDto) {
+func insertUsers(t *testing.T, rows ...*models.UsersDto) {
 	t.Helper()
-	err := dbmodels.NewUsersQuery(pgxPool).
+	err := NewUsersQuery(pgxPool).
 		Insert(users.Username(), users.Email(), users.FullName(), users.IsActive()).
 		Returning(users.Id()).
 		Values(rows...).Exec(context.Background())
@@ -124,9 +124,9 @@ func insertUsers(t *testing.T, rows ...*dbmodels.UsersDto) {
 	}
 }
 
-func insertPosts(t *testing.T, rows ...*dbmodels.PostsDto) {
+func insertPosts(t *testing.T, rows ...*models.PostsDto) {
 	t.Helper()
-	err := dbmodels.NewPostsQuery(pgxPool).
+	err := NewPostsQuery(pgxPool).
 		Insert(posts.UserId(), posts.Title(), posts.Content(), posts.Status(), posts.ViewCount()).
 		Returning(posts.Id()).
 		Values(rows...).Exec(context.Background())
@@ -136,9 +136,9 @@ func insertPosts(t *testing.T, rows ...*dbmodels.PostsDto) {
 	}
 }
 
-func insertComments(t *testing.T, rows ...*dbmodels.CommentsDto) {
+func insertComments(t *testing.T, rows ...*models.CommentsDto) {
 	t.Helper()
-	err := dbmodels.NewCommentsQuery(pgxPool).
+	err := NewCommentsQuery(pgxPool).
 		Insert(comments.PostId(), comments.UserId(), comments.Content(), comments.IsApproved()).
 		Returning(comments.Id()).
 		Values(rows...).Exec(context.Background())
@@ -148,9 +148,9 @@ func insertComments(t *testing.T, rows ...*dbmodels.CommentsDto) {
 	}
 }
 
-func insertTags(t *testing.T, rows ...*dbmodels.TagsDto) {
+func insertTags(t *testing.T, rows ...*models.TagsDto) {
 	t.Helper()
-	err := dbmodels.NewDTOQuery[dbmodels.TagsDto](pgxPool).
+	err := NewDTOQuery[models.TagsDto](pgxPool).
 		Insert(tags.Into.Name(), tags.Into.Slug()).
 		Returning(tags.Into.Id()).
 		Values(rows...).Exec(context.Background())
@@ -160,9 +160,9 @@ func insertTags(t *testing.T, rows ...*dbmodels.TagsDto) {
 	}
 }
 
-func findUserByID(t *testing.T, id uuid.UUID) dbmodels.UsersDto {
+func findUserByID(t *testing.T, id uuid.UUID) models.UsersDto {
 	t.Helper()
-	user, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+	user, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 		Select(users.Into.AllColumns()...).
 		Where(users.Id().Eq(q.Val(id))).
 		FindOne(context.Background())
@@ -170,9 +170,9 @@ func findUserByID(t *testing.T, id uuid.UUID) dbmodels.UsersDto {
 	return user
 }
 
-func findPostsByUserID(t *testing.T, userID uuid.UUID) []dbmodels.PostsDto {
+func findPostsByUserID(t *testing.T, userID uuid.UUID) []models.PostsDto {
 	t.Helper()
-	rows, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+	rows, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 		Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
 		Where(posts.UserId().Eq(q.Val(userID))).
 		Find(context.Background())
@@ -184,7 +184,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Create User", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "johndoe", Email: "john@example.com", FullName: new("John Doe"), IsActive: new(true)}
+		user := &models.UsersDto{Username: "johndoe", Email: "john@example.com", FullName: new("John Doe"), IsActive: new(true)}
 
 		insertUsers(t, user)
 
@@ -192,8 +192,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Create Users", func(t *testing.T) {
-		user1 := &dbmodels.UsersDto{Username: "johndoe1", Email: "john1@example.com", FullName: new("John Doe"), IsActive: new(true)}
-		user2 := &dbmodels.UsersDto{Username: "johndoe2", Email: "john2@example.com", FullName: new("John Doe 2"), IsActive: new(true)}
+		user1 := &models.UsersDto{Username: "johndoe1", Email: "john1@example.com", FullName: new("John Doe"), IsActive: new(true)}
+		user2 := &models.UsersDto{Username: "johndoe2", Email: "john2@example.com", FullName: new("John Doe 2"), IsActive: new(true)}
 
 		insertUsers(t, user1, user2)
 
@@ -202,7 +202,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Find User by ID", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "janedoe", Email: "jane@example.com"}
+		user := &models.UsersDto{Username: "janedoe", Email: "jane@example.com"}
 		insertUsers(t, user)
 
 		found := findUserByID(t, *user.Id)
@@ -212,12 +212,12 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Update User", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "updateme", Email: "update@example.com"}
+		user := &models.UsersDto{Username: "updateme", Email: "update@example.com"}
 		insertUsers(t, user)
 		user.Email = "updated@example.com"
 		user.FullName = new("Updated Name")
 
-		affected, _, err := dbmodels.NewUsersQuery(pgxPool).
+		affected, _, err := NewUsersQuery(pgxPool).
 			Update(q.SetTo(user, users.Email(), users.FullName())).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			Exec(context.Background())
@@ -230,8 +230,8 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Update Users", func(t *testing.T) {
-		user1 := &dbmodels.UsersDto{Username: "updatemany1", Email: "many1@example.com"}
-		user2 := &dbmodels.UsersDto{Username: "updatemany2", Email: "many2@example.com"}
+		user1 := &models.UsersDto{Username: "updatemany1", Email: "many1@example.com"}
+		user2 := &models.UsersDto{Username: "updatemany2", Email: "many2@example.com"}
 		insertUsers(t, user1, user2)
 		name1 := "Updated Name 1"
 		name2 := "Updated Name 2"
@@ -240,9 +240,9 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		user2.Email = "updated2@example.com"
 		user2.FullName = &name2
 
-		dtos := dbmodels.UsersDtos{user1, user2}
+		dtos := models.UsersDtos{user1, user2}
 		v := ast.NewAlias("v", users.Id(), users.Email(), users.FullName())
-		affected, _, err := dbmodels.NewUsersQuery(pgxPool).
+		affected, _, err := NewUsersQuery(pgxPool).
 			Update(
 				q.Set(users.Email()).To(q.Rel(v, users.Email())),
 				q.Set(users.FullName()).To(q.Rel(v, users.FullName())),
@@ -262,10 +262,10 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Delete User", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "deleteme", Email: "delete@example.com"}
+		user := &models.UsersDto{Username: "deleteme", Email: "delete@example.com"}
 		insertUsers(t, user)
 
-		deleted, details, err := dbmodels.NewUsersQuery(pgxPool).
+		deleted, details, err := NewUsersQuery(pgxPool).
 			Delete().
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			Exec(context.Background())
@@ -273,7 +273,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		require.NoError(t, err)
 		assert.EqualValues(t, 1, deleted)
 		assert.Nil(t, details)
-		_, err = dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		_, err = NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id()).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			FindOne(context.Background())
@@ -281,11 +281,11 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Create User with Conflict", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "conflictedjohndoe", Email: "john@conflict.example.com", FullName: new("John Doe"), IsActive: new(true)}
+		user := &models.UsersDto{Username: "conflictedjohndoe", Email: "john@conflict.example.com", FullName: new("John Doe"), IsActive: new(true)}
 		insertUsers(t, user)
 		user.Email = "updated@conflict.example.com"
 
-		err := dbmodels.NewUsersQuery(pgxPool).
+		err := NewUsersQuery(pgxPool).
 			Insert(users.Email(), users.Username(), users.FullName(), users.IsActive()).
 			OnConflict(users.Username()).Do(ast.Update(users.Email())).
 			Returning(users.Id()).
@@ -299,10 +299,10 @@ func TestIntegration_UserCRUD(t *testing.T) {
 
 	t.Run("Update user returning full name", func(t *testing.T) {
 		fullName := "Update Me"
-		user := &dbmodels.UsersDto{Username: "updatemeandreturn", Email: "updateme@returning.example.com", FullName: &fullName}
+		user := &models.UsersDto{Username: "updatemeandreturn", Email: "updateme@returning.example.com", FullName: &fullName}
 		insertUsers(t, user)
 
-		affected, details, err := dbmodels.NewUsersQuery(pgxPool).
+		affected, details, err := NewUsersQuery(pgxPool).
 			Update(
 				q.Set(users.Email()).ToValue("updated@returning.example.com"),
 				q.Set(users.Username()).ToValue("updatedname"),
@@ -318,10 +318,10 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Delete User returning id", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "deletereturn", Email: "delete-return@example.com"}
+		user := &models.UsersDto{Username: "deletereturn", Email: "delete-return@example.com"}
 		insertUsers(t, user)
 
-		deleted, details, err := dbmodels.NewUsersQuery(pgxPool).
+		deleted, details, err := NewUsersQuery(pgxPool).
 			Delete().
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			Returning(users.Id()).
@@ -337,7 +337,7 @@ func TestIntegration_UserCRUD(t *testing.T) {
 func TestIntegration_QueryBuilder(t *testing.T) {
 	cleanupTables(t)
 
-	seed := []*dbmodels.UsersDto{
+	seed := []*models.UsersDto{
 		{Username: "alice", Email: "alice@example.com", FullName: new("Alice Smith"), IsActive: new(true)},
 		{Username: "bob", Email: "bob@example.com", FullName: new("Bob Jones"), IsActive: new(true)},
 		{Username: "charlie", Email: "charlie@example.com", FullName: new("Charlie Brown"), IsActive: new(false)},
@@ -346,7 +346,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	insertUsers(t, seed...)
 
 	t.Run("Where Equals", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		results, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(users.Username().Eq(q.Val("alice"))).
 			Find(context.Background())
@@ -357,7 +357,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	})
 
 	t.Run("Where LIKE", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		results, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(users.Username().Like("a%")).
 			Find(context.Background())
@@ -367,7 +367,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	})
 
 	t.Run("Where IN", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		results, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(users.Username().Eq(q.Val("alice")).Or(users.Username().Eq(q.Val("bob")))).
 			Find(context.Background())
@@ -377,7 +377,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	})
 
 	t.Run("Where Boolean", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		results, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(users.IsActive().IsTrue()).
 			Find(context.Background())
@@ -388,7 +388,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 
 	t.Run("Order By", func(t *testing.T) {
 		expected := []string{"alice", "bob", "charlie", "david"}
-		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		results, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			OrderBy(q.Asc(users.Username())).
 			Find(context.Background())
@@ -401,7 +401,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 	})
 
 	t.Run("Limit and Offset", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		results, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			OrderBy(q.Asc(users.Username())).
 			Limit(2).
@@ -416,7 +416,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 
 	t.Run("Count", func(t *testing.T) {
 		type countRow struct{ Count int64 }
-		results, err := dbmodels.NewQuery[countRow](pgxPool, users.Table()).
+		results, err := NewQuery[countRow](pgxPool, users.Table()).
 			Select(q.Into(q.Count(users.Id()).As(ast.NewAlias("count")), func(r *countRow) *int64 { return &r.Count })).
 			Where(users.IsActive().IsTrue()).
 			Find(context.Background())
@@ -431,13 +431,13 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Load posts into user DTO", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "projectionuser", Email: "projection@example.com"}
+		user := &models.UsersDto{Username: "projectionuser", Email: "projection@example.com"}
 		insertUsers(t, user)
-		post1 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Projection Post 1"}
-		post2 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Projection Post 2"}
+		post1 := &models.PostsDto{UserId: *user.Id, Title: "Projection Post 1"}
+		post2 := &models.PostsDto{UserId: *user.Id, Title: "Projection Post 2"}
 		insertPosts(t, post1, post2)
 
-		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user.Id))).
@@ -450,10 +450,10 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 	})
 
 	t.Run("Empty relationship becomes empty slice", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "emptyprojectionuser", Email: "empty-projection@example.com"}
+		user := &models.UsersDto{Username: "emptyprojectionuser", Email: "empty-projection@example.com"}
 		insertUsers(t, user)
 
-		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user.Id))).
@@ -469,9 +469,9 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 func TestIntegration_Joins(t *testing.T) {
 	cleanupTables(t)
 
-	user := &dbmodels.UsersDto{Username: "blogger", Email: "blogger@example.com"}
+	user := &models.UsersDto{Username: "blogger", Email: "blogger@example.com"}
 	insertUsers(t, user)
-	postRows := []*dbmodels.PostsDto{
+	postRows := []*models.PostsDto{
 		{UserId: *user.Id, Title: "First Post", Content: new("Content 1"), Status: new("published")},
 		{UserId: *user.Id, Title: "Second Post", Content: new("Content 2"), Status: new("draft")},
 	}
@@ -483,7 +483,7 @@ func TestIntegration_Joins(t *testing.T) {
 			Title    string
 			Username string
 		}
-		results, err := dbmodels.NewQuery[postWithUser](pgxPool, posts.Table()).
+		results, err := NewQuery[postWithUser](pgxPool, posts.Table()).
 			Select(
 				q.Into(posts.Id(), func(p *postWithUser) *int64 { return &p.PostID }),
 				q.Into(posts.Title(), func(p *postWithUser) *string { return &p.Title }),
@@ -500,7 +500,7 @@ func TestIntegration_Joins(t *testing.T) {
 	})
 
 	t.Run("Filter by Related Table", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		results, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
 			Where(posts.Status().Eq(q.Val("published"))).
 			Find(context.Background())
@@ -515,27 +515,27 @@ func TestIntegration_Transactions(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Successful Transaction", func(t *testing.T) {
-		var user *dbmodels.UsersDto
-		var post *dbmodels.PostsDto
+		var user *models.UsersDto
+		var post *models.PostsDto
 
 		err := pgx.BeginFunc(context.Background(), pgxPool, func(tx pgx.Tx) error {
-			user = &dbmodels.UsersDto{Username: "txuser", Email: "tx@example.com"}
-			if err := dbmodels.NewUsersQuery(nil).WithTx(tx).
+			user = &models.UsersDto{Username: "txuser", Email: "tx@example.com"}
+			if err := NewUsersQuery(nil).WithTx(tx).
 				Insert(users.Username(), users.Email()).
 				Returning(users.Id()).
 				Values(user).Exec(context.Background()); err != nil {
 				return err
 			}
 
-			post = &dbmodels.PostsDto{UserId: *user.Id, Title: "Transaction Post"}
-			return dbmodels.NewPostsQuery(nil).WithTx(tx).
+			post = &models.PostsDto{UserId: *user.Id, Title: "Transaction Post"}
+			return NewPostsQuery(nil).WithTx(tx).
 				Insert(posts.UserId(), posts.Title()).
 				Returning(posts.Id()).
 				Values(post).Exec(context.Background())
 		})
 
 		require.NoError(t, err)
-		usersFound, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		usersFound, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(users.Username().Eq(q.Val("txuser"))).
 			Find(context.Background())
@@ -548,8 +548,8 @@ func TestIntegration_Transactions(t *testing.T) {
 
 	t.Run("Failed Transaction Rollback", func(t *testing.T) {
 		err := pgx.BeginFunc(context.Background(), pgxPool, func(tx pgx.Tx) error {
-			user := &dbmodels.UsersDto{Username: "rollbackuser", Email: "rollback@example.com"}
-			if err := dbmodels.NewUsersQuery(nil).WithTx(tx).
+			user := &models.UsersDto{Username: "rollbackuser", Email: "rollback@example.com"}
+			if err := NewUsersQuery(nil).WithTx(tx).
 				Insert(users.Username(), users.Email()).
 				Returning(users.Id()).
 				Values(user).Exec(context.Background()); err != nil {
@@ -559,7 +559,7 @@ func TestIntegration_Transactions(t *testing.T) {
 		})
 
 		require.Error(t, err)
-		usersFound, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		usersFound, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Into.AllColumns()...).
 			Where(users.Username().Eq(q.Val("rollbackuser"))).
 			Find(context.Background())
@@ -572,7 +572,7 @@ func TestIntegration_NullableFields(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Insert with NULL values", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "nulltest", Email: "null@example.com", FullName: nil}
+		user := &models.UsersDto{Username: "nulltest", Email: "null@example.com", FullName: nil}
 		insertUsers(t, user)
 
 		found := findUserByID(t, *user.Id)
@@ -581,11 +581,11 @@ func TestIntegration_NullableFields(t *testing.T) {
 	})
 
 	t.Run("Update to NULL", func(t *testing.T) {
-		user := &dbmodels.UsersDto{Username: "nullupdate", Email: "nullupdate@example.com", FullName: new("Initial Name")}
+		user := &models.UsersDto{Username: "nullupdate", Email: "nullupdate@example.com", FullName: new("Initial Name")}
 		insertUsers(t, user)
 		user.FullName = nil
 
-		affected, _, err := dbmodels.NewUsersQuery(pgxPool).
+		affected, _, err := NewUsersQuery(pgxPool).
 			Update(q.Set(users.FullName()).ToNullable(user.FullName)).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			Exec(context.Background())
@@ -599,10 +599,10 @@ func TestIntegration_NullableFields(t *testing.T) {
 func TestIntegration_ComplexQueries(t *testing.T) {
 	cleanupTables(t)
 
-	user1 := &dbmodels.UsersDto{Username: "user1", Email: "user1@example.com"}
-	user2 := &dbmodels.UsersDto{Username: "user2", Email: "user2@example.com"}
+	user1 := &models.UsersDto{Username: "user1", Email: "user1@example.com"}
+	user2 := &models.UsersDto{Username: "user2", Email: "user2@example.com"}
 	insertUsers(t, user1, user2)
-	postRows := []*dbmodels.PostsDto{
+	postRows := []*models.PostsDto{
 		{UserId: *user1.Id, Title: "User1 Post 1", ViewCount: new(int64(100))},
 		{UserId: *user1.Id, Title: "User1 Post 2", ViewCount: new(int64(200))},
 		{UserId: *user2.Id, Title: "User2 Post 1", ViewCount: new(int64(50))},
@@ -610,7 +610,7 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 	insertPosts(t, postRows...)
 
 	t.Run("Greater Than Query", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		results, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
 			Where(posts.ViewCount().Gt(q.Val(int64(75)))).
 			Find(context.Background())
@@ -620,7 +620,7 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 	})
 
 	t.Run("Multiple Conditions", func(t *testing.T) {
-		results, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		results, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Title(), posts.UserId(), posts.Content(), posts.Status(), posts.PublishedAt(), posts.ViewCount()).
 			Where(posts.UserId().Eq(q.Val(*user1.Id)).And(posts.ViewCount().Gte(q.Val(int64(100))))).
 			Find(context.Background())
@@ -630,7 +630,7 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 	})
 
 	t.Run("UpdateFields", func(t *testing.T) {
-		affected, _, err := dbmodels.NewPostsQuery(pgxPool).
+		affected, _, err := NewPostsQuery(pgxPool).
 			Update(q.Set(posts.ViewCount()).ToValue(int64(999))).
 			Where(posts.UserId().Eq(q.Val(*user1.Id))).
 			Exec(context.Background())
@@ -647,19 +647,19 @@ func TestIntegration_ComplexQueries(t *testing.T) {
 func TestIntegration_ReverseRelationships(t *testing.T) {
 	cleanupTables(t)
 
-	user1 := &dbmodels.UsersDto{Username: "author1", Email: "author1@example.com"}
-	user2 := &dbmodels.UsersDto{Username: "author2", Email: "author2@example.com"}
+	user1 := &models.UsersDto{Username: "author1", Email: "author1@example.com"}
+	user2 := &models.UsersDto{Username: "author2", Email: "author2@example.com"}
 	insertUsers(t, user1, user2)
-	post1 := &dbmodels.PostsDto{UserId: *user1.Id, Title: "Post 1", Content: new("Content 1")}
-	post2 := &dbmodels.PostsDto{UserId: *user1.Id, Title: "Post 2", Content: new("Content 2")}
-	post3 := &dbmodels.PostsDto{UserId: *user2.Id, Title: "Post 3", Content: new("Content 3")}
+	post1 := &models.PostsDto{UserId: *user1.Id, Title: "Post 1", Content: new("Content 1")}
+	post2 := &models.PostsDto{UserId: *user1.Id, Title: "Post 2", Content: new("Content 2")}
+	post3 := &models.PostsDto{UserId: *user2.Id, Title: "Post 3", Content: new("Content 3")}
 	insertPosts(t, post1, post2, post3)
-	comment1 := &dbmodels.CommentsDto{PostId: *post1.Id, UserId: *user1.Id, Content: "Comment 1"}
-	comment2 := &dbmodels.CommentsDto{PostId: *post1.Id, UserId: *user2.Id, Content: "Comment 2"}
+	comment1 := &models.CommentsDto{PostId: *post1.Id, UserId: *user1.Id, Content: "Comment 1"}
+	comment2 := &models.CommentsDto{PostId: *post1.Id, UserId: *user2.Id, Content: "Comment 2"}
 	insertComments(t, comment1, comment2)
 
 	t.Run("Load Posts for User", func(t *testing.T) {
-		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user1.Id))).
@@ -672,7 +672,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	})
 
 	t.Run("Load Comments for Post", func(t *testing.T) {
-		result, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Into.Comments(comments.Id(), comments.Content())).
 			Join(ast.JoinLeft, comments.Table(), comments.PostId().Eq(posts.Id())).
 			Where(posts.Id().Eq(q.Val(*post1.Id))).
@@ -685,7 +685,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	})
 
 	t.Run("Load Comments for User", func(t *testing.T) {
-		result, err := dbmodels.NewQuery[dbmodels.UsersDto](pgxPool, users.Table()).
+		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.Comments(comments.Id(), comments.Content())).
 			Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user1.Id))).
@@ -701,21 +701,21 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 func TestIntegration_ManyToMany(t *testing.T) {
 	cleanupTables(t)
 
-	user := &dbmodels.UsersDto{Username: "blogger-many", Email: "blogger-many@example.com"}
+	user := &models.UsersDto{Username: "blogger-many", Email: "blogger-many@example.com"}
 	insertUsers(t, user)
-	post1 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Go Programming", Content: new("Learn Go")}
-	post2 := &dbmodels.PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: new("Optimize queries")}
+	post1 := &models.PostsDto{UserId: *user.Id, Title: "Go Programming", Content: new("Learn Go")}
+	post2 := &models.PostsDto{UserId: *user.Id, Title: "SQL Optimization", Content: new("Optimize queries")}
 	insertPosts(t, post1, post2)
-	tag1 := &dbmodels.TagsDto{Name: "programming", Slug: "programming"}
-	tag2 := &dbmodels.TagsDto{Name: "database", Slug: "database"}
-	tag3 := &dbmodels.TagsDto{Name: "golang", Slug: "golang"}
+	tag1 := &models.TagsDto{Name: "programming", Slug: "programming"}
+	tag2 := &models.TagsDto{Name: "database", Slug: "database"}
+	tag3 := &models.TagsDto{Name: "golang", Slug: "golang"}
 	insertTags(t, tag1, tag2, tag3)
 
 	_, err := pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2), ($3, $4), ($5, $6), ($7, $8)", *post1.Id, *tag1.Id, *post1.Id, *tag3.Id, *post2.Id, *tag1.Id, *post2.Id, *tag2.Id)
 	require.NoError(t, err)
 
 	t.Run("Load Tags for Post", func(t *testing.T) {
-		result, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Into.Tags(tags.Id(), tags.Name())).
 			Join(ast.JoinLeft, post_tags.Table(), posts.Id().Eq(post_tags.PostId())).
 			Join(ast.JoinLeft, tags.Table(), post_tags.TagId().Eq(tags.Id())).
@@ -729,7 +729,7 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	})
 
 	t.Run("Load Posts for Tag", func(t *testing.T) {
-		result, err := dbmodels.NewQuery[dbmodels.TagsDto](pgxPool, tags.Table()).
+		result, err := NewQuery[models.TagsDto](pgxPool, tags.Table()).
 			Select(tags.Into.Id(), tags.Into.Posts(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, post_tags.Table(), tags.Id().Eq(post_tags.TagId())).
 			Join(ast.JoinLeft, posts.Table(), post_tags.PostId().Eq(posts.Id())).
@@ -743,10 +743,10 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	})
 
 	t.Run("Load Empty Collection", func(t *testing.T) {
-		post3 := &dbmodels.PostsDto{UserId: *user.Id, Title: "Untagged Post"}
+		post3 := &models.PostsDto{UserId: *user.Id, Title: "Untagged Post"}
 		insertPosts(t, post3)
 
-		result, err := dbmodels.NewQuery[dbmodels.PostsDto](pgxPool, posts.Table()).
+		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Into.Tags(tags.Id(), tags.Name())).
 			Join(ast.JoinLeft, post_tags.Table(), posts.Id().Eq(post_tags.PostId())).
 			Join(ast.JoinLeft, tags.Table(), post_tags.TagId().Eq(tags.Id())).
@@ -763,21 +763,29 @@ func TestIntegration_ManyToMany(t *testing.T) {
 func TestIntegration_ExpressionHelpers(t *testing.T) {
 	cleanupTables(t)
 
-	user := &dbmodels.UsersDto{Username: "testuser", Email: "test@example.com"}
+	user := &models.UsersDto{Username: "testuser", Email: "test@example.com"}
 	insertUsers(t, user)
 	insertPosts(t,
-		&dbmodels.PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: new(int64(100))},
-		&dbmodels.PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: new(int64(200))},
-		&dbmodels.PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: new(int64(300))},
+		&models.PostsDto{UserId: *user.Id, Title: "Post 1", ViewCount: new(int64(100))},
+		&models.PostsDto{UserId: *user.Id, Title: "Post 2", ViewCount: new(int64(200))},
+		&models.PostsDto{UserId: *user.Id, Title: "Post 3", ViewCount: new(int64(300))},
 	)
 
 	t.Run("Count expression", func(t *testing.T) {
-		type countRow struct{ Count int64 }
-		results, err := dbmodels.NewQuery[countRow](pgxPool, posts.Table()).
+		type countRow struct {
+			models.PostsDto
+			Count int64
+		}
+		count := q.Into(q.Count(posts.Id()),
+			func(r *countRow) *int64 { return &r.Count })
+		userId := q.Into(posts.UserId(),
+			func(r *countRow) *uuid.UUID { return &r.UserId })
+		results, err := NewQuery[countRow](pgxPool, posts.Table()).
 			Select(
-				q.Into(q.Count(posts.Id()),
-					func(r *countRow) *int64 { return &r.Count })).
+				userId,
+				count).
 			Where(posts.UserId().Eq(q.Val(*user.Id))).
+			GroupBy(posts.UserId()).
 			Find(context.Background())
 
 		require.NoError(t, err)
@@ -831,18 +839,18 @@ func TestIntegration_CTEs(t *testing.T) {
 	t.Run("Select CTE preserves parameter order and executes", func(t *testing.T) {
 		cleanupTables(t)
 
-		corpUser := &dbmodels.UsersDto{Username: "corp-user", Email: "corp@example.com", IsActive: new(true)}
-		otherUser := &dbmodels.UsersDto{Username: "other-user", Email: "other@example.org", IsActive: new(true)}
+		corpUser := &models.UsersDto{Username: "corp-user", Email: "corp@example.com", IsActive: new(true)}
+		otherUser := &models.UsersDto{Username: "other-user", Email: "other@example.org", IsActive: new(true)}
 		insertUsers(t, corpUser, otherUser)
 
 		type userSummary struct{ Email string }
 		activeUsers := users.As("active_users", users.Id(), users.Email())
-		cteBody := dbmodels.NewQuery[dbmodels.UsersDto](nil, users.Table()).
+		cteBody := NewQuery[models.UsersDto](nil, users.Table()).
 			Select(users.Id(), users.Email()).
 			Where(users.Email().Like("%@example.com")).
 			Statement()
 
-		queryBuilder := dbmodels.NewQuery[userSummary](pgxPool, q.Table(activeUsers.Alias)).
+		queryBuilder := NewQuery[userSummary](pgxPool, q.Table(activeUsers.Alias)).
 			With(q.CTE(activeUsers.Alias, cteBody)).
 			Select(q.Into(activeUsers.Email(), func(s *userSummary) *string { return &s.Email })).
 			Where(activeUsers.Id().Eq(q.Val(*corpUser.Id)))
@@ -861,23 +869,23 @@ func TestIntegration_CTEs(t *testing.T) {
 	t.Run("Update CTE with SetTo returns updated rows", func(t *testing.T) {
 		cleanupTables(t)
 
-		user := &dbmodels.UsersDto{Username: "cte-update-user", Email: "old@example.com", FullName: new("Old Name"), IsActive: new(true)}
+		user := &models.UsersDto{Username: "cte-update-user", Email: "old@example.com", FullName: new("Old Name"), IsActive: new(true)}
 		insertUsers(t, user)
 		newName := "Updated Name"
-		updateDTO := &dbmodels.UsersDto{Id: user.Id, Email: "new@example.com", FullName: &newName}
+		updateDTO := &models.UsersDto{Id: user.Id, Email: "new@example.com", FullName: &newName}
 		type updatedUser struct {
 			Email    string
 			FullName *string
 		}
 
 		updatedUsers := users.As("updated_users", users.Id(), users.Email(), users.FullName())
-		cteBody := dbmodels.NewUsersQuery(nil).
+		cteBody := NewUsersQuery(nil).
 			Update(q.SetTo(updateDTO, users.Email(), users.FullName())).
 			Where(users.Id().Eq(q.Val(*updateDTO.Id))).
 			Returning(users.Id(), users.Email(), users.FullName()).
 			Statement()
 
-		queryBuilder := dbmodels.NewQuery[updatedUser](pgxPool, q.Table(updatedUsers.Alias)).
+		queryBuilder := NewQuery[updatedUser](pgxPool, q.Table(updatedUsers.Alias)).
 			With(q.CTE(updatedUsers.Alias, cteBody)).
 			Select(
 				q.Into(updatedUsers.Email(), func(u *updatedUser) *string { return &u.Email }),
@@ -900,10 +908,10 @@ func TestIntegration_CTEs(t *testing.T) {
 
 	t.Run("Unknown alias column returns render error", func(t *testing.T) {
 		activeUsers := users.As("active_users", users.Id())
-		cteBody := dbmodels.NewQuery[dbmodels.UsersDto](nil, users.Table()).Select(users.Id()).Statement()
+		cteBody := NewQuery[models.UsersDto](nil, users.Table()).Select(users.Id()).Statement()
 		type userSummary struct{ Email string }
 
-		queryBuilder := dbmodels.NewQuery[userSummary](nil, q.Table(activeUsers.Alias)).
+		queryBuilder := NewQuery[userSummary](nil, q.Table(activeUsers.Alias)).
 			With(q.CTE(activeUsers.Alias, cteBody)).
 			Select(q.Into(activeUsers.Email(), func(s *userSummary) *string { return &s.Email }))
 

@@ -78,7 +78,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = string(formatted)
 	}
 
-	// Generate db.gen.go for database wrapper
+	// Generate db.gen.go for the root database facade.
 	dbBuf := bytes.Buffer{}
 	if err = g.generateDatabaseWrapper(&dbBuf); err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	files["models/db.gen.go"] = string(formatted)
+	files["db.gen.go"] = string(formatted)
 
 	// Generate table query packages
 	if err := g.generateTableQueryPackages(files); err != nil {

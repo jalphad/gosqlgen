@@ -15,7 +15,7 @@ import (
 {{- $tablePkg := $table.PackageName }}
 // {{ $table.StructName }}InsertOne inserts a single {{ $table.TableName }} DTO
 func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
-	return models.New{{ toPascalCase $table.TableName }}Query(pool).
+	return builder.NewKnownTableBuilder[models.{{ $table.StructName }}](pool).
 		Insert(
 			{{- range $table.InsertColumns }}
 			{{ $tablePkg }}.{{ .FieldName }}(),
@@ -33,7 +33,7 @@ func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.
 
 // {{ $table.StructName }}InsertMany inserts multiple {{ $table.TableName }} DTOs
 func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}, *models.{{ $table.StructName }}] {
-	return models.New{{ toPascalCase $table.TableName }}Query(pool).
+	return builder.NewKnownTableBuilder[models.{{ $table.StructName }}](pool).
 		Insert(
 			{{- range $table.InsertColumns }}
 			{{ $tablePkg }}.{{ .FieldName }}(),
@@ -51,7 +51,7 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 {{ end }}
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewDTOQuery[models.UsersDto](pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Update(
 			SetTo(dto,
 				users.Username(),
@@ -68,7 +68,7 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 		users.Username(),
 		users.Email(),
 		users.FullName())
-	return models.NewUsersQuery(pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
 			Set(users.Email()).To(Rel(v, users.Email())),
@@ -86,7 +86,7 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewDTOQuery[models.UsersDto](pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }

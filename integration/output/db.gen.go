@@ -1,10 +1,11 @@
-package models
+package output
 
 import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jalphad/gosqlgen/integration/output/models"
 	"github.com/jalphad/gosqlgen/integration/output/query/ast"
 	"github.com/jalphad/gosqlgen/integration/output/query/builder"
 )
@@ -20,27 +21,27 @@ func NewDB(pool *pgxpool.Pool) *DB {
 }
 
 // Comments returns a query builder for comments
-func (db *DB) Comments() *builder.KnownTableBuilder[CommentsDto, *CommentsDto] {
+func (db *DB) Comments() *builder.KnownTableBuilder[models.CommentsDto, *models.CommentsDto] {
 	return NewCommentsQuery(db.pool)
 }
 
 // PostTags returns a query builder for post_tags
-func (db *DB) PostTags() *builder.KnownTableBuilder[PostTagsDto, *PostTagsDto] {
+func (db *DB) PostTags() *builder.KnownTableBuilder[models.PostTagsDto, *models.PostTagsDto] {
 	return NewPostTagsQuery(db.pool)
 }
 
 // Posts returns a query builder for posts
-func (db *DB) Posts() *builder.KnownTableBuilder[PostsDto, *PostsDto] {
+func (db *DB) Posts() *builder.KnownTableBuilder[models.PostsDto, *models.PostsDto] {
 	return NewPostsQuery(db.pool)
 }
 
 // Tags returns a query builder for tags
-func (db *DB) Tags() *builder.KnownTableBuilder[TagsDto, *TagsDto] {
+func (db *DB) Tags() *builder.KnownTableBuilder[models.TagsDto, *models.TagsDto] {
 	return NewTagsQuery(db.pool)
 }
 
 // Users returns a query builder for users
-func (db *DB) Users() *builder.KnownTableBuilder[UsersDto, *UsersDto] {
+func (db *DB) Users() *builder.KnownTableBuilder[models.UsersDto, *models.UsersDto] {
 	return NewUsersQuery(db.pool)
 }
 
@@ -63,58 +64,58 @@ func NewTx(tx pgx.Tx) *Tx {
 }
 
 // Comments returns a query builder within the transaction
-func (tx *Tx) Comments() builder.KnownTableStartQuery[CommentsDto, *CommentsDto] {
+func (tx *Tx) Comments() builder.KnownTableStartQuery[models.CommentsDto, *models.CommentsDto] {
 	q := NewCommentsQuery(nil)
 	return q.WithTx(tx.tx)
 }
 
 // PostTags returns a query builder within the transaction
-func (tx *Tx) PostTags() builder.KnownTableStartQuery[PostTagsDto, *PostTagsDto] {
+func (tx *Tx) PostTags() builder.KnownTableStartQuery[models.PostTagsDto, *models.PostTagsDto] {
 	q := NewPostTagsQuery(nil)
 	return q.WithTx(tx.tx)
 }
 
 // Posts returns a query builder within the transaction
-func (tx *Tx) Posts() builder.KnownTableStartQuery[PostsDto, *PostsDto] {
+func (tx *Tx) Posts() builder.KnownTableStartQuery[models.PostsDto, *models.PostsDto] {
 	q := NewPostsQuery(nil)
 	return q.WithTx(tx.tx)
 }
 
 // Tags returns a query builder within the transaction
-func (tx *Tx) Tags() builder.KnownTableStartQuery[TagsDto, *TagsDto] {
+func (tx *Tx) Tags() builder.KnownTableStartQuery[models.TagsDto, *models.TagsDto] {
 	q := NewTagsQuery(nil)
 	return q.WithTx(tx.tx)
 }
 
 // Users returns a query builder within the transaction
-func (tx *Tx) Users() builder.KnownTableStartQuery[UsersDto, *UsersDto] {
+func (tx *Tx) Users() builder.KnownTableStartQuery[models.UsersDto, *models.UsersDto] {
 	q := NewUsersQuery(nil)
 	return q.WithTx(tx.tx)
 }
 
 // NewCommentsQuery returns a query builder for comments
-func NewCommentsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[CommentsDto, *CommentsDto] {
-	return builder.NewKnownTableBuilder[CommentsDto](pool)
+func NewCommentsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.CommentsDto, *models.CommentsDto] {
+	return builder.NewKnownTableBuilder[models.CommentsDto](pool)
 }
 
 // NewPostTagsQuery returns a query builder for post_tags
-func NewPostTagsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[PostTagsDto, *PostTagsDto] {
-	return builder.NewKnownTableBuilder[PostTagsDto](pool)
+func NewPostTagsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostTagsDto, *models.PostTagsDto] {
+	return builder.NewKnownTableBuilder[models.PostTagsDto](pool)
 }
 
 // NewPostsQuery returns a query builder for posts
-func NewPostsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[PostsDto, *PostsDto] {
-	return builder.NewKnownTableBuilder[PostsDto](pool)
+func NewPostsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostsDto, *models.PostsDto] {
+	return builder.NewKnownTableBuilder[models.PostsDto](pool)
 }
 
 // NewTagsQuery returns a query builder for tags
-func NewTagsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[TagsDto, *TagsDto] {
-	return builder.NewKnownTableBuilder[TagsDto](pool)
+func NewTagsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.TagsDto, *models.TagsDto] {
+	return builder.NewKnownTableBuilder[models.TagsDto](pool)
 }
 
 // NewUsersQuery returns a query builder for users
-func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[UsersDto, *UsersDto] {
-	return builder.NewKnownTableBuilder[UsersDto](pool)
+func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto, *models.UsersDto] {
+	return builder.NewKnownTableBuilder[models.UsersDto](pool)
 }
 
 func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.ResultTableBuilder[T] {

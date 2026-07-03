@@ -26,7 +26,7 @@ func generateModels() {
 
 	// Create generator
 	gen := gosqlgen.New().
-		WithPackageName("database").
+		WithPackageName("output").
 		WithOutputPath(outputPath).
 		WithPackagePath(packagePath)
 

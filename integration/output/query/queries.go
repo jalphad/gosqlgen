@@ -15,7 +15,7 @@ import (
 
 // CommentsDtoInsertOne inserts a single comments DTO
 func CommentsDtoInsertOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto, *models.CommentsDto] {
-	return models.NewCommentsQuery(pool).
+	return builder.NewKnownTableBuilder[models.CommentsDto](pool).
 		Insert(
 			comments.PostId(),
 			comments.UserId(),
@@ -27,7 +27,7 @@ func CommentsDtoInsertOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.I
 
 // CommentsDtoInsertMany inserts multiple comments DTOs
 func CommentsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto, *models.CommentsDto] {
-	return models.NewCommentsQuery(pool).
+	return builder.NewKnownTableBuilder[models.CommentsDto](pool).
 		Insert(
 			comments.PostId(),
 			comments.UserId(),
@@ -39,7 +39,7 @@ func CommentsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.CommentsDto) buil
 
 // PostTagsDtoInsertOne inserts a single post_tags DTO
 func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.InsertFinalizeQuery[models.PostTagsDto, *models.PostTagsDto] {
-	return models.NewPostTagsQuery(pool).
+	return builder.NewKnownTableBuilder[models.PostTagsDto](pool).
 		Insert(
 			post_tags.PostId(),
 			post_tags.TagId(),
@@ -50,7 +50,7 @@ func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.I
 
 // PostTagsDtoInsertMany inserts multiple post_tags DTOs
 func PostTagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostTagsDto) builder.InsertFinalizeQuery[models.PostTagsDto, *models.PostTagsDto] {
-	return models.NewPostTagsQuery(pool).
+	return builder.NewKnownTableBuilder[models.PostTagsDto](pool).
 		Insert(
 			post_tags.PostId(),
 			post_tags.TagId(),
@@ -61,7 +61,7 @@ func PostTagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostTagsDto) buil
 
 // PostsDtoInsertOne inserts a single posts DTO
 func PostsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto, *models.PostsDto] {
-	return models.NewPostsQuery(pool).
+	return builder.NewKnownTableBuilder[models.PostsDto](pool).
 		Insert(
 			posts.UserId(),
 			posts.Title(),
@@ -74,7 +74,7 @@ func PostsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertF
 
 // PostsDtoInsertMany inserts multiple posts DTOs
 func PostsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto, *models.PostsDto] {
-	return models.NewPostsQuery(pool).
+	return builder.NewKnownTableBuilder[models.PostsDto](pool).
 		Insert(
 			posts.UserId(),
 			posts.Title(),
@@ -87,7 +87,7 @@ func PostsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostsDto) builder.In
 
 // TagsDtoInsertOne inserts a single tags DTO
 func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFinalizeQuery[models.TagsDto, *models.TagsDto] {
-	return models.NewTagsQuery(pool).
+	return builder.NewKnownTableBuilder[models.TagsDto](pool).
 		Insert(
 			tags.Name(),
 			tags.Slug(),
@@ -98,7 +98,7 @@ func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFin
 
 // TagsDtoInsertMany inserts multiple tags DTOs
 func TagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.TagsDto) builder.InsertFinalizeQuery[models.TagsDto, *models.TagsDto] {
-	return models.NewTagsQuery(pool).
+	return builder.NewKnownTableBuilder[models.TagsDto](pool).
 		Insert(
 			tags.Name(),
 			tags.Slug(),
@@ -109,7 +109,7 @@ func TagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.TagsDto) builder.Inse
 
 // UsersDtoInsertOne inserts a single users DTO
 func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Insert(
 			users.Username(),
 			users.Email(),
@@ -121,7 +121,7 @@ func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertF
 
 // UsersDtoInsertMany inserts multiple users DTOs
 func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewUsersQuery(pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Insert(
 			users.Username(),
 			users.Email(),
@@ -132,7 +132,7 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 }
 
 func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewDTOQuery[models.UsersDto](pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Update(
 			SetTo(dto,
 				users.Username(),
@@ -149,7 +149,7 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 		users.Username(),
 		users.Email(),
 		users.FullName())
-	return models.NewUsersQuery(pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Update(
 			Set(users.Username()).To(Rel(v, users.Username())),
 			Set(users.Email()).To(Rel(v, users.Email())),
@@ -167,7 +167,7 @@ func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinal
 }
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto, *models.UsersDto] {
-	return models.NewDTOQuery[models.UsersDto](pool).
+	return builder.NewKnownTableBuilder[models.UsersDto](pool).
 		Delete().
 		Where(users.Id().Eq(Val(userId)))
 }
