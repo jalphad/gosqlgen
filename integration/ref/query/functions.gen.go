@@ -3,8 +3,8 @@ package query
 import (
 	"encoding/json"
 
-	"github.com/jalphad/gosqlgen/integration/ref/ast"
-	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
+	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/output/query/expr"
 )
 
 func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) ast.Function[T] {
