@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 // KnownTableBuilder is the builder for known tables

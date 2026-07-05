@@ -1,8 +1,8 @@
 package query
 
 import (
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	"github.com/jalphad/gosqlgen/integration/output/query/expr"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
 )
 
 func Distinct(expressions ...ast.Expression) *ast.KeywordExpression {

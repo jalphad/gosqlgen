@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 type CommentsDtos []*CommentsDto
@@ -143,11 +143,6 @@ type CommentsDto struct {
 	User *UsersDto `joined:"users" fk:"user_id"`
 }
 
-// TableName returns the table name for CommentsDto
-func (c *CommentsDto) TableName() string {
-	return "comments"
-}
-
 func (c *CommentsDto) UnmarshalJSON(b []byte) error {
 	type CommentsDto_ CommentsDto
 	type DtoWrapper struct {
@@ -167,4 +162,9 @@ func (c *CommentsDto) UnmarshalJSON(b []byte) error {
 	c.TestDate = &wrapper.TestDate.Time
 
 	return nil
+}
+
+type ExportsCommentsDto[T any] interface {
+	*T
+	GetCommentsDto() *CommentsDto
 }

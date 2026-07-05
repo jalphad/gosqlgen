@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jalphad/gosqlgen/integration/output/models"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	"github.com/jalphad/gosqlgen/integration/output/query/builder"
-	"github.com/jalphad/gosqlgen/integration/output/query/expr"
+	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
+	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
 )
 
 // NewQuery returns a query builder for users
@@ -22,6 +22,12 @@ func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto] {
 var Into = intoUsersDto{}
 
 type intoUsersDto struct{}
+
+type forUsersDto[E models.ExportsUsersDto[T], T any] struct{}
+
+func For[E models.ExportsUsersDto[T], T any]() forUsersDto[E, T] {
+	return forUsersDto[E, T]{}
+}
 
 func Table() *ast.TableSource {
 	return ast.NewTableSource("users")
@@ -149,6 +155,102 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	}
 }
 
+func (forUsersDto[E, T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		"users",
+		"id",
+		func(t *T) **uuid.UUID {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.Id
+		},
+	)
+}
+
+func (forUsersDto[E, T]) Username() *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		"users",
+		"username",
+		func(t *T) *string {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.Username
+		},
+	)
+}
+
+func (forUsersDto[E, T]) Email() *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		"users",
+		"email",
+		func(t *T) *string {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.Email
+		},
+	)
+}
+
+func (forUsersDto[E, T]) FullName() *ast.StringColumnProjection[T, **string] {
+	return ast.NewStringColumnProjection(
+		"users",
+		"full_name",
+		func(t *T) **string {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.FullName
+		},
+	)
+}
+
+func (forUsersDto[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"users",
+		"created_at",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.CreatedAt
+		},
+	)
+}
+
+func (forUsersDto[E, T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"users",
+		"updated_at",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.UpdatedAt
+		},
+	)
+}
+
+func (forUsersDto[E, T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
+	return ast.NewBoolColumnProjection(
+		"users",
+		"is_active",
+		func(t *T) **bool {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.IsActive
+		},
+	)
+}
+
+func (f forUsersDto[E, T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		f.Id(),
+		f.Username(),
+		f.Email(),
+		f.FullName(),
+		f.CreatedAt(),
+		f.UpdatedAt(),
+		f.IsActive(),
+	}
+}
+
 func (intoUsersDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
 	if len(columns) == 0 {
 		columns = defaultCommentsColumns()
@@ -197,6 +299,34 @@ func defaultPostsColumns() []ast.NamedExpression {
 		ast.NewTimestampColumnExpression("posts", "created_at"),
 		ast.NewTimestampColumnExpression("posts", "updated_at"),
 	}
+}
+
+func (forUsersDto[E, T]) Comments(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = defaultCommentsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		func(t *T) *[]models.CommentsDto {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.Comments
+		},
+	)
+}
+
+func (forUsersDto[E, T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = defaultPostsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		func(t *T) *[]models.PostsDto {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.Posts
+		},
+	)
 }
 
 type Alias struct {

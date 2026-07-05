@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jalphad/gosqlgen/integration/output/models"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	"github.com/jalphad/gosqlgen/integration/output/query/builder"
+	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 )
 
 // NewQuery returns a query builder for comments
@@ -21,6 +21,12 @@ func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.CommentsDto]
 var Into = intoCommentsDto{}
 
 type intoCommentsDto struct{}
+
+type forCommentsDto[E models.ExportsCommentsDto[T], T any] struct{}
+
+func For[E models.ExportsCommentsDto[T], T any]() forCommentsDto[E, T] {
+	return forCommentsDto[E, T]{}
+}
 
 func Table() *ast.TableSource {
 	return ast.NewTableSource("comments")
@@ -145,6 +151,102 @@ func (intoCommentsDto) AllColumns() []ast.Projection[models.CommentsDto] {
 		Into.IsApproved(),
 		Into.CreatedAt(),
 		Into.TestDate(),
+	}
+}
+
+func (forCommentsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+	return ast.NewIntColumnProjection(
+		"comments",
+		"id",
+		func(t *T) **int64 {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.Id
+		},
+	)
+}
+
+func (forCommentsDto[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
+	return ast.NewIntColumnProjection(
+		"comments",
+		"post_id",
+		func(t *T) *int64 {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.PostId
+		},
+	)
+}
+
+func (forCommentsDto[E, T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		"comments",
+		"user_id",
+		func(t *T) *uuid.UUID {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.UserId
+		},
+	)
+}
+
+func (forCommentsDto[E, T]) Content() *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		"comments",
+		"content",
+		func(t *T) *string {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.Content
+		},
+	)
+}
+
+func (forCommentsDto[E, T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
+	return ast.NewBoolColumnProjection(
+		"comments",
+		"is_approved",
+		func(t *T) **bool {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.IsApproved
+		},
+	)
+}
+
+func (forCommentsDto[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"comments",
+		"created_at",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.CreatedAt
+		},
+	)
+}
+
+func (forCommentsDto[E, T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
+	return ast.NewDateColumnProjection(
+		"comments",
+		"test_date",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetCommentsDto()
+			return &dto.TestDate
+		},
+	)
+}
+
+func (f forCommentsDto[E, T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		f.Id(),
+		f.PostId(),
+		f.UserId(),
+		f.Content(),
+		f.IsApproved(),
+		f.CreatedAt(),
+		f.TestDate(),
 	}
 }
 

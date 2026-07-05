@@ -3,7 +3,7 @@ package models
 import (
 	"strings"
 
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 type TagsDtos []*TagsDto
@@ -77,9 +77,4 @@ type TagsDto struct {
 
 	// Many-to-many relationships (populated via LoadXxx methods)
 	Posts []PostsDto `manytomany:"post_tags"`
-}
-
-// TableName returns the table name for TagsDto
-func (t *TagsDto) TableName() string {
-	return "tags"
 }

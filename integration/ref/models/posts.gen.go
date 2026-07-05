@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 type PostsDtos []*PostsDto
@@ -178,11 +178,6 @@ type PostsDto struct {
 	Tags []TagsDto `manytomany:"post_tags"`
 }
 
-// TableName returns the table name for PostsDto
-func (p *PostsDto) TableName() string {
-	return "posts"
-}
-
 func (p *PostsDto) UnmarshalJSON(b []byte) error {
 	type PostsDto_ PostsDto
 	type DtoWrapper struct {
@@ -204,4 +199,9 @@ func (p *PostsDto) UnmarshalJSON(b []byte) error {
 	p.UpdatedAt = &wrapper.UpdatedAt.Time
 
 	return nil
+}
+
+type ExportsPostsDto[T any] interface {
+	*T
+	GetPostsDto() *PostsDto
 }

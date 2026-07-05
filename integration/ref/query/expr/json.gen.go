@@ -3,7 +3,7 @@ package expr
 import (
 	"encoding/json"
 
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 func JsonAggObject(alias string, filter ast.OfType[bool], columns ...ast.NamedExpression) ast.AliasedFunction[json.RawMessage] {

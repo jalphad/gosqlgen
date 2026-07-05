@@ -3,14 +3,14 @@ package query
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/output/models"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	"github.com/jalphad/gosqlgen/integration/output/query/builder"
-	"github.com/jalphad/gosqlgen/integration/output/query/comments"
-	"github.com/jalphad/gosqlgen/integration/output/query/post_tags"
-	"github.com/jalphad/gosqlgen/integration/output/query/posts"
-	"github.com/jalphad/gosqlgen/integration/output/query/tags"
-	"github.com/jalphad/gosqlgen/integration/output/query/users"
+	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
+	"github.com/jalphad/gosqlgen/integration/ref/query/comments"
+	"github.com/jalphad/gosqlgen/integration/ref/query/post_tags"
+	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
+	"github.com/jalphad/gosqlgen/integration/ref/query/tags"
+	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
 // CommentsDtoInsertOne inserts a single comments DTO

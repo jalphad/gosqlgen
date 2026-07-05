@@ -5,10 +5,11 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jalphad/gosqlgen/integration/output/models"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	"github.com/jalphad/gosqlgen/integration/output/query/builder"
-	"github.com/jalphad/gosqlgen/integration/output/query/expr"
+
+	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
+	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
 )
 
 // NewQuery returns a query builder for tags
@@ -19,6 +20,12 @@ func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.TagsDto] {
 var Into = intoTagsDto{}
 
 type intoTagsDto struct{}
+
+type forTagsDto[E models.ExportsTagsDto[T], T any] struct{}
+
+func For[E models.ExportsTagsDto[T], T any]() forTagsDto[E, T] {
+	return forTagsDto[E, T]{}
+}
 
 func Table() *ast.TableSource {
 	return ast.NewTableSource("tags")
@@ -82,6 +89,50 @@ func (intoTagsDto) AllColumns() []ast.Projection[models.TagsDto] {
 	}
 }
 
+func (forTagsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+	return ast.NewIntColumnProjection(
+		"tags",
+		"id",
+		func(t *T) **int64 {
+			e := E(t)
+			dto := e.GetTagsDto()
+			return &dto.Id
+		},
+	)
+}
+
+func (forTagsDto[E, T]) Name() *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		"tags",
+		"name",
+		func(t *T) *string {
+			e := E(t)
+			dto := e.GetTagsDto()
+			return &dto.Name
+		},
+	)
+}
+
+func (forTagsDto[E, T]) Slug() *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		"tags",
+		"slug",
+		func(t *T) *string {
+			e := E(t)
+			dto := e.GetTagsDto()
+			return &dto.Slug
+		},
+	)
+}
+
+func (f forTagsDto[E, T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		f.Id(),
+		f.Name(),
+		f.Slug(),
+	}
+}
+
 func (intoTagsDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.TagsDto] {
 	if len(columns) == 0 {
 		columns = defaultPostsColumns()
@@ -106,6 +157,20 @@ func defaultPostsColumns() []ast.NamedExpression {
 		ast.NewTimestampColumnExpression("posts", "created_at"),
 		ast.NewTimestampColumnExpression("posts", "updated_at"),
 	}
+}
+
+func (forTagsDto[E, T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = defaultPostsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		func(t *T) *[]models.PostsDto {
+			e := E(t)
+			dto := e.GetTagsDto()
+			return &dto.Posts
+		},
+	)
 }
 
 type Alias struct {

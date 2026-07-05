@@ -3,7 +3,7 @@ package models
 import (
 	"strings"
 
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 type PostTagsDtos []*PostTagsDto
@@ -63,9 +63,4 @@ type PostTagsDto struct {
 	// Joined relationships (populated when corresponding Join method is called)
 	Post *PostsDto `joined:"posts" fk:"post_id"`
 	Tag  *TagsDto  `joined:"tags" fk:"tag_id"`
-}
-
-// TableName returns the table name for PostTagsDto
-func (p *PostTagsDto) TableName() string {
-	return "post_tags"
 }

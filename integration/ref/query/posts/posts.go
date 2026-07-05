@@ -8,10 +8,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jalphad/gosqlgen/integration/output/models"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
-	"github.com/jalphad/gosqlgen/integration/output/query/builder"
-	"github.com/jalphad/gosqlgen/integration/output/query/expr"
+	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
+	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
 )
 
 // NewQuery returns a query builder for posts
@@ -22,6 +22,12 @@ func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostsDto] {
 var Into = intoPostsDto{}
 
 type intoPostsDto struct{}
+
+type forPostsDto[E models.ExportsPostsDto[T], T any] struct{}
+
+func For[E models.ExportsPostsDto[T], T any]() forPostsDto[E, T] {
+	return forPostsDto[E, T]{}
+}
 
 func Table() *ast.TableSource {
 	return ast.NewTableSource("posts")
@@ -181,6 +187,128 @@ func (intoPostsDto) AllColumns() []ast.Projection[models.PostsDto] {
 	}
 }
 
+func (forPostsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+	return ast.NewIntColumnProjection(
+		"posts",
+		"id",
+		func(t *T) **int64 {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.Id
+		},
+	)
+}
+
+func (forPostsDto[E, T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		"posts",
+		"user_id",
+		func(t *T) *uuid.UUID {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.UserId
+		},
+	)
+}
+
+func (forPostsDto[E, T]) Title() *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		"posts",
+		"title",
+		func(t *T) *string {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.Title
+		},
+	)
+}
+
+func (forPostsDto[E, T]) Content() *ast.StringColumnProjection[T, **string] {
+	return ast.NewStringColumnProjection(
+		"posts",
+		"content",
+		func(t *T) **string {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.Content
+		},
+	)
+}
+
+func (forPostsDto[E, T]) Status() *ast.StringColumnProjection[T, **string] {
+	return ast.NewStringColumnProjection(
+		"posts",
+		"status",
+		func(t *T) **string {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.Status
+		},
+	)
+}
+
+func (forPostsDto[E, T]) PublishedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"posts",
+		"published_at",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.PublishedAt
+		},
+	)
+}
+
+func (forPostsDto[E, T]) ViewCount() *ast.IntColumnProjection[T, **int64] {
+	return ast.NewIntColumnProjection(
+		"posts",
+		"view_count",
+		func(t *T) **int64 {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.ViewCount
+		},
+	)
+}
+
+func (forPostsDto[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"posts",
+		"created_at",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.CreatedAt
+		},
+	)
+}
+
+func (forPostsDto[E, T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	return ast.NewTimestampColumnProjection(
+		"posts",
+		"updated_at",
+		func(t *T) **time.Time {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.UpdatedAt
+		},
+	)
+}
+
+func (f forPostsDto[E, T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		f.Id(),
+		f.UserId(),
+		f.Title(),
+		f.Content(),
+		f.Status(),
+		f.PublishedAt(),
+		f.ViewCount(),
+		f.CreatedAt(),
+		f.UpdatedAt(),
+	}
+}
+
 func (intoPostsDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.PostsDto] {
 	if len(columns) == 0 {
 		columns = defaultCommentsColumns()
@@ -205,6 +333,20 @@ func defaultCommentsColumns() []ast.NamedExpression {
 	}
 }
 
+func (forPostsDto[E, T]) Comments(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = defaultCommentsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		func(t *T) *[]models.CommentsDto {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.Comments
+		},
+	)
+}
+
 func (intoPostsDto) Tags(columns ...ast.NamedExpression) ast.Projection[models.PostsDto] {
 	if len(columns) == 0 {
 		columns = defaultTagsColumns()
@@ -223,6 +365,20 @@ func defaultTagsColumns() []ast.NamedExpression {
 		ast.NewStringColumnExpression("tags", "name"),
 		ast.NewStringColumnExpression("tags", "slug"),
 	}
+}
+
+func (forPostsDto[E, T]) Tags(columns ...ast.NamedExpression) ast.Projection[T] {
+	if len(columns) == 0 {
+		columns = defaultTagsColumns()
+	}
+	return ast.NewJSONProjection(
+		expr.JsonAggObject("tags", expr.IsNotNull(ast.NewIntColumnExpression("tags", "id")), columns...),
+		func(t *T) *[]models.TagsDto {
+			e := E(t)
+			dto := e.GetPostsDto()
+			return &dto.Tags
+		},
+	)
 }
 
 type Alias struct {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jalphad/gosqlgen/integration/output/query/ast"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
 type UsersDtos []*UsersDto
@@ -143,11 +143,6 @@ type UsersDto struct {
 	Posts    []PostsDto    `reverse:"posts" fk:"user_id"`
 }
 
-// TableName returns the table name for UsersDto
-func (u *UsersDto) TableName() string {
-	return "users"
-}
-
 func (u *UsersDto) UnmarshalJSON(b []byte) error {
 	type UsersDto_ UsersDto
 	type DtoWrapper struct {
@@ -167,4 +162,9 @@ func (u *UsersDto) UnmarshalJSON(b []byte) error {
 	u.UpdatedAt = &wrapper.UpdatedAt.Time
 
 	return nil
+}
+
+type ExportsUsersDto[T any] interface {
+	*T
+	GetUsersDto() *UsersDto
 }
