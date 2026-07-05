@@ -89,16 +89,6 @@ type {{ .StructName }} struct {
 {{- end }}
 }
 
-// TableName returns the table name for {{ .StructName }}
-func ({{ .ReceiverName }} *{{ .StructName }}) TableName() string {
-	return "{{ .TableName }}"
-}
-
-type Exports{{ .StructName }}[T any] interface {
-	*T
-	Get{{ .StructName }}() *{{ .StructName }}
-}
-
 {{- if needsCustomUnmarshal .Fields }}
 func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 	type {{ .StructName }}_ {{ .StructName }}
@@ -135,6 +125,11 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 	{{- end }}
 
 	return nil
+}
+
+type Exports{{ .StructName }}[T any] interface {
+	*T
+	Get{{ .StructName }}() *{{ .StructName }}
 }
 {{- end }}
 
