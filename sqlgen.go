@@ -10,11 +10,11 @@ import (
 
 // SQLGen is the main interface for the SQL DTO generator
 type SQLGen struct {
-	parser      *parser.Parser
-	generator   *Generator
-	packageName string
-	outputPath  string
-	packagePath string
+	parser          *parser.Parser
+	generator       *Generator
+	packageName     string
+	outputPath      string
+	packageRootPath string
 }
 
 // New creates a new SQLGen instance
@@ -23,30 +23,30 @@ func New() *SQLGen {
 	generator := NewGenerator(p)
 
 	return &SQLGen{
-		parser:      p,
-		generator:   generator,
-		packageName: "models",
-		outputPath:  "./models",
-		packagePath: "example.local/example",
+		parser:          p,
+		generator:       generator,
+		packageName:     "models",
+		outputPath:      ".",
+		packageRootPath: "example.local/example",
 	}
 }
 
-// WithPackageName sets the package name for generated code
+// WithPackageName sets the name of the generated package.
 func (s *SQLGen) WithPackageName(name string) *SQLGen {
 	s.packageName = name
 	s.generator.SetPackageName(name)
 	return s
 }
 
-// WithOutputPath sets the output path for generated files
+// WithOutputPath sets the directory that will contain the generated package.
 func (s *SQLGen) WithOutputPath(path string) *SQLGen {
 	s.outputPath = path
 	return s
 }
 
-// WithPackagePath sets the package path for generated imports
+// WithPackagePath sets the import path root containing the generated package.
 func (s *SQLGen) WithPackagePath(path string) *SQLGen {
-	s.packagePath = path
+	s.packageRootPath = path
 	s.generator.SetPackagePath(path)
 	return s
 }
@@ -73,15 +73,17 @@ func (s *SQLGen) GenerateFiles() error {
 		return fmt.Errorf("failed to generate code: %w", err)
 	}
 
+	packageOutputPath := filepath.Join(s.outputPath, s.packageName)
 	for filename, content := range code {
 		// Create output directory if it doesn't exist
-		dir := filepath.Dir(filepath.Join(s.outputPath, filename))
+		outputFile := filepath.Join(packageOutputPath, filename)
+		dir := filepath.Dir(outputFile)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 
 		// Write generated code to file
-		if err := os.WriteFile(filepath.Join(s.outputPath, filename), []byte(content), 0644); err != nil {
+		if err := os.WriteFile(outputFile, []byte(content), 0644); err != nil {
 			return fmt.Errorf("failed to write file %s: %w", filename, err)
 		}
 	}
@@ -102,6 +104,7 @@ func (s *SQLGen) GetTable(name string) (*parser.Table, bool) {
 // Config holds configuration for the generator
 type Config struct {
 	PackageName    string
+	PackagePath    string
 	OutputPath     string
 	UseNullTypes   bool
 	UseGORM        bool
@@ -115,6 +118,10 @@ func NewWithConfig(config Config) *SQLGen {
 
 	if config.PackageName != "" {
 		gen.WithPackageName(config.PackageName)
+	}
+
+	if config.PackagePath != "" {
+		gen.WithPackagePath(config.PackagePath)
 	}
 
 	if config.OutputPath != "" {

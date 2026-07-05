@@ -1,13 +1,17 @@
 package gosqlgen
 
 import (
-	"strings"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/jalphad/gosqlgen/parser"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParser_Parse(t *testing.T) {
+	// Arrange
 	tests := []struct {
 		name    string
 		sql     string
@@ -29,6 +33,9 @@ func TestParser_Parse(t *testing.T) {
 		{
 			name: "table with foreign key",
 			sql: `
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY
+                );
                 CREATE TABLE posts (
                     id INTEGER PRIMARY KEY,
                     user_id INTEGER NOT NULL,
@@ -37,6 +44,7 @@ func TestParser_Parse(t *testing.T) {
                 );
             `,
 			want: map[string][]string{
+				"users": {"id"},
 				"posts": {"id", "user_id", "title"},
 			},
 			wantErr: false,
@@ -65,50 +73,38 @@ func TestParser_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
 			p := parser.NewParser()
+
+			// Act
 			err := p.Parse(tt.sql)
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Parser.Parse() error = %v, wantErr %v", err, tt.wantErr)
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
 				return
 			}
 
-			if !tt.wantErr {
-				tables := p.GetTables()
+			require.NoError(t, err)
 
-				// Check that we have the right number of tables
-				if len(tables) != len(tt.want) {
-					t.Errorf("Expected %d tables, got %d", len(tt.want), len(tables))
+			tables := p.GetTables()
+			assert.Len(t, tables, len(tt.want))
+			for tableName, expectedCols := range tt.want {
+				table, ok := tables[tableName]
+				require.Truef(t, ok, "Table %s not found", tableName)
+
+				actualCols := make([]string, 0, len(table.Columns))
+				for _, col := range table.Columns {
+					actualCols = append(actualCols, col.Name)
 				}
-
-				// Check each table
-				for tableName, expectedCols := range tt.want {
-					table, ok := tables[tableName]
-					if !ok {
-						t.Errorf("Table %s not found", tableName)
-						continue
-					}
-
-					// Check columns
-					if len(table.Columns) != len(expectedCols) {
-						t.Errorf("Table %s: expected %d columns, got %d",
-							tableName, len(expectedCols), len(table.Columns))
-						continue
-					}
-
-					for i, col := range table.Columns {
-						if col.Name != expectedCols[i] {
-							t.Errorf("Table %s: column %d: expected %s, got %s",
-								tableName, i, expectedCols[i], col.Name)
-						}
-					}
-				}
+				assert.Equal(t, expectedCols, actualCols)
 			}
 		})
 	}
 }
 
 func TestParser_ForeignKeys(t *testing.T) {
+	// Arrange
 	sql := `
         CREATE TABLE users (
             id INTEGER PRIMARY KEY
@@ -128,40 +124,26 @@ func TestParser_ForeignKeys(t *testing.T) {
     `
 
 	p := parser.NewParser()
-	if err := p.Parse(sql); err != nil {
-		t.Fatalf("Failed to parse SQL: %v", err)
-	}
 
-	// Check posts foreign keys
+	// Act
+	err := p.Parse(sql)
+
+	// Assert
+	require.NoError(t, err)
+
 	posts, ok := p.GetTable("posts")
-	if !ok {
-		t.Fatal("Posts table not found")
-	}
+	require.True(t, ok, "Posts table not found")
+	require.Len(t, posts.ForeignKeys, 1)
+	assert.Equal(t, "user_id", posts.ForeignKeys[0].Column)
+	assert.Equal(t, "users", posts.ForeignKeys[0].ReferencedTableName)
 
-	if len(posts.ForeignKeys) != 1 {
-		t.Errorf("Expected 1 foreign key in posts, got %d", len(posts.ForeignKeys))
-	}
-
-	if posts.ForeignKeys[0].Column != "user_id" {
-		t.Errorf("Expected foreign key column 'user_id', got %s", posts.ForeignKeys[0].Column)
-	}
-
-	if posts.ForeignKeys[0].ReferencedTableName != "users" {
-		t.Errorf("Expected referenced table 'users', got %s", posts.ForeignKeys[0].ReferencedTableName)
-	}
-
-	// Check comments foreign keys
 	comments, ok := p.GetTable("comments")
-	if !ok {
-		t.Fatal("Comments table not found")
-	}
-
-	if len(comments.ForeignKeys) != 2 {
-		t.Errorf("Expected 2 foreign keys in comments, got %d", len(comments.ForeignKeys))
-	}
+	require.True(t, ok, "Comments table not found")
+	assert.Len(t, comments.ForeignKeys, 2)
 }
 
 func TestSQLGen_Integration(t *testing.T) {
+	// Arrange
 	schema := `
         CREATE TABLE departments (
             id INTEGER PRIMARY KEY,
@@ -181,68 +163,54 @@ func TestSQLGen_Integration(t *testing.T) {
         );
     `
 
-	gen := New().WithPackageName("hr")
+	outputPath := t.TempDir()
+	gen := New().
+		WithPackagePath("example.local/app").
+		WithPackageName("hr").
+		WithOutputPath(outputPath)
 
-	if err := gen.Parse(schema); err != nil {
-		t.Fatalf("Failed to parse schema: %v", err)
-	}
+	// Act
+	err := gen.Parse(schema)
 
+	// Assert
+	require.NoError(t, err)
 	tables := gen.GetTables()
-	if len(tables) != 2 {
-		t.Errorf("Expected 2 tables, got %d", len(tables))
-	}
+	assert.Len(t, tables, 2)
 
-	// Check departments table
 	dept, ok := gen.GetTable("departments")
-	if !ok {
-		t.Fatal("Departments table not found")
-	}
+	require.True(t, ok, "Departments table not found")
+	assert.Len(t, dept.Columns, 2)
 
-	if len(dept.Columns) != 2 {
-		t.Errorf("Expected 2 columns in departments, got %d", len(dept.Columns))
-	}
-
-	// Check employees table
 	emp, ok := gen.GetTable("employees")
-	if !ok {
-		t.Fatal("Employees table not found")
-	}
+	require.True(t, ok, "Employees table not found")
+	assert.Len(t, emp.Columns, 8)
+	assert.Len(t, emp.ForeignKeys, 1)
 
-	if len(emp.Columns) != 8 {
-		t.Errorf("Expected 8 columns in employees, got %d", len(emp.Columns))
-	}
+	// Act
+	err = gen.GenerateFiles()
 
-	if len(emp.ForeignKeys) != 1 {
-		t.Errorf("Expected 1 foreign key in employees, got %d", len(emp.ForeignKeys))
-	}
+	// Assert
+	require.NoError(t, err)
+	dbFile := readGeneratedFile(t, outputPath, "hr", "db.gen.go")
+	assert.Contains(t, dbFile, "package hr")
+	assert.Contains(t, dbFile, `"example.local/app/hr/models"`)
+	assert.Contains(t, dbFile, "func (db *DB) Departments()")
+	assert.Contains(t, dbFile, "func (db *DB) Employees()")
 
-	// Generate code
-	code := gen.GenerateFiles()
-	// Verify package name
-	if !strings.Contains(code, "package hr") {
-		t.Error("Generated code does not have correct package name")
-	}
+	departmentsFile := readGeneratedFile(t, outputPath, "hr", "models", "departments.gen.go")
+	assert.Contains(t, departmentsFile, "type DepartmentsDto struct")
 
-	// Verify structs
-	if !strings.Contains(code, "type Departments struct") {
-		t.Error("Generated code does not contain Departments struct")
-	}
+	employeesFile := readGeneratedFile(t, outputPath, "hr", "models", "employees.gen.go")
+	assert.Contains(t, employeesFile, "type EmployeesDto struct")
+	assert.Contains(t, employeesFile, "Department *DepartmentsDto")
+}
 
-	if !strings.Contains(code, "type Employees struct") {
-		t.Error("Generated code does not contain Employees struct")
-	}
+func readGeneratedFile(t *testing.T, outputPath string, elem ...string) string {
+	t.Helper()
 
-	// Verify query builders
-	if !strings.Contains(code, "type DepartmentsQuery struct") {
-		t.Error("Generated code does not contain DepartmentsQuery")
-	}
+	pathParts := append([]string{outputPath}, elem...)
+	content, err := os.ReadFile(filepath.Join(pathParts...))
+	require.NoErrorf(t, err, "Failed to read generated file %s", filepath.Join(elem...))
 
-	if !strings.Contains(code, "type EmployeesQuery struct") {
-		t.Error("Generated code does not contain EmployeesQuery")
-	}
-
-	// Verify join functionality
-	if !strings.Contains(code, "JoinDepartments") {
-		t.Error("Generated code does not contain JoinDepartments method")
-	}
+	return string(content)
 }

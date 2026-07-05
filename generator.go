@@ -3,6 +3,7 @@ package gosqlgen
 import (
 	"bytes"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 
@@ -15,17 +16,17 @@ import (
 
 // Generator handles code generation with type-safe queries
 type Generator struct {
-	parser      *parser.Parser
-	packageName string
-	packagePath string
+	parser          *parser.Parser
+	packageName     string
+	packageRootPath string
 }
 
 // NewGenerator creates a new code generator
 func NewGenerator(parser *parser.Parser) *Generator {
 	return &Generator{
-		parser:      parser,
-		packageName: "models",
-		packagePath: "example.local/example",
+		parser:          parser,
+		packageName:     "models",
+		packageRootPath: "example.local/example",
 	}
 }
 
@@ -34,9 +35,19 @@ func (g *Generator) SetPackageName(name string) {
 	g.packageName = name
 }
 
-// SetPackagePath sets the package path for generated imports
+// SetPackagePath sets the import path root containing the generated package.
 func (g *Generator) SetPackagePath(path string) {
-	g.packagePath = path
+	g.packageRootPath = path
+}
+
+func (g *Generator) generatedPackagePath() string {
+	if g.packageRootPath == "" {
+		return g.packageName
+	}
+	if g.packageName == "" {
+		return g.packageRootPath
+	}
+	return path.Join(g.packageRootPath, g.packageName)
 }
 
 // GenerateFiles generates Go code for all parsed tables as separate files
@@ -105,7 +116,9 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	}
 
 	// Generate query Builder package
-	builderFiles, err := templates.RenderQueryBuilderPackage(g.packagePath)
+	packagePath := g.generatedPackagePath()
+
+	builderFiles, err := templates.RenderQueryBuilderPackage(packagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +126,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		files[filename] = content
 	}
 
-	exprFiles, err := templates.RenderQueryExprPackage(g.packagePath)
+	exprFiles, err := templates.RenderQueryExprPackage(packagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +146,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 func (g *Generator) generateQueryPackageHelpers(files map[string]string) error {
 	// Generate functions.gen.go
 	funcData := templates.QueryFunctionsData{
-		PackagePath: g.packagePath,
+		PackagePath: g.generatedPackagePath(),
 	}
 	content, err := templates.RenderQueryFunctions(funcData)
 	if err != nil {
@@ -148,7 +161,7 @@ func (g *Generator) generateQueryPackageHelpers(files map[string]string) error {
 
 	// Generate grammar.gen.go
 	grammarData := templates.QueryGrammarData{
-		PackagePath: g.packagePath,
+		PackagePath: g.generatedPackagePath(),
 	}
 	content, err = templates.RenderQueryGrammar(grammarData)
 	if err != nil {
@@ -158,7 +171,7 @@ func (g *Generator) generateQueryPackageHelpers(files map[string]string) error {
 
 	// Generate helpers.gen.go
 	helpersData := templates.QueryHelpersData{
-		PackagePath: g.packagePath,
+		PackagePath: g.generatedPackagePath(),
 	}
 	content, err = templates.RenderQueryHelpers(helpersData)
 	if err != nil {
@@ -230,7 +243,7 @@ func (g *Generator) generateQueryFunctions(files map[string]string) error {
 	})
 
 	data := templates.QueryQueriesData{
-		PackagePath: g.packagePath,
+		PackagePath: g.generatedPackagePath(),
 		Tables:      tables,
 	}
 
@@ -279,7 +292,7 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 			Fields:           fields,
 			ReverseRelFields: reverseRelations,
 			ManyToManyFields: manyToManyRels,
-			PackagePath:      g.packagePath,
+			PackagePath:      g.generatedPackagePath(),
 		}
 
 		// Render template
@@ -371,7 +384,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 		NonSequenceColumns: make([]templates.StructField, 0),
 		PrimaryKeys:        make([]string, 0),
 		PrimaryKeyFields:   make([]string, 0),
-		PackagePath:        g.packagePath,
+		PackagePath:        g.generatedPackagePath(),
 	}
 
 	for _, col := range table.Columns {
@@ -553,7 +566,7 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 	// Prepare template data
 	data := templates.DBWrapperData{
 		Tables:      make([]templates.TableMethod, 0, len(g.parser.GetTables())),
-		PackagePath: g.packagePath,
+		PackagePath: g.generatedPackagePath(),
 		PackageName: g.packageName,
 	}
 
