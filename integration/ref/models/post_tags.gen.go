@@ -64,3 +64,8 @@ type PostTagsDto struct {
 	Post *PostsDto `joined:"posts" fk:"post_id"`
 	Tag  *TagsDto  `joined:"tags" fk:"tag_id"`
 }
+
+type ExportsPostTagsDto[T any] interface {
+	*T
+	GetPostTagsDto() *PostTagsDto
+}

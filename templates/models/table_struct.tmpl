@@ -126,13 +126,12 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
+{{- end }}
 
 type Exports{{ .StructName }}[T any] interface {
 	*T
 	Get{{ .StructName }}() *{{ .StructName }}
 }
-{{- end }}
-
 {{- define "ifColumnLower" }}
 {{- if eq .ColumnName (.FieldName | toLower) }}
 if columnLower == "{{ .ColumnName }}" {
