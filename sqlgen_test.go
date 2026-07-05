@@ -217,11 +217,7 @@ func TestSQLGen_Integration(t *testing.T) {
 	}
 
 	// Generate code
-	code, err := gen.Generate()
-	if err != nil {
-		t.Fatalf("Failed to generate code: %v", err)
-	}
-
+	code := gen.GenerateFiles()
 	// Verify package name
 	if !strings.Contains(code, "package hr") {
 		t.Error("Generated code does not have correct package name")
