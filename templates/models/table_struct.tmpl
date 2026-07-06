@@ -4,7 +4,6 @@ import (
 	{{- if needsCustomUnmarshal .Fields }}
 	"encoding/json"
 	{{- end }}
-	"strings"
 	{{- if usesType .Fields "time.Time" }}
 	"time"
 	{{- end }}
@@ -33,33 +32,6 @@ func ({{ $.ReceiverName }} {{ $.StructName }}s) {{ .FieldName }}() ast.OfType[[]
 	{{- end }}
 }
 {{ end }}
-
-func ({{ .ReceiverName }} {{ .StructName }}s) GetValues(columns ...ast.NamedExpression) []ast.Expression {
-	im := make([]ast.Expression, 0, len({{ .ReceiverName }})*len(columns))
-	for _, column := range columns {
-		columnLower := strings.ToLower(column.Name())
-
-		{{- range .Fields }}
-		{{ template "ifColumnLower" . }}
-			for _, dto := range {{ $.ReceiverName }} {
-				im = append(im, ast.NewLiteralExpression(dto.{{ .FieldName }}))
-			}
-		}
-		{{- end }}
-	}
-
-	values := make([]ast.Expression, 0, len({{ .ReceiverName }}))
-	for i := 0; i < len({{ .ReceiverName }}); i++ {
-		grouped := make([]ast.Expression, len(columns))
-		for j := range columns {
-			grouped[j] = im[j*len({{ .ReceiverName }})+i]
-		}
-
-		values = append(values, ast.NewGroupedExpression(grouped...))
-	}
-
-	return values
-}
 
 // {{ .StructName }} represents the {{ .TableName }} table
 type {{ .StructName }} struct {

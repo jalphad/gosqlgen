@@ -94,6 +94,33 @@ func TestGenerator_GenerateFilesUsesPackageRootAndPackageNameForImports(t *testi
 	assert.Contains(t, builderFile, `"example.local/app/accounts/query/ast"`)
 }
 
+func TestGenerator_GenerateFilesSkipsUpdateQueriesForPrimaryKeyOnlyTables(t *testing.T) {
+	// Arrange
+	p := parser.NewParser()
+	err := p.Parse(`
+		CREATE TABLE post_tags (
+			post_id INTEGER NOT NULL,
+			tag_id INTEGER NOT NULL,
+			PRIMARY KEY (post_id, tag_id)
+		);
+	`)
+	require.NoError(t, err)
+
+	generator := NewGenerator(p)
+	generator.SetPackagePath("example.local/app")
+	generator.SetPackageName("blog")
+
+	// Act
+	files, err := generator.GenerateFiles()
+	require.NoError(t, err)
+
+	// Assert
+	queryFile := requireGeneratedContent(t, files, "query/queries.go")
+	assert.Contains(t, queryFile, "func PostTagsDtoInsertOne")
+	assert.NotContains(t, queryFile, "func PostTagsDtoUpdateOne")
+	assert.NotContains(t, queryFile, "func PostTagsDtoUpdateMany")
+}
+
 func requireGeneratedContent(t *testing.T, files map[string]string, filename string) string {
 	t.Helper()
 

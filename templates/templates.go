@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -65,12 +66,14 @@ type DtosPackageData struct {
 
 // QueryTableData contains data for rendering query functions for a single table
 type QueryTableData struct {
-	PackageName      string        // Package name (e.g., "users", "posts")
-	TableName        string        // SQL table name (e.g., "users", "posts")
-	StructName       string        // DTO struct name (e.g., "UsersDto", "PostsDto")
-	ReceiverName     string        // Lowercase first letter (e.g., "u", "p")
-	InsertColumns    []QueryColumn // Columns to include in INSERT
-	PrimaryKeyFields []string      // ALL primary key field names (support composite PKs)
+	PackageName       string        // Package name (e.g., "users", "posts")
+	TableName         string        // SQL table name (e.g., "users", "posts")
+	StructName        string        // DTO struct name (e.g., "UsersDto", "PostsDto")
+	ReceiverName      string        // Lowercase first letter (e.g., "u", "p")
+	InsertColumns     []QueryColumn // Columns to include in INSERT
+	UpdateColumns     []QueryColumn // Columns to update by default
+	PrimaryKeyFields  []string      // ALL primary key field names (support composite PKs)
+	PrimaryKeyColumns []QueryColumn // ALL primary key columns (support composite PKs)
 }
 
 // QueryColumn represents a column to include in INSERT statement
@@ -78,6 +81,11 @@ type QueryColumn struct {
 	FieldName  string
 	ColumnName string
 	GoType     string
+	SQLType    string
+	IsPointer  bool
+	IsPrimary  bool
+	CastType   string
+	CastArray  string
 }
 
 // QueryQueriesData contains data for rendering query functions for all tables
@@ -576,6 +584,94 @@ func ToProjectionType(goType, sqlType string) string {
 	return strings.TrimSuffix(expression, "Expression") + "Projection"
 }
 
+func ToCastArrayMethod(goType, sqlType string) string {
+	goType = strings.TrimPrefix(goType, "*")
+	upperSQLType := strings.ToUpper(sqlType)
+
+	switch goType {
+	case "int64":
+		if strings.Contains(upperSQLType, "BIG") {
+			return "AsBigIntArray"
+		}
+		return "AsIntegerArray"
+	case "float64":
+		if strings.Contains(upperSQLType, "DOUBLE") {
+			return "AsDoubleArray"
+		}
+		return "AsFloatArray"
+	case "pgtype.Numeric":
+		return "AsNumericArray"
+	case "bool":
+		return "AsBooleanArray"
+	case "string":
+		return "AsTextArray"
+	case "time.Time":
+		if strings.Contains(upperSQLType, "TIMESTAMP") {
+			return "AsTimestampArray"
+		} else if strings.Contains(upperSQLType, "DATE") {
+			return "AsDateArray"
+		} else if strings.Contains(upperSQLType, "TIME") {
+			return "AsTimeArray"
+		}
+		return "AsTimestampArray"
+	case "[]byte":
+		return "AsByteaArray"
+	case "json.RawMessage":
+		if strings.Contains(upperSQLType, "JSONB") {
+			return "AsJsonbArray"
+		}
+		return "AsJsonArray"
+	case "uuid.UUID":
+		return "AsUUIDArray"
+	default:
+		return ""
+	}
+}
+
+func ToCastSQLType(goType, sqlType string) string {
+	goType = strings.TrimPrefix(goType, "*")
+	upperSQLType := strings.ToUpper(sqlType)
+
+	switch goType {
+	case "int64":
+		if strings.Contains(upperSQLType, "BIG") {
+			return "bigint"
+		}
+		return "integer"
+	case "float64":
+		if strings.Contains(upperSQLType, "DOUBLE") {
+			return "double"
+		}
+		return "float"
+	case "pgtype.Numeric":
+		return "numeric"
+	case "bool":
+		return "boolean"
+	case "string":
+		return "text"
+	case "time.Time":
+		if strings.Contains(upperSQLType, "TIMESTAMP") {
+			return "timestamp"
+		} else if strings.Contains(upperSQLType, "DATE") {
+			return "date"
+		} else if strings.Contains(upperSQLType, "TIME") {
+			return "time"
+		}
+		return "timestamp"
+	case "[]byte":
+		return "bytea"
+	case "json.RawMessage":
+		if strings.Contains(upperSQLType, "JSONB") {
+			return "jsonb"
+		}
+		return "json"
+	case "uuid.UUID":
+		return "uuid"
+	default:
+		return ""
+	}
+}
+
 // RenderASTPackage renders all AST package files
 func RenderASTPackage() (map[string]string, error) {
 	files := make(map[string]string)
@@ -685,6 +781,26 @@ func RenderDtosPackage(buf *bytes.Buffer, data DtosPackageData) error {
 func RenderQueryQueries(data QueryQueriesData) ([]byte, error) {
 	t, err := template.New("inserts").Funcs(template.FuncMap{
 		"toPascalCase": ToPascalCase,
+		"baseType": func(goType string) string {
+			return strings.TrimPrefix(goType, "*")
+		},
+		"sortedUpdateValueColumns": func(table QueryTableData) []QueryColumn {
+			columns := make([]QueryColumn, 0, len(table.PrimaryKeyColumns)+len(table.UpdateColumns))
+			columns = append(columns, table.PrimaryKeyColumns...)
+			columns = append(columns, table.UpdateColumns...)
+			sortQueryColumns(columns)
+			return columns
+		},
+		"sortedPrimaryKeyColumns": func(table QueryTableData) []QueryColumn {
+			columns := append([]QueryColumn(nil), table.PrimaryKeyColumns...)
+			sortQueryColumns(columns)
+			return columns
+		},
+		"sortedUpdateColumns": func(table QueryTableData) []QueryColumn {
+			columns := append([]QueryColumn(nil), table.UpdateColumns...)
+			sortQueryColumns(columns)
+			return columns
+		},
 	}).Parse(queryQueriesTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse inserts template: %w", err)
@@ -696,6 +812,12 @@ func RenderQueryQueries(data QueryQueriesData) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
+
+func sortQueryColumns(columns []QueryColumn) {
+	sort.SliceStable(columns, func(i, j int) bool {
+		return columns[i].ColumnName < columns[j].ColumnName
+	})
 }
 
 func RenderQueryFunctions(data QueryFunctionsData) ([]byte, error) {

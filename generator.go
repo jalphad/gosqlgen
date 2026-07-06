@@ -199,10 +199,34 @@ func (g *Generator) generateQueryFunctions(files map[string]string) error {
 
 		// Collect ALL primary key columns (support composite PKs)
 		primaryKeyFields := make([]string, 0)
+		primaryKeyColumns := make([]templates.QueryColumn, 0)
+		updateColumns := make([]templates.QueryColumn, 0)
 		for _, col := range table.Columns {
+			fieldName := templates.ToPascalCase(col.Name)
+			isPointer := col.IsNullable || col.HasDefault || col.IsSequence
 			if col.IsPrimary {
-				primaryKeyFields = append(primaryKeyFields, templates.ToPascalCase(col.Name))
+				primaryKeyFields = append(primaryKeyFields, fieldName)
+				primaryKeyColumns = append(primaryKeyColumns, templates.QueryColumn{
+					FieldName:  fieldName,
+					ColumnName: col.Name,
+					GoType:     col.GoType,
+					SQLType:    col.SQLType,
+					IsPointer:  isPointer,
+					IsPrimary:  true,
+					CastType:   templates.ToCastSQLType(col.GoType, col.SQLType),
+					CastArray:  templates.ToCastArrayMethod(col.GoType, col.SQLType),
+				})
+				continue
 			}
+			updateColumns = append(updateColumns, templates.QueryColumn{
+				FieldName:  fieldName,
+				ColumnName: col.Name,
+				GoType:     col.GoType,
+				SQLType:    col.SQLType,
+				IsPointer:  isPointer,
+				CastType:   templates.ToCastSQLType(col.GoType, col.SQLType),
+				CastArray:  templates.ToCastArrayMethod(col.GoType, col.SQLType),
+			})
 		}
 
 		// Filter columns for INSERT:
@@ -226,16 +250,22 @@ func (g *Generator) generateQueryFunctions(files map[string]string) error {
 				FieldName:  fieldName,
 				ColumnName: col.Name,
 				GoType:     col.GoType,
+				SQLType:    col.SQLType,
+				IsPointer:  col.IsNullable || col.HasDefault || col.IsSequence,
+				IsPrimary:  col.IsPrimary,
+				CastArray:  templates.ToCastArrayMethod(col.GoType, col.SQLType),
 			})
 		}
 
 		tables = append(tables, templates.QueryTableData{
-			PackageName:      packageName,
-			TableName:        table.Name,
-			StructName:       structName,
-			ReceiverName:     receiverName,
-			InsertColumns:    insertColumns,
-			PrimaryKeyFields: primaryKeyFields,
+			PackageName:       packageName,
+			TableName:         table.Name,
+			StructName:        structName,
+			ReceiverName:      receiverName,
+			InsertColumns:     insertColumns,
+			UpdateColumns:     updateColumns,
+			PrimaryKeyFields:  primaryKeyFields,
+			PrimaryKeyColumns: primaryKeyColumns,
 		})
 	}
 	sort.Slice(tables, func(i, j int) bool {

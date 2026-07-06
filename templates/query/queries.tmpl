@@ -1,6 +1,9 @@
 package query
 
 import (
+	"fmt"
+	"slices"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"{{ $.PackagePath }}/models"
@@ -10,6 +13,58 @@ import (
 	"{{ $.PackagePath }}/query/{{ .TableName }}"
 	{{- end }}
 )
+
+type updateBatchSource int
+
+const (
+	updateBatchSourceUnnest updateBatchSource = iota
+	updateBatchSourceValues
+)
+
+type UpdateOption func(*updateOptions) error
+
+type updateOptions struct {
+	columns []ast.NamedExpression
+	source  updateBatchSource
+}
+
+func UpdateColumns(columns ...ast.NamedExpression) UpdateOption {
+	return func(options *updateOptions) error {
+		if len(columns) == 0 {
+			return fmt.Errorf("query.UpdateColumns requires at least one column")
+		}
+		options.columns = columns
+		return nil
+	}
+}
+
+func UpdateWithValues() UpdateOption {
+	return func(options *updateOptions) error {
+		options.source = updateBatchSourceValues
+		return nil
+	}
+}
+
+func UpdateWithUnnest() UpdateOption {
+	return func(options *updateOptions) error {
+		options.source = updateBatchSourceUnnest
+		return nil
+	}
+}
+
+func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
+	options := updateOptions{
+		source: updateBatchSourceValues,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			if err := opt(&options); err != nil {
+				return updateOptions{}, err
+			}
+		}
+	}
+	return options, nil
+}
 
 {{ range $table := .Tables }}
 {{- $tablePkg := $table.PackageName }}
@@ -48,42 +103,247 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 		{{- end }}
 		Values(dtos...)
 }
+
+{{ if $table.UpdateColumns }}
+{{- $updateValueColumns := sortedUpdateValueColumns $table }}
+{{- $primaryKeyValueColumns := sortedPrimaryKeyColumns $table }}
+{{- $updateColumns := sortedUpdateColumns $table }}
+type {{ .StructName }}UpdateValueExtractor func(*models.{{ $table.StructName }}) any
+
+var default{{ $table.StructName }}UpdateValueColumns = []ast.NamedExpression{
+	{{- range $updateValueColumns }}
+	{{ $tablePkg }}.{{ .FieldName }}(),
+	{{- end }}
+}
+
+var default{{ $table.StructName }}UpdateValueExtractors = []{{ .StructName }}UpdateValueExtractor{
+	{{- range $updateValueColumns }}
+	{{- if and .IsPrimary .IsPointer }}
+	func(dto *models.{{ $table.StructName }}) any { return *dto.{{ .FieldName }} },
+	{{- else }}
+	func(dto *models.{{ $table.StructName }}) any { return dto.{{ .FieldName }} },
+	{{- end }}
+	{{- end }}
+}
+
+var default{{ $table.StructName }}UpdateValueCastTypes = []string{
+	{{- range $updateValueColumns }}
+	"{{ .CastType }}",
+	{{- end }}
+}
+
+var default{{ $table.StructName }}UpdateColumnIndexes = []int{
+	{{- range $index, $_ := $updateValueColumns }}
+	{{ $index }},
+	{{- end }}
+}
+
+var primaryKey{{ $table.StructName }}UpdateValueColumns = []ast.NamedExpression{
+	{{- range $primaryKeyValueColumns }}
+	{{ $tablePkg }}.{{ .FieldName }}(),
+	{{- end }}
+}
+
+var primaryKey{{ $table.StructName }}UpdateValueExtractors = []{{ .StructName }}UpdateValueExtractor{
+	{{- range $primaryKeyValueColumns }}
+	{{- if and .IsPrimary .IsPointer }}
+	func(dto *models.{{ $table.StructName }}) any { return *dto.{{ .FieldName }} },
+	{{- else }}
+	func(dto *models.{{ $table.StructName }}) any { return dto.{{ .FieldName }} },
+	{{- end }}
+	{{- end }}
+}
+
+var primaryKey{{ $table.StructName }}UpdateValueCastTypes = []string{
+	{{- range $primaryKeyValueColumns }}
+	"{{ .CastType }}",
+	{{- end }}
+}
+
+var primaryKey{{ $table.StructName }}UpdateColumnIndexes = []int{
+	{{- range $pk := $primaryKeyValueColumns }}
+	{{- range $index, $column := $updateValueColumns }}
+	{{- if eq $pk.ColumnName $column.ColumnName }}
+	{{ $index }},
+	{{- end }}
+	{{- end }}
+	{{- end }}
+}
+
+var default{{ $table.StructName }}UpdateSets = []ast.UpdateSetExpr{
+	{{- range $updateColumns }}
+	Set({{ $tablePkg }}.{{ .FieldName }}()).To(ast.SetType[{{ baseType .GoType }}](ast.NewColumnNode("v", "{{ .ColumnName }}"))),
+	{{- end }}
+}
+
+var default{{ $table.StructName }}UpdateSetByValueColumn = []ast.UpdateSetExpr{
+	{{- range $column := $updateValueColumns }}
+	{{- if $column.IsPrimary }}
+	nil,
+	{{- else }}
+	Set({{ $tablePkg }}.{{ $column.FieldName }}()).To(ast.SetType[{{ baseType $column.GoType }}](ast.NewColumnNode("v", "{{ $column.ColumnName }}"))),
+	{{- end }}
+	{{- end }}
+}
+
+func {{ $table.StructName }}UpdateOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}, opts ...UpdateOption) (builder.UpdateFinalizeQuery[models.{{ $table.StructName }}], error) {
+	options, err := newUpdateOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	updateColumns, _, _, _, _, err := selected{{ $table.StructName }}UpdateExpressions(options)
+	if err != nil {
+		return nil, err
+	}
+	return {{ $tablePkg }}.NewQuery(pool).
+		Update(SetTo(dto, update{{ $table.StructName }}Projections(updateColumns)...)).
+		Where({{- range $index, $pk := $table.PrimaryKeyColumns }}{{- if $index }}.And({{ $tablePkg }}.{{ $pk.FieldName }}().Eq(Val({{ if $pk.IsPointer }}*{{ end }}dto.{{ $pk.FieldName }}))){{ else }}{{ $tablePkg }}.{{ $pk.FieldName }}().Eq(Val({{ if $pk.IsPointer }}*{{ end }}dto.{{ $pk.FieldName }})){{ end }}{{- end }}), nil
+}
+
+func {{ $table.StructName }}UpdateMany(pool *pgxpool.Pool, dtos models.{{ $table.StructName }}s, opts ...UpdateOption) (builder.UpdateFinalizeQuery[models.{{ $table.StructName }}], error) {
+	options, err := newUpdateOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	valueColumns, valueExtractors, valueCastTypes, updateColumnIndexes, sets, err := selected{{ $table.StructName }}UpdateExpressions(options)
+	if err != nil {
+		return nil, err
+	}
+	v := {{ $tablePkg }}.As("v", valueColumns...)
+	if len(sets) == 0 {
+		sets = append(sets, ast.UpdateSetList{})
+	}
+	var from ast.NamedTableExpression = Values({{ .StructName }}UpdateValuesProvider{
+		dtos:       dtos,
+		extractors: valueExtractors,
+		castTypes:  valueCastTypes,
+	}).As(v.Alias)
+	if options.source == updateBatchSourceUnnest {
+		from = Unnest({{ .StructName }}UpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+	}
+	return {{ $tablePkg }}.NewQuery(pool).
+		Update(sets...).
+		From(from).
+		Where({{- range $index, $pk := $table.PrimaryKeyColumns }}{{- if $index }}.And({{ $tablePkg }}.{{ $pk.FieldName }}().Eq(v.{{ $pk.FieldName }}())){{ else }}{{ $tablePkg }}.{{ $pk.FieldName }}().Eq(v.{{ $pk.FieldName }}()){{ end }}{{- end }}), nil
+}
+
+func selected{{ $table.StructName }}UpdateExpressions(options updateOptions) ([]ast.NamedExpression, []{{ .StructName }}UpdateValueExtractor, []string, []int, []ast.UpdateSetExpr, error) {
+	if options.columns == nil {
+		return default{{ $table.StructName }}UpdateValueColumns, default{{ $table.StructName }}UpdateValueExtractors, default{{ $table.StructName }}UpdateValueCastTypes, default{{ $table.StructName }}UpdateColumnIndexes, default{{ $table.StructName }}UpdateSets, nil
+	}
+
+	requested := make([]ast.NamedExpression, len(options.columns))
+	copy(requested, options.columns)
+	for _, column := range requested {
+		if column == nil {
+			return nil, nil, nil, nil, nil, fmt.Errorf("query.UpdateColumns received a nil column")
+		}
+	}
+	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
+		if a.Name() < b.Name() {
+			return -1
+		}
+		if a.Name() > b.Name() {
+			return 1
+		}
+		return 0
+	})
+	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
+		return a.Name() == b.Name()
+	})
+
+	valueColumns := make([]ast.NamedExpression, 0, len(requested)+{{ len $table.PrimaryKeyColumns }})
+	valueColumns = append(valueColumns, primaryKey{{ $table.StructName }}UpdateValueColumns...)
+	valueExtractors := make([]{{ .StructName }}UpdateValueExtractor, 0, len(requested)+{{ len $table.PrimaryKeyColumns }})
+	valueExtractors = append(valueExtractors, primaryKey{{ $table.StructName }}UpdateValueExtractors...)
+	valueCastTypes := make([]string, 0, len(requested)+{{ len $table.PrimaryKeyColumns }})
+	valueCastTypes = append(valueCastTypes, primaryKey{{ $table.StructName }}UpdateValueCastTypes...)
+	updateColumnIndexes := make([]int, 0, len(requested)+{{ len $table.PrimaryKeyColumns }})
+	updateColumnIndexes = append(updateColumnIndexes, primaryKey{{ $table.StructName }}UpdateColumnIndexes...)
+	sets := make([]ast.UpdateSetExpr, 0, len(requested))
+
+	knownIndex := 0
+	for _, column := range requested {
+		name := column.Name()
+		for knownIndex < len(default{{ $table.StructName }}UpdateValueColumns) && default{{ $table.StructName }}UpdateValueColumns[knownIndex].Name() < name {
+			knownIndex++
+		}
+		if knownIndex == len(default{{ $table.StructName }}UpdateValueColumns) || default{{ $table.StructName }}UpdateValueColumns[knownIndex].Name() != name {
+			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
+		}
+		set := default{{ $table.StructName }}UpdateSetByValueColumn[knownIndex]
+		if set == nil {
+			return nil, nil, nil, nil, nil, fmt.Errorf("cannot update primary key column %q", name)
+		}
+		valueColumns = append(valueColumns, default{{ $table.StructName }}UpdateValueColumns[knownIndex])
+		valueExtractors = append(valueExtractors, default{{ $table.StructName }}UpdateValueExtractors[knownIndex])
+		valueCastTypes = append(valueCastTypes, default{{ $table.StructName }}UpdateValueCastTypes[knownIndex])
+		updateColumnIndexes = append(updateColumnIndexes, knownIndex)
+		sets = append(sets, set)
+	}
+	return valueColumns, valueExtractors, valueCastTypes, updateColumnIndexes, sets, nil
+}
+
+func update{{ $table.StructName }}Projections(columns []ast.NamedExpression) []ast.Projection[models.{{ $table.StructName }}] {
+	projections := make([]ast.Projection[models.{{ $table.StructName }}], 0, len(columns))
+	for _, column := range columns {
+		switch column.Name() {
+	{{- range $table.UpdateColumns }}
+		case "{{ .ColumnName }}":
+			projections = append(projections, {{ $tablePkg }}.{{ .FieldName }}())
+	{{- end }}
+		}
+	}
+	return projections
+}
+
+func default{{ $table.StructName }}UpdateColumns() []ast.NamedExpression {
+	return []ast.NamedExpression{
+		{{- range $updateColumns }}
+		{{ $tablePkg }}.{{ .FieldName }}(),
+		{{- end }}
+	}
+}
+
+func {{ .StructName }}UpdateUnnestExpressions(dtos models.{{ $table.StructName }}s, columnIndexes []int) []ast.Expression {
+	unnestExpressions := make([]ast.Expression, len(columnIndexes))
+	for i, columnIndex := range columnIndexes {
+		switch columnIndex {
+		{{- range $index, $column := $updateValueColumns }}
+		case {{ $index }}:
+			unnestExpressions[i] = Cast(dtos.{{ $column.FieldName }}()).{{ $column.CastArray }}()
+		{{- end }}
+		}
+	}
+	return unnestExpressions
+}
+
+type {{ .StructName }}UpdateValuesProvider struct {
+	dtos       models.{{ $table.StructName }}s
+	extractors []{{ .StructName }}UpdateValueExtractor
+	castTypes  []string
+}
+
+func (p {{ .StructName }}UpdateValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p {{ .StructName }}UpdateValuesProvider) ColumnCount() int {
+	return len(p.extractors)
+}
+
+func (p {{ .StructName }}UpdateValuesProvider) Value(row int, column int) (any, error) {
+	return p.extractors[column](p.dtos[row]), nil
+}
+
+func (p {{ .StructName }}UpdateValuesProvider) ColumnSQLType(column int) (string, error) {
+	if column < 0 || column >= len(p.castTypes) {
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
+	return p.castTypes[column], nil
+}
 {{ end }}
-
-func UpdateUser(pool *pgxpool.Pool, dto *models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto] {
-	return users.NewQuery(pool).
-		Update(
-			SetTo(dto,
-				users.Username(),
-				users.Email(),
-				users.FullName(),
-				users.IsActive()),
-		).Where(users.Id().Eq(Val(*dto.Id)))
-}
-
-func UpdateUsers(pool *pgxpool.Pool, in ...*models.UsersDto) builder.UpdateFinalizeQuery[models.UsersDto] {
-	dtos := models.UsersDtos(in)
-	v := ast.NewAlias("v",
-		users.Id(),
-		users.Username(),
-		users.Email(),
-		users.FullName())
-	return users.NewQuery(pool).
-		Update(
-			Set(users.Username()).To(Rel(v, users.Username())),
-			Set(users.Email()).To(Rel(v, users.Email())),
-			Set(users.FullName()).To(Rel(v, users.FullName())),
-		).
-		From(
-			Unnest(
-				Cast(dtos.Id()).AsUUIDArray(),
-				Cast(dtos.Username()).AsTextArray(),
-				Cast(dtos.Email()).AsTextArray(),
-				Cast(dtos.FullName()).AsTextArray(),
-			).As(v),
-		).
-		Where(users.Id().Eq(Rel(v, users.Id())))
-}
+{{ end }}
 
 func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
