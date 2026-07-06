@@ -66,15 +66,24 @@ func (u UsersDtos) IsActive() ast.OfType[[]bool] {
 	return ast.SetType[[]bool](ast.NewLiteralExpression(out))
 }
 
+func (u UsersDtos) Attributes() ast.OfType[[]json.RawMessage] {
+	out := make([]*json.RawMessage, len(u))
+	for idx, dto := range u {
+		out[idx] = dto.Attributes
+	}
+	return ast.SetType[[]json.RawMessage](ast.NewLiteralExpression(out))
+}
+
 // UsersDto represents the users table
 type UsersDto struct {
-	Id        *uuid.UUID `db:"id" json:"id"`
-	Username  string     `db:"username" json:"username"`
-	Email     string     `db:"email" json:"email"`
-	FullName  *string    `db:"full_name" json:"full_name"`
-	CreatedAt *time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
-	IsActive  *bool      `db:"is_active" json:"is_active"`
+	Id         *uuid.UUID       `db:"id" json:"id"`
+	Username   string           `db:"username" json:"username"`
+	Email      string           `db:"email" json:"email"`
+	FullName   *string          `db:"full_name" json:"full_name"`
+	CreatedAt  *time.Time       `db:"created_at" json:"created_at"`
+	UpdatedAt  *time.Time       `db:"updated_at" json:"updated_at"`
+	IsActive   *bool            `db:"is_active" json:"is_active"`
+	Attributes *json.RawMessage `db:"attributes" json:"attributes"`
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
 	CommentsByUserId []CommentsDto `reverse:"comments" fk:"user_id"`

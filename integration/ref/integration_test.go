@@ -2,6 +2,7 @@ package ref
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -124,7 +125,7 @@ func cleanupTables(t *testing.T) {
 func insertUsers(t *testing.T, rows ...*models.UsersDto) {
 	t.Helper()
 	err := NewUsersQuery(pgxPool).
-		Insert(users.Username(), users.Email(), users.FullName(), users.IsActive()).
+		Insert(users.Username(), users.Email(), users.FullName(), users.IsActive(), users.Attributes()).
 		Returning(users.Id()).
 		Values(rows...).Exec(context.Background())
 	require.NoError(t, err)
@@ -193,7 +194,9 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	cleanupTables(t)
 
 	t.Run("Create User", func(t *testing.T) {
-		user := &models.UsersDto{Username: "johndoe", Email: "john@example.com", FullName: new("John Doe"), IsActive: new(true)}
+		attributes := map[string]string{"foo": "bar"}
+		jsonAttr, _ := json.Marshal(attributes)
+		user := &models.UsersDto{Username: "johndoe", Email: "john@example.com", FullName: new("John Doe"), IsActive: new(true), Attributes: (*json.RawMessage)(&jsonAttr)}
 
 		insertUsers(t, user)
 
@@ -211,13 +214,19 @@ func TestIntegration_UserCRUD(t *testing.T) {
 	})
 
 	t.Run("Find User by ID", func(t *testing.T) {
-		user := &models.UsersDto{Username: "janedoe", Email: "jane@example.com"}
+		attributes := map[string]string{"foo": "bar"}
+		jsonAttr, _ := json.Marshal(attributes)
+		user := &models.UsersDto{Username: "janedoe", Email: "jane@example.com", Attributes: (*json.RawMessage)(&jsonAttr)}
 		insertUsers(t, user)
 
 		found := findUserByID(t, *user.Id)
+		foundAttr := make(map[string]string)
+		err := json.Unmarshal(*found.Attributes, &foundAttr)
 
+		require.NoError(t, err)
 		assert.Equal(t, user.Username, found.Username)
 		assert.Equal(t, user.Email, found.Email)
+		assert.Equal(t, attributes, foundAttr)
 	})
 
 	t.Run("Update User", func(t *testing.T) {

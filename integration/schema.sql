@@ -7,7 +7,8 @@ CREATE TABLE users
     full_name  VARCHAR(100),
     created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
-    is_active  BOOLEAN          DEFAULT true
+    is_active  BOOLEAN          DEFAULT true,
+    attributes JSONB
 );
 
 -- Posts table with foreign key to users

@@ -144,7 +144,8 @@ CREATE TABLE public.users (
                               full_name character varying(100),
                               created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
                               updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-                              is_active boolean DEFAULT true
+                              is_active boolean DEFAULT true,
+                              attributes jsonb
 );
 
 

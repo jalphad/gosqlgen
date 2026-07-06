@@ -1,6 +1,7 @@
 package users
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -103,6 +104,16 @@ func IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	)
 }
 
+func Attributes() *ast.JsonColumnProjection[models.UsersDto, **json.RawMessage] {
+	return ast.NewJsonColumnProjection(
+		"users",
+		"attributes",
+		func(u *models.UsersDto) **json.RawMessage {
+			return &u.Attributes
+		},
+	)
+}
+
 func AllColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		Id(),
@@ -112,6 +123,7 @@ func AllColumns() []ast.NamedExpression {
 		CreatedAt(),
 		UpdatedAt(),
 		IsActive(),
+		Attributes(),
 	}
 }
 
@@ -143,6 +155,10 @@ func (intoUsersDto) IsActive() ast.Projection[models.UsersDto] {
 	return IsActive()
 }
 
+func (intoUsersDto) Attributes() ast.Projection[models.UsersDto] {
+	return Attributes()
+}
+
 func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	return []ast.Projection[models.UsersDto]{
 		Into.Id(),
@@ -152,6 +168,7 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 		Into.CreatedAt(),
 		Into.UpdatedAt(),
 		Into.IsActive(),
+		Into.Attributes(),
 	}
 }
 
@@ -239,6 +256,18 @@ func (forUsersDto[E, T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
 	)
 }
 
+func (forUsersDto[E, T]) Attributes() *ast.JsonColumnProjection[T, **json.RawMessage] {
+	return ast.NewJsonColumnProjection(
+		"users",
+		"attributes",
+		func(t *T) **json.RawMessage {
+			e := E(t)
+			dto := e.GetUsersDto()
+			return &dto.Attributes
+		},
+	)
+}
+
 func (f forUsersDto[E, T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 		f.Id(),
@@ -248,6 +277,7 @@ func (f forUsersDto[E, T]) AllColumns() []ast.Projection[T] {
 		f.CreatedAt(),
 		f.UpdatedAt(),
 		f.IsActive(),
+		f.Attributes(),
 	}
 }
 
@@ -469,5 +499,24 @@ func (a *Alias) IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
 	}
 	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_active' in alias %s", a.Alias.Name()))
 	alias.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(column.Name(), errExpr)
+	return alias
+}
+
+func (a *Alias) Attributes() *ast.JsonColumnProjection[models.UsersDto, **json.RawMessage] {
+	column := Attributes()
+	alias := ast.NewJsonColumnProjection[models.UsersDto, **json.RawMessage](
+		a.Alias.Name(),
+		column.Name(),
+		func(u *models.UsersDto) **json.RawMessage {
+			return &u.Attributes
+		},
+	)
+	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return alias
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'attributes' in alias %s", a.Alias.Name()))
+	alias.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(column.Name(), errExpr)
 	return alias
 }

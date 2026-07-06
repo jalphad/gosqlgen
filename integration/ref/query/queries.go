@@ -1,6 +1,7 @@
 package query
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -1346,6 +1347,7 @@ func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertF
 			users.Username(),
 			users.Email(),
 			users.FullName(),
+			users.Attributes(),
 		).
 		Returning(users.Id()).
 		Values(dto)
@@ -1358,6 +1360,7 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 			users.Username(),
 			users.Email(),
 			users.FullName(),
+			users.Attributes(),
 		).
 		Returning(users.Id()).
 		Values(dtos...)
@@ -1366,6 +1369,7 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 type UsersDtoUpdateValueExtractor func(*models.UsersDto) any
 
 var defaultUsersDtoUpdateValueColumns = []ast.NamedExpression{
+	users.Attributes(),
 	users.CreatedAt(),
 	users.Email(),
 	users.FullName(),
@@ -1376,6 +1380,7 @@ var defaultUsersDtoUpdateValueColumns = []ast.NamedExpression{
 }
 
 var defaultUsersDtoUpdateValueExtractors = []UsersDtoUpdateValueExtractor{
+	func(dto *models.UsersDto) any { return dto.Attributes },
 	func(dto *models.UsersDto) any { return dto.CreatedAt },
 	func(dto *models.UsersDto) any { return dto.Email },
 	func(dto *models.UsersDto) any { return dto.FullName },
@@ -1386,6 +1391,7 @@ var defaultUsersDtoUpdateValueExtractors = []UsersDtoUpdateValueExtractor{
 }
 
 var defaultUsersDtoUpdateValueCastTypes = []string{
+	"jsonb",
 	"timestamp",
 	"text",
 	"text",
@@ -1403,6 +1409,7 @@ var defaultUsersDtoUpdateColumnIndexes = []int{
 	4,
 	5,
 	6,
+	7,
 }
 
 var primaryKeyUsersDtoUpdateValueColumns = []ast.NamedExpression{
@@ -1418,10 +1425,11 @@ var primaryKeyUsersDtoUpdateValueCastTypes = []string{
 }
 
 var primaryKeyUsersDtoUpdateColumnIndexes = []int{
-	3,
+	4,
 }
 
 var defaultUsersDtoUpdateSets = []ast.UpdateSetExpr{
+	Set(users.Attributes()).To(ast.SetType[json.RawMessage](ast.NewColumnNode("v", "attributes"))),
 	Set(users.CreatedAt()).To(ast.SetType[time.Time](ast.NewColumnNode("v", "created_at"))),
 	Set(users.Email()).To(ast.SetType[string](ast.NewColumnNode("v", "email"))),
 	Set(users.FullName()).To(ast.SetType[string](ast.NewColumnNode("v", "full_name"))),
@@ -1431,6 +1439,7 @@ var defaultUsersDtoUpdateSets = []ast.UpdateSetExpr{
 }
 
 var defaultUsersDtoUpdateSetByValueColumn = []ast.UpdateSetExpr{
+	Set(users.Attributes()).To(ast.SetType[json.RawMessage](ast.NewColumnNode("v", "attributes"))),
 	Set(users.CreatedAt()).To(ast.SetType[time.Time](ast.NewColumnNode("v", "created_at"))),
 	Set(users.Email()).To(ast.SetType[string](ast.NewColumnNode("v", "email"))),
 	Set(users.FullName()).To(ast.SetType[string](ast.NewColumnNode("v", "full_name"))),
@@ -1554,6 +1563,8 @@ func updateUsersDtoProjections(columns []ast.NamedExpression) []ast.Projection[m
 			projections = append(projections, users.UpdatedAt())
 		case "is_active":
 			projections = append(projections, users.IsActive())
+		case "attributes":
+			projections = append(projections, users.Attributes())
 		}
 	}
 	return projections
@@ -1561,6 +1572,7 @@ func updateUsersDtoProjections(columns []ast.NamedExpression) []ast.Projection[m
 
 func defaultUsersDtoUpdateColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
+		users.Attributes(),
 		users.CreatedAt(),
 		users.Email(),
 		users.FullName(),
@@ -1575,18 +1587,20 @@ func UsersDtoUpdateUnnestExpressions(dtos models.UsersDtos, columnIndexes []int)
 	for i, columnIndex := range columnIndexes {
 		switch columnIndex {
 		case 0:
-			unnestExpressions[i] = Cast(dtos.CreatedAt()).AsTimestampArray()
+			unnestExpressions[i] = Cast(dtos.Attributes()).AsJsonbArray()
 		case 1:
-			unnestExpressions[i] = Cast(dtos.Email()).AsTextArray()
+			unnestExpressions[i] = Cast(dtos.CreatedAt()).AsTimestampArray()
 		case 2:
-			unnestExpressions[i] = Cast(dtos.FullName()).AsTextArray()
+			unnestExpressions[i] = Cast(dtos.Email()).AsTextArray()
 		case 3:
-			unnestExpressions[i] = Cast(dtos.Id()).AsUUIDArray()
+			unnestExpressions[i] = Cast(dtos.FullName()).AsTextArray()
 		case 4:
-			unnestExpressions[i] = Cast(dtos.IsActive()).AsBooleanArray()
+			unnestExpressions[i] = Cast(dtos.Id()).AsUUIDArray()
 		case 5:
-			unnestExpressions[i] = Cast(dtos.UpdatedAt()).AsTimestampArray()
+			unnestExpressions[i] = Cast(dtos.IsActive()).AsBooleanArray()
 		case 6:
+			unnestExpressions[i] = Cast(dtos.UpdatedAt()).AsTimestampArray()
+		case 7:
 			unnestExpressions[i] = Cast(dtos.Username()).AsTextArray()
 		}
 	}
