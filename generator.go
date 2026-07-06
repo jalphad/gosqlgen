@@ -456,8 +456,7 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 
 	// Add joined fields for each foreign key
 	for _, fk := range table.ForeignKeys {
-		// FK.Prefix was populated during validation
-		joinedFieldName := templates.ToPascalCase(fk.Prefix)
+		joinedFieldName := templates.ToPascalCase(fk.Column) + "Ref"
 
 		// Get referenced table to build struct type
 		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)

@@ -469,15 +469,15 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 		insertPosts(t, post1, post2)
 
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
-			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
+			Select(users.Id(), users.Into.PostsByUserId(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
 
 		require.NoError(t, err)
-		require.Len(t, result.Posts, 2)
-		assert.ElementsMatch(t, []string{"Projection Post 1", "Projection Post 2"}, []string{result.Posts[0].Title, result.Posts[1].Title})
+		require.Len(t, result.PostsByUserId, 2)
+		assert.ElementsMatch(t, []string{"Projection Post 1", "Projection Post 2"}, []string{result.PostsByUserId[0].Title, result.PostsByUserId[1].Title})
 	})
 
 	t.Run("Empty relationship becomes empty slice", func(t *testing.T) {
@@ -485,15 +485,15 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 		insertUsers(t, user)
 
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
-			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
+			Select(users.Id(), users.Into.PostsByUserId(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
 
 		require.NoError(t, err)
-		require.NotNil(t, result.Posts)
-		assert.Empty(t, result.Posts)
+		require.NotNil(t, result.PostsByUserId)
+		assert.Empty(t, result.PostsByUserId)
 	})
 }
 
@@ -691,41 +691,41 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 
 	t.Run("Load Posts for User", func(t *testing.T) {
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
-			Select(users.Id(), users.Into.Posts(posts.Id(), posts.Title())).
+			Select(users.Id(), users.Into.PostsByUserId(posts.Id(), posts.Title())).
 			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user1.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
 
 		require.NoError(t, err)
-		require.Len(t, result.Posts, 2)
-		assert.ElementsMatch(t, []string{post1.Title, post2.Title}, []string{result.Posts[0].Title, result.Posts[1].Title})
+		require.Len(t, result.PostsByUserId, 2)
+		assert.ElementsMatch(t, []string{post1.Title, post2.Title}, []string{result.PostsByUserId[0].Title, result.PostsByUserId[1].Title})
 	})
 
 	t.Run("Load Comments for Post", func(t *testing.T) {
 		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
-			Select(posts.Id(), posts.Into.Comments(comments.Id(), comments.Content())).
+			Select(posts.Id(), posts.Into.CommentsByPostId(comments.Id(), comments.Content())).
 			Join(ast.JoinLeft, comments.Table(), comments.PostId().Eq(posts.Id())).
 			Where(posts.Id().Eq(q.Val(*post1.Id))).
 			GroupBy(posts.Id()).
 			FindOne(context.Background())
 
 		require.NoError(t, err)
-		require.Len(t, result.Comments, 2)
-		assert.ElementsMatch(t, []string{comment1.Content, comment2.Content}, []string{result.Comments[0].Content, result.Comments[1].Content})
+		require.Len(t, result.CommentsByPostId, 2)
+		assert.ElementsMatch(t, []string{comment1.Content, comment2.Content}, []string{result.CommentsByPostId[0].Content, result.CommentsByPostId[1].Content})
 	})
 
 	t.Run("Load Comments for User", func(t *testing.T) {
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
-			Select(users.Id(), users.Into.Comments(comments.Id(), comments.Content())).
+			Select(users.Id(), users.Into.CommentsByUserId(comments.Id(), comments.Content())).
 			Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id())).
 			Where(users.Id().Eq(q.Val(*user1.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
 
 		require.NoError(t, err)
-		require.Len(t, result.Comments, 1)
-		assert.Equal(t, comment1.Content, result.Comments[0].Content)
+		require.Len(t, result.CommentsByUserId, 1)
+		assert.Equal(t, comment1.Content, result.CommentsByUserId[0].Content)
 	})
 }
 

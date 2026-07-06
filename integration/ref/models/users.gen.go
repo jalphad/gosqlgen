@@ -77,8 +77,8 @@ type UsersDto struct {
 	IsActive  *bool      `db:"is_active" json:"is_active"`
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
-	Comments []CommentsDto `reverse:"comments" fk:"user_id"`
-	Posts    []PostsDto    `reverse:"posts" fk:"user_id"`
+	CommentsByUserId []CommentsDto `reverse:"comments" fk:"user_id"`
+	PostsByUserId    []PostsDto    `reverse:"posts" fk:"user_id"`
 }
 
 func (u *UsersDto) UnmarshalJSON(b []byte) error {

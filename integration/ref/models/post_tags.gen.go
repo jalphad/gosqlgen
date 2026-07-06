@@ -28,8 +28,8 @@ type PostTagsDto struct {
 	TagId  int64 `db:"tag_id" json:"tag_id"`
 
 	// Joined relationships (populated when corresponding Join method is called)
-	Post *PostsDto `joined:"posts" fk:"post_id"`
-	Tag  *TagsDto  `joined:"tags" fk:"tag_id"`
+	PostIdRef *PostsDto `joined:"posts" fk:"post_id"`
+	TagIdRef  *TagsDto  `joined:"tags" fk:"tag_id"`
 }
 
 type ExportsPostTagsDto[T any] interface {

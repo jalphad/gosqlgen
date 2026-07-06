@@ -142,6 +142,61 @@ func TestParser_ForeignKeys(t *testing.T) {
 	assert.Len(t, comments.ForeignKeys, 2)
 }
 
+func TestParser_ForeignKeysAllowNonConformingColumnNames(t *testing.T) {
+	// Arrange
+	sql := `
+        CREATE TABLE users (
+            id UUID PRIMARY KEY
+        );
+        CREATE TABLE accounts (
+            uuid UUID PRIMARY KEY
+        );
+        CREATE TABLE posts (
+            id INTEGER PRIMARY KEY,
+            created_by UUID,
+            updated_by UUID,
+            owner UUID REFERENCES users(id),
+            account_ref UUID,
+            FOREIGN KEY (created_by) REFERENCES users(id),
+            FOREIGN KEY (updated_by) REFERENCES users(id),
+            FOREIGN KEY (account_ref) REFERENCES accounts(uuid)
+        );
+    `
+
+	p := parser.NewParser()
+
+	// Act
+	err := p.Parse(sql)
+
+	// Assert
+	require.NoError(t, err)
+
+	posts, ok := p.GetTable("posts")
+	require.True(t, ok, "Posts table not found")
+	require.Len(t, posts.ForeignKeys, 4)
+
+	fksByColumn := make(map[string]parser.ForeignKey, len(posts.ForeignKeys))
+	for _, fk := range posts.ForeignKeys {
+		fksByColumn[fk.Column] = fk
+	}
+
+	assert.Equal(t, parser.ForeignKey{
+		Column:              "created_by",
+		ReferencedTableName: "users",
+		ReferencedColumn:    "id",
+	}, fksByColumn["created_by"])
+	assert.Equal(t, parser.ForeignKey{
+		Column:              "owner",
+		ReferencedTableName: "users",
+		ReferencedColumn:    "id",
+	}, fksByColumn["owner"])
+	assert.Equal(t, parser.ForeignKey{
+		Column:              "account_ref",
+		ReferencedTableName: "accounts",
+		ReferencedColumn:    "uuid",
+	}, fksByColumn["account_ref"])
+}
+
 func TestSQLGen_Integration(t *testing.T) {
 	// Arrange
 	schema := `
@@ -202,7 +257,7 @@ func TestSQLGen_Integration(t *testing.T) {
 
 	employeesFile := readGeneratedFile(t, outputPath, "hr", "models", "employees.gen.go")
 	assert.Contains(t, employeesFile, "type EmployeesDto struct")
-	assert.Contains(t, employeesFile, "Department *DepartmentsDto")
+	assert.Contains(t, employeesFile, "DepartmentIdRef *DepartmentsDto")
 }
 
 func readGeneratedFile(t *testing.T, outputPath string, elem ...string) string {

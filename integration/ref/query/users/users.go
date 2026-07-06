@@ -251,19 +251,19 @@ func (f forUsersDto[E, T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-func (intoUsersDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
+func (intoUsersDto) CommentsByUserId(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
 	if len(columns) == 0 {
-		columns = defaultCommentsColumns()
+		columns = defaultCommentsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		expr.JsonAggObject("commentsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
 		func(u *models.UsersDto) *[]models.CommentsDto {
-			return &u.Comments
+			return &u.CommentsByUserId
 		},
 	)
 }
 
-func defaultCommentsColumns() []ast.NamedExpression {
+func defaultCommentsByUserIdColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		ast.NewIntColumnExpression("comments", "id"),
 		ast.NewIntColumnExpression("comments", "post_id"),
@@ -275,19 +275,19 @@ func defaultCommentsColumns() []ast.NamedExpression {
 	}
 }
 
-func (intoUsersDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
+func (intoUsersDto) PostsByUserId(columns ...ast.NamedExpression) ast.Projection[models.UsersDto] {
 	if len(columns) == 0 {
-		columns = defaultPostsColumns()
+		columns = defaultPostsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		expr.JsonAggObject("postsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
 		func(u *models.UsersDto) *[]models.PostsDto {
-			return &u.Posts
+			return &u.PostsByUserId
 		},
 	)
 }
 
-func defaultPostsColumns() []ast.NamedExpression {
+func defaultPostsByUserIdColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		ast.NewIntColumnExpression("posts", "id"),
 		ast.NewUUIDColumnExpression("posts", "user_id"),
@@ -301,30 +301,30 @@ func defaultPostsColumns() []ast.NamedExpression {
 	}
 }
 
-func (forUsersDto[E, T]) Comments(columns ...ast.NamedExpression) ast.Projection[T] {
+func (forUsersDto[E, T]) CommentsByUserId(columns ...ast.NamedExpression) ast.Projection[T] {
 	if len(columns) == 0 {
-		columns = defaultCommentsColumns()
+		columns = defaultCommentsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		expr.JsonAggObject("commentsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
 		func(t *T) *[]models.CommentsDto {
 			e := E(t)
 			dto := e.GetUsersDto()
-			return &dto.Comments
+			return &dto.CommentsByUserId
 		},
 	)
 }
 
-func (forUsersDto[E, T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
+func (forUsersDto[E, T]) PostsByUserId(columns ...ast.NamedExpression) ast.Projection[T] {
 	if len(columns) == 0 {
-		columns = defaultPostsColumns()
+		columns = defaultPostsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		expr.JsonAggObject("postsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
 		func(t *T) *[]models.PostsDto {
 			e := E(t)
 			dto := e.GetUsersDto()
-			return &dto.Posts
+			return &dto.PostsByUserId
 		},
 	)
 }

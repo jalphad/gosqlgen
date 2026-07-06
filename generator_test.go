@@ -125,6 +125,52 @@ func TestGenerator_GenerateFilesSkipsUpdateQueriesForPrimaryKeyOnlyTables(t *tes
 	assert.NotContains(t, queryFile, "func PostTagsDtoUpdateMany")
 }
 
+func TestGenerator_GenerateFilesUsesFKColumnBasedRelationNames(t *testing.T) {
+	// Arrange
+	p := parser.NewParser()
+	err := p.Parse(`
+		CREATE TABLE users (
+			id UUID PRIMARY KEY,
+			email TEXT NOT NULL
+		);
+		CREATE TABLE posts (
+			id INTEGER PRIMARY KEY,
+			user_id UUID NOT NULL,
+			created_by UUID NOT NULL,
+			updated_by UUID NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id),
+			FOREIGN KEY (created_by) REFERENCES users(id),
+			FOREIGN KEY (updated_by) REFERENCES users(id)
+		);
+	`)
+	require.NoError(t, err)
+
+	generator := NewGenerator(p)
+	generator.SetPackagePath("example.local/app")
+	generator.SetPackageName("blog")
+
+	// Act
+	files, err := generator.GenerateFiles()
+	require.NoError(t, err)
+
+	// Assert
+	postsFile := requireGeneratedContent(t, files, "models/posts.gen.go")
+	assert.Contains(t, postsFile, "UserIdRef")
+	assert.Contains(t, postsFile, "CreatedByRef")
+	assert.Contains(t, postsFile, "UpdatedByRef")
+	assert.NotContains(t, postsFile, "User *UsersDto")
+
+	usersFile := requireGeneratedContent(t, files, "models/users.gen.go")
+	assert.Contains(t, usersFile, "PostsByUserId")
+	assert.Contains(t, usersFile, "PostsByCreatedBy")
+	assert.Contains(t, usersFile, "PostsByUpdatedBy")
+
+	usersQueryFile := requireGeneratedContent(t, files, "query/users/users.go")
+	assert.Contains(t, usersQueryFile, "func (intoUsersDto) PostsByUserId")
+	assert.Contains(t, usersQueryFile, "func (intoUsersDto) PostsByCreatedBy")
+	assert.Contains(t, usersQueryFile, "func (intoUsersDto) PostsByUpdatedBy")
+}
+
 func requireGeneratedContent(t *testing.T, files map[string]string, filename string) string {
 	t.Helper()
 

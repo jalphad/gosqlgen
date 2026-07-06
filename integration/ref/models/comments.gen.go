@@ -77,8 +77,8 @@ type CommentsDto struct {
 	TestDate   *time.Time `db:"test_date" json:"test_date"`
 
 	// Joined relationships (populated when corresponding Join method is called)
-	Post *PostsDto `joined:"posts" fk:"post_id"`
-	User *UsersDto `joined:"users" fk:"user_id"`
+	PostIdRef *PostsDto `joined:"posts" fk:"post_id"`
+	UserIdRef *UsersDto `joined:"users" fk:"user_id"`
 }
 
 func (c *CommentsDto) UnmarshalJSON(b []byte) error {

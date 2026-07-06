@@ -95,10 +95,10 @@ type PostsDto struct {
 	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at"`
 
 	// Joined relationships (populated when corresponding Join method is called)
-	User *UsersDto `joined:"users" fk:"user_id"`
+	UserIdRef *UsersDto `joined:"users" fk:"user_id"`
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
-	Comments []CommentsDto `reverse:"comments" fk:"post_id"`
+	CommentsByPostId []CommentsDto `reverse:"comments" fk:"post_id"`
 
 	// Many-to-many relationships (populated via LoadXxx methods)
 	Tags []TagsDto `manytomany:"post_tags"`

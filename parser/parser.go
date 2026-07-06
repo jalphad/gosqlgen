@@ -25,15 +25,12 @@ type ForeignKey struct {
 	Column              string
 	ReferencedTableName string
 	ReferencedColumn    string
-	Prefix              string // Derived from column name (e.g., "user" from "user_id")
-	Suffix              string // Derived from column name (e.g., "id" from "user_id")
 }
 
 // ReverseRelation represents a one-to-many relationship from the "one" side
 type ReverseRelation struct {
 	FromTable *Table // Table with the FK
 	FKColumn  string // FK column name (e.g., "user_id")
-	Prefix    string // Semantic name from FK (e.g., "user")
 	FieldName string // Collection field name (e.g., "Posts")
 }
 
@@ -408,7 +405,6 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 			ReferencedTableName: refMatch[1],
 			ReferencedColumn:    refMatch[2],
 		}
-		p.extractFKPrefixSuffix(&fk)
 		table.ForeignKeys = append(table.ForeignKeys, fk)
 	}
 
@@ -470,7 +466,6 @@ func (p *Parser) parseForeignKeyConstraint(table *Table, constraint string) {
 			ReferencedTableName: match[2],
 			ReferencedColumn:    match[3],
 		}
-		p.extractFKPrefixSuffix(&fk)
 		table.ForeignKeys = append(table.ForeignKeys, fk)
 	}
 }
@@ -534,63 +529,24 @@ func (p *Parser) parseAlterTable(stmt string) error {
 	return nil
 }
 
-// extractFKPrefixSuffix extracts prefix and suffix from FK column name
-func (p *Parser) extractFKPrefixSuffix(fk *ForeignKey) {
-	colName := fk.Column
-
-	// Common patterns: user_id, post_id, etc.
-	if strings.HasSuffix(colName, "_id") {
-		fk.Prefix = strings.TrimSuffix(colName, "_id")
-		fk.Suffix = "id"
-	} else {
-		// Fallback
-		fk.Prefix = colName
-		fk.Suffix = ""
-	}
-}
-
 // validateForeignKeys validates all foreign keys after parsing
 func (p *Parser) validateForeignKeys() error {
 	for tableName, table := range p.tables {
 		for i := range table.ForeignKeys {
 			fk := &table.ForeignKeys[i]
 
-			// Parse FK column name
-			prefix, suffix, err := parseFKColumnName(fk.Column)
-			if err != nil {
-				return fmt.Errorf("invalid FK column name in table '%s': %w", tableName, err)
+			foundLocalColumn := false
+			for _, col := range table.Columns {
+				if col.Name == fk.Column {
+					foundLocalColumn = true
+					break
+				}
 			}
-
-			// Store parsed values
-			fk.Prefix = prefix
-			fk.Suffix = suffix
-
-			// Validate suffix matches referenced column
-			if suffix != fk.ReferencedColumn {
+			if !foundLocalColumn {
 				return fmt.Errorf(
-					"Invalid foreign key in table '%s'\n"+
-						"  FK column: '%s'\n"+
-						"  References: %s.%s\n"+
-						"\n"+
-						"  Foreign key column name '%s' has suffix '%s' but references column '%s'.\n"+
-						"\n"+
-						"  Expected FK column to be named: '%s_%s' (following pattern <prefix>_<referenced_column>)\n"+
-						"\n"+
-						"  Please rename the column to follow the convention: <semantic_prefix>_<referenced_column_name>\n"+
-						"\n"+
-						"  Examples of valid FK names:\n"+
-						"    - user_id (references users.id)\n"+
-						"    - author_id (references users.id)\n"+
-						"    - sender_id (references users.id)",
+					"foreign key in table '%s' uses non-existent column '%s'",
 					tableName,
 					fk.Column,
-					fk.ReferencedTableName,
-					fk.ReferencedColumn,
-					fk.Column,
-					suffix,
-					fk.ReferencedColumn,
-					prefix,
-					fk.ReferencedColumn,
 				)
 			}
 
@@ -732,7 +688,7 @@ func (p *Parser) buildReverseRelationships() error {
 			for _, fk := range otherTable.ForeignKeys {
 				if fk.ReferencedTableName == tableName {
 					// Create reverse relationship
-					fieldName := p.capitalizeTableName(otherTableName)
+					fieldName := p.reverseRelationFieldName(otherTableName, fk.Column)
 
 					// Check for field name conflict
 					if p.fieldNameExists(table, fieldName) {
@@ -742,7 +698,6 @@ func (p *Parser) buildReverseRelationships() error {
 					reverseRel := ReverseRelation{
 						FromTable: otherTable,
 						FKColumn:  fk.Column,
-						Prefix:    fk.Prefix,
 						FieldName: fieldName,
 					}
 
@@ -834,18 +789,37 @@ func (p *Parser) capitalizeTableName(tableName string) string {
 	return string(runes)
 }
 
+func (p *Parser) reverseRelationFieldName(fromTableName, fkColumn string) string {
+	return p.toPascalName(fromTableName) + "By" + p.toPascalName(fkColumn)
+}
+
+func (p *Parser) joinedRelationFieldName(fkColumn string) string {
+	return p.toPascalName(fkColumn) + "Ref"
+}
+
+func (p *Parser) toPascalName(name string) string {
+	parts := strings.Split(name, "_")
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
+	}
+	return strings.Join(parts, "")
+}
+
 // fieldNameExists checks if a field name conflicts with existing fields or joined fields
 func (p *Parser) fieldNameExists(table *Table, fieldName string) bool {
 	// Check against column names (converted to PascalCase)
 	for _, col := range table.Columns {
-		if p.capitalizeTableName(col.Name) == fieldName {
+		if p.toPascalName(col.Name) == fieldName {
 			return true
 		}
 	}
 
-	// Check against joined fields (which use FK prefix)
+	// Check against joined fields
 	for _, fk := range table.ForeignKeys {
-		if p.capitalizeTableName(fk.Prefix) == fieldName {
+		if p.joinedRelationFieldName(fk.Column) == fieldName {
 			return true
 		}
 	}
@@ -900,19 +874,6 @@ func (p *Parser) mapSQLTypeToGo(sqlType string) string {
 	default:
 		return "any"
 	}
-}
-
-// parseFKColumnName parses a foreign key column name into prefix and suffix
-// Returns prefix, suffix, and error if parsing fails
-func parseFKColumnName(fkColumn string) (prefix, suffix string, err error) {
-	parts := strings.Split(fkColumn, "_")
-	if len(parts) < 2 {
-		return "", "", fmt.Errorf("FK column '%s' does not follow <prefix>_<suffix> pattern", fkColumn)
-	}
-
-	suffix = parts[len(parts)-1]
-	prefix = strings.Join(parts[:len(parts)-1], "_")
-	return prefix, suffix, nil
 }
 
 // toSnakeCase converts a table name to snake case

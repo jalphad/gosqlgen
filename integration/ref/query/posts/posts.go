@@ -309,19 +309,19 @@ func (f forPostsDto[E, T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-func (intoPostsDto) Comments(columns ...ast.NamedExpression) ast.Projection[models.PostsDto] {
+func (intoPostsDto) CommentsByPostId(columns ...ast.NamedExpression) ast.Projection[models.PostsDto] {
 	if len(columns) == 0 {
-		columns = defaultCommentsColumns()
+		columns = defaultCommentsByPostIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		expr.JsonAggObject("commentsbypostid", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
 		func(p *models.PostsDto) *[]models.CommentsDto {
-			return &p.Comments
+			return &p.CommentsByPostId
 		},
 	)
 }
 
-func defaultCommentsColumns() []ast.NamedExpression {
+func defaultCommentsByPostIdColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 		ast.NewIntColumnExpression("comments", "id"),
 		ast.NewIntColumnExpression("comments", "post_id"),
@@ -333,16 +333,16 @@ func defaultCommentsColumns() []ast.NamedExpression {
 	}
 }
 
-func (forPostsDto[E, T]) Comments(columns ...ast.NamedExpression) ast.Projection[T] {
+func (forPostsDto[E, T]) CommentsByPostId(columns ...ast.NamedExpression) ast.Projection[T] {
 	if len(columns) == 0 {
-		columns = defaultCommentsColumns()
+		columns = defaultCommentsByPostIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("comments", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		expr.JsonAggObject("commentsbypostid", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
 		func(t *T) *[]models.CommentsDto {
 			e := E(t)
 			dto := e.GetPostsDto()
-			return &dto.Comments
+			return &dto.CommentsByPostId
 		},
 	)
 }

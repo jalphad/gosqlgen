@@ -186,7 +186,7 @@ type StructField struct {
 
 // JoinedField represents a joined relationship field
 type JoinedField struct {
-	FieldName         string   // e.g., "User", "Author", "Sender"
+	FieldName         string   // e.g., "UserIdRef", "CreatedByRef"
 	GoType            string   // e.g., "*UsersDto"
 	StructName        string   // e.g., "UsersDto"
 	ReferencedTable   string   // e.g., "users"
@@ -197,7 +197,7 @@ type JoinedField struct {
 
 // ReverseRelLoaderField contains data for reverse relationship loader
 type ReverseRelLoaderField struct {
-	FieldName       string // "Posts"
+	FieldName       string // "PostsByUserId"
 	FromTable       string // "posts"
 	FromStructName  string // "PostsDto"
 	FromTableMethod string // "Posts" (DB wrapper method name)
@@ -206,7 +206,7 @@ type ReverseRelLoaderField struct {
 
 // ReverseRelField represents a reverse one-to-many relationship field
 type ReverseRelField struct {
-	FieldName   string   // e.g., "Posts"
+	FieldName   string   // e.g., "PostsByUserId"
 	GoType      string   // e.g., "[]*PostsDto"
 	StructName  string   // "PostsDto"
 	FromTable   string   // e.g., "posts"
