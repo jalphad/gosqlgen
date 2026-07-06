@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jalphad/gosqlgen/integration/updatebench/gen/models"
 	genquery "github.com/jalphad/gosqlgen/integration/updatebench/gen/query"
+	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/ast"
+	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/wide_records"
 )
 
 const benchmarkRowCount = 200
@@ -16,7 +18,7 @@ func BenchmarkWideRecordsUpdateManyConstructUnnest200Rows100Columns(b *testing.B
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos)
+		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos, genquery.UpdateWithUnnest())
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -32,7 +34,41 @@ func BenchmarkWideRecordsUpdateManyConstructValues200Rows100Columns(b *testing.B
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos, genquery.UpdateWithValues())
+		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if query == nil {
+			b.Fatal("nil query")
+		}
+	}
+}
+
+func BenchmarkWideRecordsUpdateManyConstructUnnest200Rows100ExplicitColumns(b *testing.B) {
+	dtos := makeWideRecordDtos(benchmarkRowCount)
+	updateColumns := wideRecordUpdateColumns()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos, genquery.UpdateColumns(updateColumns...), genquery.UpdateWithUnnest())
+		if err != nil {
+			b.Fatal(err)
+		}
+		if query == nil {
+			b.Fatal("nil query")
+		}
+	}
+}
+
+func BenchmarkWideRecordsUpdateManyConstructValues200Rows100ExplicitColumns(b *testing.B) {
+	dtos := makeWideRecordDtos(benchmarkRowCount)
+	updateColumns := wideRecordUpdateColumns()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos, genquery.UpdateColumns(updateColumns...))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -48,7 +84,7 @@ func BenchmarkWideRecordsUpdateManyUnnest200Rows100Columns(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos)
+		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos, genquery.UpdateWithUnnest())
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -68,7 +104,7 @@ func BenchmarkWideRecordsUpdateManyValues200Rows100Columns(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos, genquery.UpdateWithValues())
+		query, err := genquery.WideRecordsDtoUpdateMany(nil, dtos)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -91,4 +127,9 @@ func makeWideRecordDtos(count int) models.WideRecordsDtos {
 		}
 	}
 	return dtos
+}
+
+func wideRecordUpdateColumns() []ast.NamedExpression {
+	columns := wide_records.AllColumns()
+	return columns[1:]
 }

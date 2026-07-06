@@ -69,29 +69,8 @@ func Unnest(arrays ...ast.Expression) *ast.SetReturningFunction {
 		ast.NewFunctionNode("unnest", arrays, nil))
 }
 
-func Values(rows ...ast.Expression) *ast.SetReturningFunction {
-	return ast.NewSetReturningFunction(
-		ast.NewFunctionNode("VALUES", rows, func(node ast.ExpressionNode, builder *strings.Builder, params *[]any, ctx *ast.QueryContext) {
-			if ctx != nil && ctx.Error != nil {
-				return
-			}
-			if len(node.Args) == 0 {
-				if ctx != nil && ctx.Error == nil {
-					ctx.Error = errors.New("VALUES requires at least one row")
-				}
-				return
-			}
-			builder.WriteString("(VALUES ")
-			for i := 0; i < len(node.Args)-1; i++ {
-				ast.BuildQueryWithContext(node.Args[i], builder, params, ctx)
-				if ctx != nil && ctx.Error != nil {
-					return
-				}
-				builder.WriteString(", ")
-			}
-			ast.BuildQueryWithContext(node.Args[len(node.Args)-1], builder, params, ctx)
-			builder.WriteString(")")
-		}))
+func Values(provider ast.TableValuesProvider) *ast.ValuesTable {
+	return ast.NewValuesTable(provider)
 }
 
 func Distinct(expressions ...ast.Expression) *ast.KeywordExpression {

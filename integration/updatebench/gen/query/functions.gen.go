@@ -31,8 +31,8 @@ func Unnest(arrays ...ast.Expression) *ast.SetReturningFunction {
 	return expr.Unnest(arrays...)
 }
 
-func Values(rows ...ast.Expression) *ast.SetReturningFunction {
-	return expr.Values(rows...)
+func Values(provider ast.TableValuesProvider) *ast.ValuesTable {
+	return expr.Values(provider)
 }
 
 func Cast[T ast.MappedTypes](expression ast.OfType[T]) *expr.PartialCast[T] {
