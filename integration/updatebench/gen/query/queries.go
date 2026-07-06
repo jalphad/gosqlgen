@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jalphad/gosqlgen/integration/updatebench/gen/models"
 	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/ast"
@@ -1783,10 +1782,4 @@ func (p WideRecordsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, e
 		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
 	}
 	return p.castTypes[column], nil
-}
-
-func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto] {
-	return users.NewQuery(pool).
-		Delete().
-		Where(users.Id().Eq(Val(userId)))
 }

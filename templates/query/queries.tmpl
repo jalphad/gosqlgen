@@ -466,9 +466,3 @@ func (p {{ .StructName }}UpdateValuesProvider) ColumnSQLType(column int) (string
 }
 {{ end }}
 {{ end }}
-
-func DeleteUser(pool *pgxpool.Pool, userId uuid.UUID) builder.DeleteFinalizeQuery[models.UsersDto] {
-	return users.NewQuery(pool).
-		Delete().
-		Where(users.Id().Eq(Val(userId)))
-}
