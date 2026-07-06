@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 
+	"github.com/jalphad/gosqlgen/integration/ref"
 	"github.com/jalphad/gosqlgen/integration/ref/models"
 	q "github.com/jalphad/gosqlgen/integration/ref/query"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 )
 
 func main() {
-	qry := models.NewQuery[models.UsersDto](nil, users.Table()).
+	qry := ref.NewQuery[models.UsersDto](nil, users.Table()).
 		Select(
 			users.Id(),
 			users.FullName(),
@@ -24,7 +25,7 @@ func main() {
 			q.Desc(users.Username())).
 		Limit(20).Offset(20)
 
-	sql, _ := qry.ToSql()
+	sql, _, _ := qry.ToSql()
 	fmt.Println(sql) // SELECT users.id, users.username FROM users AS users WHERE users.email LIKE $1 AND users.is_active = $2
 	//fmt.Println(params) // [%@corp.com true]
 }
