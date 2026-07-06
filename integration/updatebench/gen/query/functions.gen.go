@@ -1,0 +1,40 @@
+package query
+
+import (
+	"encoding/json"
+
+	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/ast"
+	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/expr"
+)
+
+func Coalesce[T ast.MappedTypes](expressions ...ast.OfType[T]) ast.Function[T] {
+	return expr.Coalesce(expressions...)
+}
+
+func JsonAgg(expression ast.Expression) *ast.AggregationFunction[json.RawMessage] {
+	return expr.JsonAgg(expression)
+}
+
+func JsonAggObject(alias string, filter ast.OfType[bool], columns ...ast.NamedExpression) ast.AliasedFunction[json.RawMessage] {
+	return expr.JsonAggObject(alias, filter, columns...)
+}
+
+func Count(expression ast.Expression) ast.Function[int64] {
+	return expr.Count(expression)
+}
+
+func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Function[json.RawMessage] {
+	return expr.JsonbBuildObject(expressions...)
+}
+
+func Unnest(arrays ...ast.Expression) *ast.SetReturningFunction {
+	return expr.Unnest(arrays...)
+}
+
+func Values(rows ...ast.Expression) *ast.SetReturningFunction {
+	return expr.Values(rows...)
+}
+
+func Cast[T ast.MappedTypes](expression ast.OfType[T]) *expr.PartialCast[T] {
+	return expr.Cast(expression)
+}
