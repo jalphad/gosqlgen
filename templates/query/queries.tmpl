@@ -101,6 +101,7 @@ func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
 
 {{ range $table := .Tables }}
 {{- $tablePkg := $table.PackageName }}
+{{- $primaryKeyValueColumns := sortedPrimaryKeyColumns $table }}
 {{ if $table.PrimaryKeyColumns }}
 // {{ $table.StructName }}SelectOne selects a single {{ $table.TableName }} DTO by primary key
 func {{ $table.StructName }}SelectOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}, opts ...SelectOption[models.{{ $table.StructName }}]) (builder.SelectFinalizeQuery[models.{{ $table.StructName }}], error) {
@@ -131,6 +132,64 @@ func {{ $table.StructName }}SelectMany(pool *pgxpool.Pool, opts ...SelectOption[
 	return {{ $tablePkg }}.NewQuery(pool).
 		Select(columns...), nil
 }
+
+{{ if $table.PrimaryKeyColumns }}
+// {{ $table.StructName }}DeleteOne deletes a single {{ $table.TableName }} DTO by primary key
+func {{ $table.StructName }}DeleteOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.DeleteFinalizeQuery[models.{{ $table.StructName }}] {
+	return {{ $tablePkg }}.NewQuery(pool).
+		Delete().
+		Where({{- range $index, $pk := $table.PrimaryKeyColumns }}{{- if $index }}.And({{ $tablePkg }}.{{ $pk.FieldName }}().Eq(Val({{ if $pk.IsPointer }}*{{ end }}dto.{{ $pk.FieldName }}))){{ else }}{{ $tablePkg }}.{{ $pk.FieldName }}().Eq(Val({{ if $pk.IsPointer }}*{{ end }}dto.{{ $pk.FieldName }})){{ end }}{{- end }})
+}
+
+// {{ $table.StructName }}DeleteMany deletes {{ $table.TableName }} DTOs by primary key
+func {{ $table.StructName }}DeleteMany(pool *pgxpool.Pool, dtos models.{{ $table.StructName }}s) builder.DeleteFinalizeQuery[models.{{ $table.StructName }}] {
+	v := {{ $tablePkg }}.As("v", primaryKey{{ $table.StructName }}DeleteValueColumns...)
+	return {{ $tablePkg }}.NewQuery(pool).
+		Delete().
+		Using(Values({{ .StructName }}DeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where({{- range $index, $pk := $table.PrimaryKeyColumns }}{{- if $index }}.And({{ $tablePkg }}.{{ $pk.FieldName }}().Eq(v.{{ $pk.FieldName }}())){{ else }}{{ $tablePkg }}.{{ $pk.FieldName }}().Eq(v.{{ $pk.FieldName }}()){{ end }}{{- end }})
+}
+
+var primaryKey{{ $table.StructName }}DeleteValueColumns = []ast.NamedExpression{
+	{{- range $primaryKeyValueColumns }}
+	{{ $tablePkg }}.{{ .FieldName }}(),
+	{{- end }}
+}
+
+type {{ .StructName }}DeleteValuesProvider struct {
+	dtos models.{{ $table.StructName }}s
+}
+
+func (p {{ .StructName }}DeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p {{ .StructName }}DeleteValuesProvider) ColumnCount() int {
+	return {{ len $primaryKeyValueColumns }}
+}
+
+func (p {{ .StructName }}DeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	{{- range $index, $column := $primaryKeyValueColumns }}
+	case {{ $index }}:
+		return {{ if $column.IsPointer }}*{{ end }}p.dtos[row].{{ $column.FieldName }}, nil
+	{{- end }}
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p {{ .StructName }}DeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	{{- range $index, $column := $primaryKeyValueColumns }}
+	case {{ $index }}:
+		return "{{ $column.CastType }}", nil
+	{{- end }}
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
+}
+{{ end }}
 
 // {{ $table.StructName }}InsertOne inserts a single {{ $table.TableName }} DTO
 func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}] {
@@ -170,7 +229,6 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 
 {{ if $table.UpdateColumns }}
 {{- $updateValueColumns := sortedUpdateValueColumns $table }}
-{{- $primaryKeyValueColumns := sortedPrimaryKeyColumns $table }}
 {{- $updateColumns := sortedUpdateColumns $table }}
 type {{ .StructName }}UpdateValueExtractor func(*models.{{ $table.StructName }}) any
 

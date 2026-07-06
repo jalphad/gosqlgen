@@ -127,6 +127,56 @@ func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto
 		Select(columns...), nil
 }
 
+// UsersDtoDeleteOne deletes a single users DTO by primary key
+func UsersDtoDeleteOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.DeleteFinalizeQuery[models.UsersDto] {
+	return users.NewQuery(pool).
+		Delete().
+		Where(users.Id().Eq(Val(*dto.Id)))
+}
+
+// UsersDtoDeleteMany deletes users DTOs by primary key
+func UsersDtoDeleteMany(pool *pgxpool.Pool, dtos models.UsersDtos) builder.DeleteFinalizeQuery[models.UsersDto] {
+	v := users.As("v", primaryKeyUsersDtoDeleteValueColumns...)
+	return users.NewQuery(pool).
+		Delete().
+		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(users.Id().Eq(v.Id()))
+}
+
+var primaryKeyUsersDtoDeleteValueColumns = []ast.NamedExpression{
+	users.Id(),
+}
+
+type UsersDtoDeleteValuesProvider struct {
+	dtos models.UsersDtos
+}
+
+func (p UsersDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p UsersDtoDeleteValuesProvider) ColumnCount() int {
+	return 1
+}
+
+func (p UsersDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return *p.dtos[row].Id, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p UsersDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "uuid", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
+}
+
 // UsersDtoInsertOne inserts a single users DTO
 func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
@@ -174,6 +224,56 @@ func WideRecordsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.Wi
 	}
 	return wide_records.NewQuery(pool).
 		Select(columns...), nil
+}
+
+// WideRecordsDtoDeleteOne deletes a single wide_records DTO by primary key
+func WideRecordsDtoDeleteOne(pool *pgxpool.Pool, dto *models.WideRecordsDto) builder.DeleteFinalizeQuery[models.WideRecordsDto] {
+	return wide_records.NewQuery(pool).
+		Delete().
+		Where(wide_records.Id().Eq(Val(*dto.Id)))
+}
+
+// WideRecordsDtoDeleteMany deletes wide_records DTOs by primary key
+func WideRecordsDtoDeleteMany(pool *pgxpool.Pool, dtos models.WideRecordsDtos) builder.DeleteFinalizeQuery[models.WideRecordsDto] {
+	v := wide_records.As("v", primaryKeyWideRecordsDtoDeleteValueColumns...)
+	return wide_records.NewQuery(pool).
+		Delete().
+		Using(Values(WideRecordsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(wide_records.Id().Eq(v.Id()))
+}
+
+var primaryKeyWideRecordsDtoDeleteValueColumns = []ast.NamedExpression{
+	wide_records.Id(),
+}
+
+type WideRecordsDtoDeleteValuesProvider struct {
+	dtos models.WideRecordsDtos
+}
+
+func (p WideRecordsDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p WideRecordsDtoDeleteValuesProvider) ColumnCount() int {
+	return 1
+}
+
+func (p WideRecordsDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return *p.dtos[row].Id, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p WideRecordsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "uuid", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
 }
 
 // WideRecordsDtoInsertOne inserts a single wide_records DTO

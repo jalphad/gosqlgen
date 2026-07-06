@@ -131,6 +131,56 @@ func CommentsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.Comme
 		Select(columns...), nil
 }
 
+// CommentsDtoDeleteOne deletes a single comments DTO by primary key
+func CommentsDtoDeleteOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.DeleteFinalizeQuery[models.CommentsDto] {
+	return comments.NewQuery(pool).
+		Delete().
+		Where(comments.Id().Eq(Val(*dto.Id)))
+}
+
+// CommentsDtoDeleteMany deletes comments DTOs by primary key
+func CommentsDtoDeleteMany(pool *pgxpool.Pool, dtos models.CommentsDtos) builder.DeleteFinalizeQuery[models.CommentsDto] {
+	v := comments.As("v", primaryKeyCommentsDtoDeleteValueColumns...)
+	return comments.NewQuery(pool).
+		Delete().
+		Using(Values(CommentsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(comments.Id().Eq(v.Id()))
+}
+
+var primaryKeyCommentsDtoDeleteValueColumns = []ast.NamedExpression{
+	comments.Id(),
+}
+
+type CommentsDtoDeleteValuesProvider struct {
+	dtos models.CommentsDtos
+}
+
+func (p CommentsDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p CommentsDtoDeleteValuesProvider) ColumnCount() int {
+	return 1
+}
+
+func (p CommentsDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return *p.dtos[row].Id, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p CommentsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "integer", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
+}
+
 // CommentsDtoInsertOne inserts a single comments DTO
 func CommentsDtoInsertOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto] {
 	return comments.NewQuery(pool).
@@ -439,6 +489,61 @@ func PostTagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostT
 		Select(columns...), nil
 }
 
+// PostTagsDtoDeleteOne deletes a single post_tags DTO by primary key
+func PostTagsDtoDeleteOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.DeleteFinalizeQuery[models.PostTagsDto] {
+	return post_tags.NewQuery(pool).
+		Delete().
+		Where(post_tags.PostId().Eq(Val(dto.PostId)).And(post_tags.TagId().Eq(Val(dto.TagId))))
+}
+
+// PostTagsDtoDeleteMany deletes post_tags DTOs by primary key
+func PostTagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostTagsDtos) builder.DeleteFinalizeQuery[models.PostTagsDto] {
+	v := post_tags.As("v", primaryKeyPostTagsDtoDeleteValueColumns...)
+	return post_tags.NewQuery(pool).
+		Delete().
+		Using(Values(PostTagsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(post_tags.PostId().Eq(v.PostId()).And(post_tags.TagId().Eq(v.TagId())))
+}
+
+var primaryKeyPostTagsDtoDeleteValueColumns = []ast.NamedExpression{
+	post_tags.PostId(),
+	post_tags.TagId(),
+}
+
+type PostTagsDtoDeleteValuesProvider struct {
+	dtos models.PostTagsDtos
+}
+
+func (p PostTagsDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p PostTagsDtoDeleteValuesProvider) ColumnCount() int {
+	return 2
+}
+
+func (p PostTagsDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return p.dtos[row].PostId, nil
+	case 1:
+		return p.dtos[row].TagId, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p PostTagsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "integer", nil
+	case 1:
+		return "integer", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
+}
+
 // PostTagsDtoInsertOne inserts a single post_tags DTO
 func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.InsertFinalizeQuery[models.PostTagsDto] {
 	return post_tags.NewQuery(pool).
@@ -488,6 +593,56 @@ func PostsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostsDto
 	}
 	return posts.NewQuery(pool).
 		Select(columns...), nil
+}
+
+// PostsDtoDeleteOne deletes a single posts DTO by primary key
+func PostsDtoDeleteOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.DeleteFinalizeQuery[models.PostsDto] {
+	return posts.NewQuery(pool).
+		Delete().
+		Where(posts.Id().Eq(Val(*dto.Id)))
+}
+
+// PostsDtoDeleteMany deletes posts DTOs by primary key
+func PostsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostsDtos) builder.DeleteFinalizeQuery[models.PostsDto] {
+	v := posts.As("v", primaryKeyPostsDtoDeleteValueColumns...)
+	return posts.NewQuery(pool).
+		Delete().
+		Using(Values(PostsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(posts.Id().Eq(v.Id()))
+}
+
+var primaryKeyPostsDtoDeleteValueColumns = []ast.NamedExpression{
+	posts.Id(),
+}
+
+type PostsDtoDeleteValuesProvider struct {
+	dtos models.PostsDtos
+}
+
+func (p PostsDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p PostsDtoDeleteValuesProvider) ColumnCount() int {
+	return 1
+}
+
+func (p PostsDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return *p.dtos[row].Id, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p PostsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "integer", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
 }
 
 // PostsDtoInsertOne inserts a single posts DTO
@@ -822,6 +977,56 @@ func TagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.TagsDto])
 		Select(columns...), nil
 }
 
+// TagsDtoDeleteOne deletes a single tags DTO by primary key
+func TagsDtoDeleteOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.DeleteFinalizeQuery[models.TagsDto] {
+	return tags.NewQuery(pool).
+		Delete().
+		Where(tags.Id().Eq(Val(*dto.Id)))
+}
+
+// TagsDtoDeleteMany deletes tags DTOs by primary key
+func TagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.TagsDtos) builder.DeleteFinalizeQuery[models.TagsDto] {
+	v := tags.As("v", primaryKeyTagsDtoDeleteValueColumns...)
+	return tags.NewQuery(pool).
+		Delete().
+		Using(Values(TagsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(tags.Id().Eq(v.Id()))
+}
+
+var primaryKeyTagsDtoDeleteValueColumns = []ast.NamedExpression{
+	tags.Id(),
+}
+
+type TagsDtoDeleteValuesProvider struct {
+	dtos models.TagsDtos
+}
+
+func (p TagsDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p TagsDtoDeleteValuesProvider) ColumnCount() int {
+	return 1
+}
+
+func (p TagsDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return *p.dtos[row].Id, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p TagsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "integer", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
+}
+
 // TagsDtoInsertOne inserts a single tags DTO
 func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFinalizeQuery[models.TagsDto] {
 	return tags.NewQuery(pool).
@@ -1082,6 +1287,56 @@ func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto
 	}
 	return users.NewQuery(pool).
 		Select(columns...), nil
+}
+
+// UsersDtoDeleteOne deletes a single users DTO by primary key
+func UsersDtoDeleteOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.DeleteFinalizeQuery[models.UsersDto] {
+	return users.NewQuery(pool).
+		Delete().
+		Where(users.Id().Eq(Val(*dto.Id)))
+}
+
+// UsersDtoDeleteMany deletes users DTOs by primary key
+func UsersDtoDeleteMany(pool *pgxpool.Pool, dtos models.UsersDtos) builder.DeleteFinalizeQuery[models.UsersDto] {
+	v := users.As("v", primaryKeyUsersDtoDeleteValueColumns...)
+	return users.NewQuery(pool).
+		Delete().
+		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Where(users.Id().Eq(v.Id()))
+}
+
+var primaryKeyUsersDtoDeleteValueColumns = []ast.NamedExpression{
+	users.Id(),
+}
+
+type UsersDtoDeleteValuesProvider struct {
+	dtos models.UsersDtos
+}
+
+func (p UsersDtoDeleteValuesProvider) RowCount() int {
+	return len(p.dtos)
+}
+
+func (p UsersDtoDeleteValuesProvider) ColumnCount() int {
+	return 1
+}
+
+func (p UsersDtoDeleteValuesProvider) Value(row int, column int) (any, error) {
+	switch column {
+	case 0:
+		return *p.dtos[row].Id, nil
+	default:
+		return nil, fmt.Errorf("VALUES column %d has no value", column)
+	}
+}
+
+func (p UsersDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
+	switch column {
+	case 0:
+		return "uuid", nil
+	default:
+		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
+	}
 }
 
 // UsersDtoInsertOne inserts a single users DTO

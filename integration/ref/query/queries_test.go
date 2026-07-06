@@ -93,6 +93,98 @@ func TestUsersDtoSelectManyErrorsForNilSelectedColumn(t *testing.T) {
 	assert.Contains(t, err.Error(), "query.SelectColumns received a nil column")
 }
 
+func TestUsersDtoDeleteOneUsesPrimaryKey(t *testing.T) {
+	// Arrange
+	id := uuid.New()
+	user := &models.UsersDto{
+		Id: &id,
+	}
+
+	// Act
+	sql, _, err := UsersDtoDeleteOne(nil, user).ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "DELETE FROM users WHERE users.id = $1", sql)
+}
+
+func TestUsersDtoDeleteManyUsesPrimaryKeyValues(t *testing.T) {
+	// Arrange
+	id1 := uuid.New()
+	id2 := uuid.New()
+	dtos := models.UsersDtos{
+		{Id: &id1},
+		{Id: &id2},
+	}
+
+	// Act
+	sql, _, err := UsersDtoDeleteMany(nil, dtos).ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "DELETE FROM users USING (VALUES (CAST($1 AS uuid)), ($2)) AS v(id) WHERE users.id = v.id", sql)
+}
+
+func TestPostTagsDtoDeleteOneUsesCompositePrimaryKey(t *testing.T) {
+	// Arrange
+	dto := &models.PostTagsDto{
+		PostId: 10,
+		TagId:  20,
+	}
+
+	// Act
+	sql, _, err := PostTagsDtoDeleteOne(nil, dto).ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "DELETE FROM post_tags WHERE post_tags.post_id = $1 AND post_tags.tag_id = $2", sql)
+}
+
+func TestPostTagsDtoDeleteManyUsesCompositePrimaryKeyValues(t *testing.T) {
+	// Arrange
+	dtos := models.PostTagsDtos{
+		{PostId: 10, TagId: 20},
+		{PostId: 11, TagId: 21},
+	}
+
+	// Act
+	sql, _, err := PostTagsDtoDeleteMany(nil, dtos).ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "DELETE FROM post_tags USING (VALUES (CAST($1 AS integer), CAST($2 AS integer)), ($3, $4)) AS v(post_id, tag_id) WHERE post_tags.post_id = v.post_id AND post_tags.tag_id = v.tag_id", sql)
+}
+
+func TestPostTagsDtoDeleteManyErrorsForEmptyList(t *testing.T) {
+	// Arrange
+
+	// Act
+	_, _, err := PostTagsDtoDeleteMany(nil, models.PostTagsDtos{}).ToSql()
+
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "VALUES table requires at least one row and one column")
+}
+
+func TestPostTagsDtoDeleteManyValueProviderErrorsForUnknownColumn(t *testing.T) {
+	// Arrange
+	provider := PostTagsDtoDeleteValuesProvider{
+		dtos: models.PostTagsDtos{
+			{PostId: 10, TagId: 20},
+		},
+	}
+
+	// Act
+	_, valueErr := provider.Value(0, 2)
+	_, typeErr := provider.ColumnSQLType(2)
+
+	// Assert
+	require.Error(t, valueErr)
+	assert.Contains(t, valueErr.Error(), "VALUES column 2 has no value")
+	require.Error(t, typeErr)
+	assert.Contains(t, typeErr.Error(), "VALUES column 2 has no SQL type")
+}
+
 func TestUsersDtoUpdateOneDefaultsToAllNonPrimaryKeyColumns(t *testing.T) {
 	// Arrange
 	id := uuid.New()
