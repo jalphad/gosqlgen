@@ -27,6 +27,39 @@ type updateOptions struct {
 	source  updateBatchSource
 }
 
+type SelectOption[T any] func(*selectOptions[T]) error
+
+type selectOptions[T any] struct {
+	columns []ast.Projection[T]
+}
+
+func SelectColumns[T any](columns ...ast.Projection[T]) SelectOption[T] {
+	return func(options *selectOptions[T]) error {
+		if len(columns) == 0 {
+			return fmt.Errorf("query.SelectColumns requires at least one column")
+		}
+		for _, column := range columns {
+			if column == nil {
+				return fmt.Errorf("query.SelectColumns received a nil column")
+			}
+		}
+		options.columns = columns
+		return nil
+	}
+}
+
+func newSelectOptions[T any](opts ...SelectOption[T]) (selectOptions[T], error) {
+	var options selectOptions[T]
+	for _, opt := range opts {
+		if opt != nil {
+			if err := opt(&options); err != nil {
+				return selectOptions[T]{}, err
+			}
+		}
+	}
+	return options, nil
+}
+
 func UpdateColumns(columns ...ast.NamedExpression) UpdateOption {
 	return func(options *updateOptions) error {
 		if len(columns) == 0 {
@@ -65,6 +98,35 @@ func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
 	return options, nil
 }
 
+// UsersDtoSelectOne selects a single users DTO by primary key
+func UsersDtoSelectOne(pool *pgxpool.Pool, dto *models.UsersDto, opts ...SelectOption[models.UsersDto]) (builder.SelectFinalizeQuery[models.UsersDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = users.Into.AllColumns()
+	}
+	return users.NewQuery(pool).
+		Select(columns...).
+		Where(users.Id().Eq(Val(*dto.Id))), nil
+}
+
+// UsersDtoSelectMany selects users DTOs
+func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto]) (builder.SelectJoinQuery[models.UsersDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = users.Into.AllColumns()
+	}
+	return users.NewQuery(pool).
+		Select(columns...), nil
+}
+
 // UsersDtoInsertOne inserts a single users DTO
 func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
@@ -83,6 +145,35 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 		).
 		Returning(users.Id()).
 		Values(dtos...)
+}
+
+// WideRecordsDtoSelectOne selects a single wide_records DTO by primary key
+func WideRecordsDtoSelectOne(pool *pgxpool.Pool, dto *models.WideRecordsDto, opts ...SelectOption[models.WideRecordsDto]) (builder.SelectFinalizeQuery[models.WideRecordsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = wide_records.Into.AllColumns()
+	}
+	return wide_records.NewQuery(pool).
+		Select(columns...).
+		Where(wide_records.Id().Eq(Val(*dto.Id))), nil
+}
+
+// WideRecordsDtoSelectMany selects wide_records DTOs
+func WideRecordsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.WideRecordsDto]) (builder.SelectJoinQuery[models.WideRecordsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = wide_records.Into.AllColumns()
+	}
+	return wide_records.NewQuery(pool).
+		Select(columns...), nil
 }
 
 // WideRecordsDtoInsertOne inserts a single wide_records DTO

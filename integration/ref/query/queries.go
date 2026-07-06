@@ -31,6 +31,39 @@ type updateOptions struct {
 	source  updateBatchSource
 }
 
+type SelectOption[T any] func(*selectOptions[T]) error
+
+type selectOptions[T any] struct {
+	columns []ast.Projection[T]
+}
+
+func SelectColumns[T any](columns ...ast.Projection[T]) SelectOption[T] {
+	return func(options *selectOptions[T]) error {
+		if len(columns) == 0 {
+			return fmt.Errorf("query.SelectColumns requires at least one column")
+		}
+		for _, column := range columns {
+			if column == nil {
+				return fmt.Errorf("query.SelectColumns received a nil column")
+			}
+		}
+		options.columns = columns
+		return nil
+	}
+}
+
+func newSelectOptions[T any](opts ...SelectOption[T]) (selectOptions[T], error) {
+	var options selectOptions[T]
+	for _, opt := range opts {
+		if opt != nil {
+			if err := opt(&options); err != nil {
+				return selectOptions[T]{}, err
+			}
+		}
+	}
+	return options, nil
+}
+
 func UpdateColumns(columns ...ast.NamedExpression) UpdateOption {
 	return func(options *updateOptions) error {
 		if len(columns) == 0 {
@@ -67,6 +100,35 @@ func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
 		}
 	}
 	return options, nil
+}
+
+// CommentsDtoSelectOne selects a single comments DTO by primary key
+func CommentsDtoSelectOne(pool *pgxpool.Pool, dto *models.CommentsDto, opts ...SelectOption[models.CommentsDto]) (builder.SelectFinalizeQuery[models.CommentsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = comments.Into.AllColumns()
+	}
+	return comments.NewQuery(pool).
+		Select(columns...).
+		Where(comments.Id().Eq(Val(*dto.Id))), nil
+}
+
+// CommentsDtoSelectMany selects comments DTOs
+func CommentsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.CommentsDto]) (builder.SelectJoinQuery[models.CommentsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = comments.Into.AllColumns()
+	}
+	return comments.NewQuery(pool).
+		Select(columns...), nil
 }
 
 // CommentsDtoInsertOne inserts a single comments DTO
@@ -348,6 +410,35 @@ func (p CommentsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, erro
 	return p.castTypes[column], nil
 }
 
+// PostTagsDtoSelectOne selects a single post_tags DTO by primary key
+func PostTagsDtoSelectOne(pool *pgxpool.Pool, dto *models.PostTagsDto, opts ...SelectOption[models.PostTagsDto]) (builder.SelectFinalizeQuery[models.PostTagsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = post_tags.Into.AllColumns()
+	}
+	return post_tags.NewQuery(pool).
+		Select(columns...).
+		Where(post_tags.PostId().Eq(Val(dto.PostId)).And(post_tags.TagId().Eq(Val(dto.TagId)))), nil
+}
+
+// PostTagsDtoSelectMany selects post_tags DTOs
+func PostTagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostTagsDto]) (builder.SelectJoinQuery[models.PostTagsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = post_tags.Into.AllColumns()
+	}
+	return post_tags.NewQuery(pool).
+		Select(columns...), nil
+}
+
 // PostTagsDtoInsertOne inserts a single post_tags DTO
 func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.InsertFinalizeQuery[models.PostTagsDto] {
 	return post_tags.NewQuery(pool).
@@ -368,6 +459,35 @@ func PostTagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostTagsDto) buil
 		).
 		Returning(post_tags.PostId(), post_tags.TagId()).
 		Values(dtos...)
+}
+
+// PostsDtoSelectOne selects a single posts DTO by primary key
+func PostsDtoSelectOne(pool *pgxpool.Pool, dto *models.PostsDto, opts ...SelectOption[models.PostsDto]) (builder.SelectFinalizeQuery[models.PostsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = posts.Into.AllColumns()
+	}
+	return posts.NewQuery(pool).
+		Select(columns...).
+		Where(posts.Id().Eq(Val(*dto.Id))), nil
+}
+
+// PostsDtoSelectMany selects posts DTOs
+func PostsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostsDto]) (builder.SelectJoinQuery[models.PostsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = posts.Into.AllColumns()
+	}
+	return posts.NewQuery(pool).
+		Select(columns...), nil
 }
 
 // PostsDtoInsertOne inserts a single posts DTO
@@ -673,6 +793,35 @@ func (p PostsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, error) 
 	return p.castTypes[column], nil
 }
 
+// TagsDtoSelectOne selects a single tags DTO by primary key
+func TagsDtoSelectOne(pool *pgxpool.Pool, dto *models.TagsDto, opts ...SelectOption[models.TagsDto]) (builder.SelectFinalizeQuery[models.TagsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = tags.Into.AllColumns()
+	}
+	return tags.NewQuery(pool).
+		Select(columns...).
+		Where(tags.Id().Eq(Val(*dto.Id))), nil
+}
+
+// TagsDtoSelectMany selects tags DTOs
+func TagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.TagsDto]) (builder.SelectJoinQuery[models.TagsDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = tags.Into.AllColumns()
+	}
+	return tags.NewQuery(pool).
+		Select(columns...), nil
+}
+
 // TagsDtoInsertOne inserts a single tags DTO
 func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFinalizeQuery[models.TagsDto] {
 	return tags.NewQuery(pool).
@@ -904,6 +1053,35 @@ func (p TagsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, error) {
 		return "", fmt.Errorf("VALUES column %d has no SQL type", column)
 	}
 	return p.castTypes[column], nil
+}
+
+// UsersDtoSelectOne selects a single users DTO by primary key
+func UsersDtoSelectOne(pool *pgxpool.Pool, dto *models.UsersDto, opts ...SelectOption[models.UsersDto]) (builder.SelectFinalizeQuery[models.UsersDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = users.Into.AllColumns()
+	}
+	return users.NewQuery(pool).
+		Select(columns...).
+		Where(users.Id().Eq(Val(*dto.Id))), nil
+}
+
+// UsersDtoSelectMany selects users DTOs
+func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto]) (builder.SelectJoinQuery[models.UsersDto], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = users.Into.AllColumns()
+	}
+	return users.NewQuery(pool).
+		Select(columns...), nil
 }
 
 // UsersDtoInsertOne inserts a single users DTO

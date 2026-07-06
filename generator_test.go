@@ -117,6 +117,8 @@ func TestGenerator_GenerateFilesSkipsUpdateQueriesForPrimaryKeyOnlyTables(t *tes
 	// Assert
 	queryFile := requireGeneratedContent(t, files, "query/queries.go")
 	assert.Contains(t, queryFile, "func PostTagsDtoInsertOne")
+	assert.Contains(t, queryFile, "func PostTagsDtoSelectOne")
+	assert.Contains(t, queryFile, "func PostTagsDtoSelectMany")
 	assert.NotContains(t, queryFile, "func PostTagsDtoUpdateOne")
 	assert.NotContains(t, queryFile, "func PostTagsDtoUpdateMany")
 }

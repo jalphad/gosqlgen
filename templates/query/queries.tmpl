@@ -28,6 +28,39 @@ type updateOptions struct {
 	source  updateBatchSource
 }
 
+type SelectOption[T any] func(*selectOptions[T]) error
+
+type selectOptions[T any] struct {
+	columns []ast.Projection[T]
+}
+
+func SelectColumns[T any](columns ...ast.Projection[T]) SelectOption[T] {
+	return func(options *selectOptions[T]) error {
+		if len(columns) == 0 {
+			return fmt.Errorf("query.SelectColumns requires at least one column")
+		}
+		for _, column := range columns {
+			if column == nil {
+				return fmt.Errorf("query.SelectColumns received a nil column")
+			}
+		}
+		options.columns = columns
+		return nil
+	}
+}
+
+func newSelectOptions[T any](opts ...SelectOption[T]) (selectOptions[T], error) {
+	var options selectOptions[T]
+	for _, opt := range opts {
+		if opt != nil {
+			if err := opt(&options); err != nil {
+				return selectOptions[T]{}, err
+			}
+		}
+	}
+	return options, nil
+}
+
 func UpdateColumns(columns ...ast.NamedExpression) UpdateOption {
 	return func(options *updateOptions) error {
 		if len(columns) == 0 {
@@ -68,6 +101,37 @@ func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
 
 {{ range $table := .Tables }}
 {{- $tablePkg := $table.PackageName }}
+{{ if $table.PrimaryKeyColumns }}
+// {{ $table.StructName }}SelectOne selects a single {{ $table.TableName }} DTO by primary key
+func {{ $table.StructName }}SelectOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}, opts ...SelectOption[models.{{ $table.StructName }}]) (builder.SelectFinalizeQuery[models.{{ $table.StructName }}], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = {{ $tablePkg }}.Into.AllColumns()
+	}
+	return {{ $tablePkg }}.NewQuery(pool).
+		Select(columns...).
+		Where({{- range $index, $pk := $table.PrimaryKeyColumns }}{{- if $index }}.And({{ $tablePkg }}.{{ $pk.FieldName }}().Eq(Val({{ if $pk.IsPointer }}*{{ end }}dto.{{ $pk.FieldName }}))){{ else }}{{ $tablePkg }}.{{ $pk.FieldName }}().Eq(Val({{ if $pk.IsPointer }}*{{ end }}dto.{{ $pk.FieldName }})){{ end }}{{- end }}), nil
+}
+{{ end }}
+
+// {{ $table.StructName }}SelectMany selects {{ $table.TableName }} DTOs
+func {{ $table.StructName }}SelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.{{ $table.StructName }}]) (builder.SelectJoinQuery[models.{{ $table.StructName }}], error) {
+	options, err := newSelectOptions(opts...)
+	if err != nil {
+		return nil, err
+	}
+	columns := options.columns
+	if columns == nil {
+		columns = {{ $tablePkg }}.Into.AllColumns()
+	}
+	return {{ $tablePkg }}.NewQuery(pool).
+		Select(columns...), nil
+}
+
 // {{ $table.StructName }}InsertOne inserts a single {{ $table.TableName }} DTO
 func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.StructName }}) builder.InsertFinalizeQuery[models.{{ $table.StructName }}] {
 	return {{ $tablePkg }}.NewQuery(pool).
