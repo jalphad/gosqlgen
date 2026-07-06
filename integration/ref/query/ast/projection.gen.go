@@ -15,13 +15,13 @@ type ScanDest[T MappedTypes] interface {
 
 type ScanBinding interface {
 	Destination() any
-	Value() (any, error)
 	Assign() error
 }
 
 type Projection[R any] interface {
 	NamedExpression
 	BindScan(*R) ScanBinding
+	Value(*R) (any, error)
 }
 
 type BaseProjection[R any, T MappedTypes, D ScanDest[T]] struct {
@@ -50,6 +50,10 @@ func (p *BaseProjection[R, T, D]) BindScan(t *R) ScanBinding {
 	return scalarScanBinding[T, D]{dest: p.dest(t)}
 }
 
+func (p *BaseProjection[R, T, D]) Value(t *R) (any, error) {
+	return scalarScanValue[T, D](p.dest(t))
+}
+
 type scalarScanBinding[T MappedTypes, D ScanDest[T]] struct {
 	dest D
 }
@@ -58,14 +62,14 @@ func (b scalarScanBinding[T, D]) Destination() any {
 	return b.dest
 }
 
-func (b scalarScanBinding[T, D]) Value() (any, error) {
-	switch dest := any(b.dest).(type) {
+func scalarScanValue[T MappedTypes, D ScanDest[T]](value D) (any, error) {
+	switch dest := any(value).(type) {
 	case *T:
 		return *dest, nil
 	case **T:
 		return *dest, nil
 	default:
-		return nil, fmt.Errorf("unsupported scan destination type %T", b.dest)
+		return nil, fmt.Errorf("unsupported scan destination type %T", value)
 	}
 }
 
@@ -114,6 +118,10 @@ func (p *CustomProjection[R, T, O]) BindScan(t *R) ScanBinding {
 	}
 }
 
+func (p *CustomProjection[R, T, O]) Value(*R) (any, error) {
+	return nil, fmt.Errorf("custom projections do not expose source values")
+}
+
 type customScanBinding[T MappedTypes, O any] struct {
 	input   T
 	dest    *O
@@ -122,10 +130,6 @@ type customScanBinding[T MappedTypes, O any] struct {
 
 func (b *customScanBinding[T, O]) Destination() any {
 	return &b.input
-}
-
-func (b *customScanBinding[T, O]) Value() (any, error) {
-	return nil, fmt.Errorf("custom scan bindings do not expose source values")
 }
 
 func (b *customScanBinding[T, O]) Assign() error {
@@ -159,6 +163,10 @@ func (p *StringColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	}
 }
 
+func (p *StringColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[string, D](p.dest(r))
+}
+
 type IntColumnProjection[R any, D ScanDest[int64]] struct {
 	*IntColumnExpression
 	dest func(*R) D
@@ -179,6 +187,10 @@ func (p *IntColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	return &scalarScanBinding[int64, D]{
 		dest: p.dest(r),
 	}
+}
+
+func (p *IntColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[int64, D](p.dest(r))
 }
 
 type FloatColumnProjection[R any, D ScanDest[float64]] struct {
@@ -203,6 +215,10 @@ func (p *FloatColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	}
 }
 
+func (p *FloatColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[float64, D](p.dest(r))
+}
+
 type NumericColumnProjection[R any, D ScanDest[pgtype.Numeric]] struct {
 	*NumericColumnExpression
 	dest func(*R) D
@@ -223,6 +239,10 @@ func (p *NumericColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	return &scalarScanBinding[pgtype.Numeric, D]{
 		dest: p.dest(r),
 	}
+}
+
+func (p *NumericColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[pgtype.Numeric, D](p.dest(r))
 }
 
 type UUIDColumnProjection[R any, D ScanDest[uuid.UUID]] struct {
@@ -247,6 +267,10 @@ func (p *UUIDColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	}
 }
 
+func (p *UUIDColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[uuid.UUID, D](p.dest(r))
+}
+
 type BoolColumnProjection[R any, D ScanDest[bool]] struct {
 	*BoolColumnExpression
 	dest func(*R) D
@@ -267,6 +291,10 @@ func (p *BoolColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	return &scalarScanBinding[bool, D]{
 		dest: p.dest(r),
 	}
+}
+
+func (p *BoolColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[bool, D](p.dest(r))
 }
 
 type TimestampColumnProjection[R any, D ScanDest[time.Time]] struct {
@@ -291,6 +319,10 @@ func (p *TimestampColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	}
 }
 
+func (p *TimestampColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[time.Time, D](p.dest(r))
+}
+
 type DateColumnProjection[R any, D ScanDest[time.Time]] struct {
 	*DateColumnExpression
 	dest func(*R) D
@@ -313,6 +345,10 @@ func (p *DateColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	}
 }
 
+func (p *DateColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[time.Time, D](p.dest(r))
+}
+
 type TimeColumnProjection[R any, D ScanDest[time.Time]] struct {
 	*TimeColumnExpression
 	dest func(*R) D
@@ -333,4 +369,8 @@ func (p *TimeColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 	return &scalarScanBinding[time.Time, D]{
 		dest: p.dest(r),
 	}
+}
+
+func (p *TimeColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[time.Time, D](p.dest(r))
 }

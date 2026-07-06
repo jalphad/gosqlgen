@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,67 +64,6 @@ func (c CommentsDtos) TestDate() ast.OfType[[]time.Time] {
 		out[idx] = dto.TestDate
 	}
 	return ast.SetType[[]time.Time](ast.NewLiteralExpression(out))
-}
-
-func (c CommentsDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
-	im := make([]ast.Expression, 0, len(c)*len(columns))
-	for _, column := range columns {
-		columnLower := strings.ToLower(column.Name())
-
-		if columnLower == "id" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.Id))
-			}
-		}
-
-		if columnLower == "post_id" || columnLower == "postid" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.PostId))
-			}
-		}
-
-		if columnLower == "user_id" || columnLower == "userid" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.UserId))
-			}
-		}
-
-		if columnLower == "content" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.Content))
-			}
-		}
-
-		if columnLower == "is_approved" || columnLower == "isapproved" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.IsApproved))
-			}
-		}
-
-		if columnLower == "created_at" || columnLower == "createdat" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.CreatedAt))
-			}
-		}
-
-		if columnLower == "test_date" || columnLower == "testdate" {
-			for _, dto := range c {
-				im = append(im, ast.NewLiteralExpression(dto.TestDate))
-			}
-		}
-	}
-
-	values := make([]ast.Expression, 0, len(c))
-	for i := 0; i < len(c); i++ {
-		grouped := make([]ast.Expression, len(columns))
-		for j := range columns {
-			grouped[j] = im[j*len(c)+i]
-		}
-
-		values = append(values, ast.NewGroupedExpression(grouped...))
-	}
-
-	return values
 }
 
 // CommentsDto represents the comments table

@@ -1,8 +1,6 @@
 package models
 
 import (
-	"strings"
-
 	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
@@ -22,37 +20,6 @@ func (p PostTagsDtos) TagId() ast.OfType[[]int64] {
 		out[idx] = dto.TagId
 	}
 	return ast.NewSQLType(out)
-}
-
-func (p PostTagsDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
-	im := make([]ast.Expression, 0, len(p)*len(columns))
-	for _, column := range columns {
-		columnLower := strings.ToLower(column.Name())
-
-		if columnLower == "post_id" || columnLower == "postid" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.PostId))
-			}
-		}
-
-		if columnLower == "tag_id" || columnLower == "tagid" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.TagId))
-			}
-		}
-	}
-
-	values := make([]ast.Expression, 0, len(p))
-	for i := 0; i < len(p); i++ {
-		grouped := make([]ast.Expression, len(columns))
-		for j := range columns {
-			grouped[j] = im[j*len(p)+i]
-		}
-
-		values = append(values, ast.NewGroupedExpression(grouped...))
-	}
-
-	return values
 }
 
 // PostTagsDto represents the post_tags table

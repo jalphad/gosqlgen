@@ -61,8 +61,7 @@ func SetTo[T any](dto *T, fields ...ast.Projection[T]) ast.UpdateSetExpr {
 		if field == nil {
 			return ast.NewUpdateSetError(errors.New("query.SetTo received a nil field"))
 		}
-		binding := field.BindScan(dto)
-		value, err := binding.Value()
+		value, err := field.Value(dto)
 		if err != nil {
 			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.Name(), err))
 		}

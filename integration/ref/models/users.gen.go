@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,67 +64,6 @@ func (u UsersDtos) IsActive() ast.OfType[[]bool] {
 		out[idx] = dto.IsActive
 	}
 	return ast.SetType[[]bool](ast.NewLiteralExpression(out))
-}
-
-func (u UsersDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
-	im := make([]ast.Expression, 0, len(u)*len(columns))
-	for _, column := range columns {
-		columnLower := strings.ToLower(column.Name())
-
-		if columnLower == "id" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.Id))
-			}
-		}
-
-		if columnLower == "username" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.Username))
-			}
-		}
-
-		if columnLower == "email" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.Email))
-			}
-		}
-
-		if columnLower == "full_name" || columnLower == "fullname" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.FullName))
-			}
-		}
-
-		if columnLower == "created_at" || columnLower == "createdat" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.CreatedAt))
-			}
-		}
-
-		if columnLower == "updated_at" || columnLower == "updatedat" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.UpdatedAt))
-			}
-		}
-
-		if columnLower == "is_active" || columnLower == "isactive" {
-			for _, dto := range u {
-				im = append(im, ast.NewLiteralExpression(dto.IsActive))
-			}
-		}
-	}
-
-	values := make([]ast.Expression, 0, len(u))
-	for i := 0; i < len(u); i++ {
-		grouped := make([]ast.Expression, len(columns))
-		for j := range columns {
-			grouped[j] = im[j*len(u)+i]
-		}
-
-		values = append(values, ast.NewGroupedExpression(grouped...))
-	}
-
-	return values
 }
 
 // UsersDto represents the users table

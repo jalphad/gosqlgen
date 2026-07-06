@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,79 +80,6 @@ func (p PostsDtos) UpdatedAt() ast.OfType[[]time.Time] {
 		out[idx] = dto.UpdatedAt
 	}
 	return ast.SetType[[]time.Time](ast.NewLiteralExpression(out))
-}
-
-func (p PostsDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
-	im := make([]ast.Expression, 0, len(p)*len(columns))
-	for _, column := range columns {
-		columnLower := strings.ToLower(column.Name())
-
-		if columnLower == "id" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.Id))
-			}
-		}
-
-		if columnLower == "user_id" || columnLower == "userid" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.UserId))
-			}
-		}
-
-		if columnLower == "title" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.Title))
-			}
-		}
-
-		if columnLower == "content" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.Content))
-			}
-		}
-
-		if columnLower == "status" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.Status))
-			}
-		}
-
-		if columnLower == "published_at" || columnLower == "publishedat" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.PublishedAt))
-			}
-		}
-
-		if columnLower == "view_count" || columnLower == "viewcount" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.ViewCount))
-			}
-		}
-
-		if columnLower == "created_at" || columnLower == "createdat" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.CreatedAt))
-			}
-		}
-
-		if columnLower == "updated_at" || columnLower == "updatedat" {
-			for _, dto := range p {
-				im = append(im, ast.NewLiteralExpression(dto.UpdatedAt))
-			}
-		}
-	}
-
-	values := make([]ast.Expression, 0, len(p))
-	for i := 0; i < len(p); i++ {
-		grouped := make([]ast.Expression, len(columns))
-		for j := range columns {
-			grouped[j] = im[j*len(p)+i]
-		}
-
-		values = append(values, ast.NewGroupedExpression(grouped...))
-	}
-
-	return values
 }
 
 // PostsDto represents the posts table

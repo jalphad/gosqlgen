@@ -69,6 +69,10 @@ func Unnest(arrays ...ast.Expression) *ast.SetReturningFunction {
 		ast.NewFunctionNode("unnest", arrays, nil))
 }
 
+func Values(provider ast.TableValuesProvider) *ast.ValuesTable {
+	return ast.NewValuesTable(provider)
+}
+
 func Distinct(expressions ...ast.Expression) *ast.KeywordExpression {
 	return ast.NewKeywordExpression("DISTINCT", expressions...)
 }
@@ -200,6 +204,14 @@ func (c *PartialCast[T]) AsJsonb() ast.OfType[json.RawMessage] {
 
 func (c *PartialCast[T]) AsJsonbArray() ast.OfType[[]json.RawMessage] {
 	return toCastExpression[[]json.RawMessage](c.expression, "json[]")
+}
+
+func (c *PartialCast[T]) AsBytea() ast.OfType[[]byte] {
+	return toCastExpression[[]byte](c.expression, "bytea")
+}
+
+func (c *PartialCast[T]) AsByteaArray() ast.OfType[[][]byte] {
+	return toCastExpression[[][]byte](c.expression, "bytea[]")
 }
 
 func (c *PartialCast[T]) AsUUID() ast.OfType[uuid.UUID] {

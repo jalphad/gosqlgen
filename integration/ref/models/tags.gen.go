@@ -1,8 +1,6 @@
 package models
 
 import (
-	"strings"
-
 	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 )
 
@@ -30,43 +28,6 @@ func (t TagsDtos) Slug() ast.OfType[[]string] {
 		out[idx] = dto.Slug
 	}
 	return ast.NewSQLType(out)
-}
-
-func (t TagsDtos) GetValues(columns ...ast.NamedExpression) []ast.Expression {
-	im := make([]ast.Expression, 0, len(t)*len(columns))
-	for _, column := range columns {
-		columnLower := strings.ToLower(column.Name())
-
-		if columnLower == "id" {
-			for _, dto := range t {
-				im = append(im, ast.NewLiteralExpression(dto.Id))
-			}
-		}
-
-		if columnLower == "name" {
-			for _, dto := range t {
-				im = append(im, ast.NewLiteralExpression(dto.Name))
-			}
-		}
-
-		if columnLower == "slug" {
-			for _, dto := range t {
-				im = append(im, ast.NewLiteralExpression(dto.Slug))
-			}
-		}
-	}
-
-	values := make([]ast.Expression, 0, len(t))
-	for i := 0; i < len(t); i++ {
-		grouped := make([]ast.Expression, len(columns))
-		for j := range columns {
-			grouped[j] = im[j*len(t)+i]
-		}
-
-		values = append(values, ast.NewGroupedExpression(grouped...))
-	}
-
-	return values
 }
 
 // TagsDto represents the tags table
