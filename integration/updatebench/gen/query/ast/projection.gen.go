@@ -374,3 +374,29 @@ func (p *TimeColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 func (p *TimeColumnProjection[R, D]) Value(r *R) (any, error) {
 	return scalarScanValue[time.Time, D](p.dest(r))
 }
+
+type JsonColumnProjection[R any, D ScanDest[json.RawMessage]] struct {
+	*JsonColumnExpression
+	dest func(*R) D
+}
+
+func NewJsonColumnProjection[R any, D ScanDest[json.RawMessage]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *JsonColumnProjection[R, D] {
+	return &JsonColumnProjection[R, D]{
+		JsonColumnExpression: NewJsonColumnExpression(table, column),
+		dest:                 ref,
+	}
+}
+
+func (p *JsonColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[json.RawMessage, D]{
+		dest: p.dest(r),
+	}
+}
+
+func (p *JsonColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[json.RawMessage, D](p.dest(r))
+}

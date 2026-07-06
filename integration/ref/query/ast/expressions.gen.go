@@ -357,6 +357,29 @@ func (e *TimeColumnExpression) Name() string {
 	return e.name
 }
 
+type JsonColumnExpression struct {
+	*jsonType
+	name string
+}
+
+func NewJsonColumnExpression(table, column string) *JsonColumnExpression {
+	return &JsonColumnExpression{
+		jsonType: Json(NewColumnNode(table, column)),
+		name:     column,
+	}
+}
+
+func NewJsonColumnExpressionFromExpr(name string, expression Expression) *JsonColumnExpression {
+	return &JsonColumnExpression{
+		jsonType: Json(expression),
+		name:     name,
+	}
+}
+
+func (e *JsonColumnExpression) Name() string {
+	return e.name
+}
+
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
 	table string      // Base table Name

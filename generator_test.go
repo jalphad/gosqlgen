@@ -171,6 +171,39 @@ func TestGenerator_GenerateFilesUsesFKColumnBasedRelationNames(t *testing.T) {
 	assert.Contains(t, usersQueryFile, "func (intoUsersDto) PostsByUpdatedBy")
 }
 
+func TestGenerator_GenerateFilesUsesJsonColumnProjectionForJsonColumns(t *testing.T) {
+	// Arrange
+	p := parser.NewParser()
+	err := p.Parse(`
+		CREATE TABLE events (
+			id INTEGER PRIMARY KEY,
+			payload JSON NOT NULL,
+			metadata JSONB
+		);
+	`)
+	require.NoError(t, err)
+
+	generator := NewGenerator(p)
+	generator.SetPackagePath("example.local/app")
+	generator.SetPackageName("audit")
+
+	// Act
+	files, err := generator.GenerateFiles()
+	require.NoError(t, err)
+
+	// Assert
+	modelFile := requireGeneratedContent(t, files, "models/events.gen.go")
+	assert.Contains(t, modelFile, `"encoding/json"`)
+	assert.Contains(t, modelFile, "Payload  json.RawMessage")
+	assert.Contains(t, modelFile, "Metadata *json.RawMessage")
+
+	queryFile := requireGeneratedContent(t, files, "query/events/events.go")
+	assert.Contains(t, queryFile, "func Payload() *ast.JsonColumnProjection[models.EventsDto, *json.RawMessage]")
+	assert.Contains(t, queryFile, "return ast.NewJsonColumnProjection(")
+	assert.Contains(t, queryFile, "func Metadata() *ast.JsonColumnProjection[models.EventsDto, **json.RawMessage]")
+	assert.Contains(t, queryFile, "alias.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(column.Name(), errExpr)")
+}
+
 func requireGeneratedContent(t *testing.T, files map[string]string, filename string) string {
 	t.Helper()
 
