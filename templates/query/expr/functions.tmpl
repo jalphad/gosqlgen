@@ -40,6 +40,22 @@ func Count(expression ast.Expression) ast.Function[int64] {
 	return ast.NewFunction[int64](ast.NewFunctionNode("count", []ast.Expression{expression}, nil))
 }
 
+func Sum[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return ast.NewFunction[T](ast.NewFunctionNode("sum", []ast.Expression{expression}, nil))
+}
+
+func Avg[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return ast.NewFunction[T](ast.NewFunctionNode("avg", []ast.Expression{expression}, nil))
+}
+
+func Min[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return ast.NewFunction[T](ast.NewFunctionNode("min", []ast.Expression{expression}, nil))
+}
+
+func Max[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return ast.NewFunction[T](ast.NewFunctionNode("max", []ast.Expression{expression}, nil))
+}
+
 func RowNumber() ast.Function[int64] {
 	return ast.NewFunction[int64](newEmptyFunctionNode("row_number"))
 }

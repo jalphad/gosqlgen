@@ -23,6 +23,22 @@ func Count(expression ast.Expression) ast.Function[int64] {
 	return expr.Count(expression)
 }
 
+func Sum[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return expr.Sum(expression)
+}
+
+func Avg[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return expr.Avg(expression)
+}
+
+func Min[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return expr.Min(expression)
+}
+
+func Max[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return expr.Max(expression)
+}
+
 func RowNumber() ast.Function[int64] {
 	return expr.RowNumber()
 }
