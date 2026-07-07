@@ -20,10 +20,25 @@ var Into = intoPostTagsDto{}
 
 type intoPostTagsDto struct{}
 
-type forPostTagsDto[E models.ExportsPostTagsDto[T], T any] struct{}
+type forPostTagsDto[E models.ExportsPostTagsDto[T], T any] struct {
+	alias *Alias
+	err   error
+}
 
-func For[E models.ExportsPostTagsDto[T], T any]() forPostTagsDto[E, T] {
-	return forPostTagsDto[E, T]{}
+// TODO(go1.27): if type parameters on methods are available, consider
+// supporting alias.For[*resultRow]() as the primary alias API.
+func For[E models.ExportsPostTagsDto[T], T any](alias ...*Alias) forPostTagsDto[E, T] {
+	switch len(alias) {
+	case 0:
+		return forPostTagsDto[E, T]{}
+	case 1:
+		if alias[0] == nil || alias[0].Alias == nil {
+			return forPostTagsDto[E, T]{err: fmt.Errorf("post_tags.For requires a non-nil alias")}
+		}
+		return forPostTagsDto[E, T]{alias: alias[0]}
+	default:
+		return forPostTagsDto[E, T]{err: fmt.Errorf("post_tags.For accepts at most one alias")}
+	}
 }
 
 func Table() *ast.TableSource {
@@ -72,28 +87,63 @@ func (intoPostTagsDto) AllColumns() []ast.Projection[models.PostTagsDto] {
 	}
 }
 
-func (forPostTagsDto[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
-	return ast.NewIntColumnProjection(
-		"post_tags",
-		"post_id",
+func (f forPostTagsDto[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
+	column := PostId()
+	projection := ast.NewIntColumnProjection[T, *int64](
+		f.tableName(),
+		column.Name(),
 		func(t *T) *int64 {
 			e := E(t)
 			dto := e.GetPostTagsDto()
 			return &dto.PostId
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'post_id' in alias %s", f.alias.Alias.Name()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forPostTagsDto[E, T]) TagId() *ast.IntColumnProjection[T, *int64] {
-	return ast.NewIntColumnProjection(
-		"post_tags",
-		"tag_id",
+func (f forPostTagsDto[E, T]) TagId() *ast.IntColumnProjection[T, *int64] {
+	column := TagId()
+	projection := ast.NewIntColumnProjection[T, *int64](
+		f.tableName(),
+		column.Name(),
 		func(t *T) *int64 {
 			e := E(t)
 			dto := e.GetPostTagsDto()
 			return &dto.TagId
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'tag_id' in alias %s", f.alias.Alias.Name()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
+}
+
+func (f forPostTagsDto[E, T]) tableName() string {
+	if f.alias == nil || f.alias.Alias == nil {
+		return "post_tags"
+	}
+	return f.alias.Alias.Name()
 }
 
 func (f forPostTagsDto[E, T]) AllColumns() []ast.Projection[T] {

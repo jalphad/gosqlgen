@@ -21,10 +21,25 @@ var Into = intoTagsDto{}
 
 type intoTagsDto struct{}
 
-type forTagsDto[E models.ExportsTagsDto[T], T any] struct{}
+type forTagsDto[E models.ExportsTagsDto[T], T any] struct {
+	alias *Alias
+	err   error
+}
 
-func For[E models.ExportsTagsDto[T], T any]() forTagsDto[E, T] {
-	return forTagsDto[E, T]{}
+// TODO(go1.27): if type parameters on methods are available, consider
+// supporting alias.For[*resultRow]() as the primary alias API.
+func For[E models.ExportsTagsDto[T], T any](alias ...*Alias) forTagsDto[E, T] {
+	switch len(alias) {
+	case 0:
+		return forTagsDto[E, T]{}
+	case 1:
+		if alias[0] == nil || alias[0].Alias == nil {
+			return forTagsDto[E, T]{err: fmt.Errorf("tags.For requires a non-nil alias")}
+		}
+		return forTagsDto[E, T]{alias: alias[0]}
+	default:
+		return forTagsDto[E, T]{err: fmt.Errorf("tags.For accepts at most one alias")}
+	}
 }
 
 func Table() *ast.TableSource {
@@ -89,40 +104,89 @@ func (intoTagsDto) AllColumns() []ast.Projection[models.TagsDto] {
 	}
 }
 
-func (forTagsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
-	return ast.NewIntColumnProjection(
-		"tags",
-		"id",
+func (f forTagsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+	column := Id()
+	projection := ast.NewIntColumnProjection[T, **int64](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **int64 {
 			e := E(t)
 			dto := e.GetTagsDto()
 			return &dto.Id
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", f.alias.Alias.Name()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forTagsDto[E, T]) Name() *ast.StringColumnProjection[T, *string] {
-	return ast.NewStringColumnProjection(
-		"tags",
-		"name",
+func (f forTagsDto[E, T]) Name() *ast.StringColumnProjection[T, *string] {
+	column := Name()
+	projection := ast.NewStringColumnProjection[T, *string](
+		f.tableName(),
+		column.Name(),
 		func(t *T) *string {
 			e := E(t)
 			dto := e.GetTagsDto()
 			return &dto.Name
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'name' in alias %s", f.alias.Alias.Name()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forTagsDto[E, T]) Slug() *ast.StringColumnProjection[T, *string] {
-	return ast.NewStringColumnProjection(
-		"tags",
-		"slug",
+func (f forTagsDto[E, T]) Slug() *ast.StringColumnProjection[T, *string] {
+	column := Slug()
+	projection := ast.NewStringColumnProjection[T, *string](
+		f.tableName(),
+		column.Name(),
 		func(t *T) *string {
 			e := E(t)
 			dto := e.GetTagsDto()
 			return &dto.Slug
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'slug' in alias %s", f.alias.Alias.Name()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
+}
+
+func (f forTagsDto[E, T]) tableName() string {
+	if f.alias == nil || f.alias.Alias == nil {
+		return "tags"
+	}
+	return f.alias.Alias.Name()
 }
 
 func (f forTagsDto[E, T]) AllColumns() []ast.Projection[T] {

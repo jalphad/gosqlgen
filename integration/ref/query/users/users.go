@@ -24,10 +24,25 @@ var Into = intoUsersDto{}
 
 type intoUsersDto struct{}
 
-type forUsersDto[E models.ExportsUsersDto[T], T any] struct{}
+type forUsersDto[E models.ExportsUsersDto[T], T any] struct {
+	alias *Alias
+	err   error
+}
 
-func For[E models.ExportsUsersDto[T], T any]() forUsersDto[E, T] {
-	return forUsersDto[E, T]{}
+// TODO(go1.27): if type parameters on methods are available, consider
+// supporting alias.For[*resultRow]() as the primary alias API.
+func For[E models.ExportsUsersDto[T], T any](alias ...*Alias) forUsersDto[E, T] {
+	switch len(alias) {
+	case 0:
+		return forUsersDto[E, T]{}
+	case 1:
+		if alias[0] == nil || alias[0].Alias == nil {
+			return forUsersDto[E, T]{err: fmt.Errorf("users.For requires a non-nil alias")}
+		}
+		return forUsersDto[E, T]{alias: alias[0]}
+	default:
+		return forUsersDto[E, T]{err: fmt.Errorf("users.For accepts at most one alias")}
+	}
 }
 
 func Table() *ast.TableSource {
@@ -172,100 +187,219 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	}
 }
 
-func (forUsersDto[E, T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
-	return ast.NewUUIDColumnProjection(
-		"users",
-		"id",
+func (f forUsersDto[E, T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	column := Id()
+	projection := ast.NewUUIDColumnProjection[T, **uuid.UUID](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **uuid.UUID {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.Id
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", f.alias.Alias.Name()))
+	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) Username() *ast.StringColumnProjection[T, *string] {
-	return ast.NewStringColumnProjection(
-		"users",
-		"username",
+func (f forUsersDto[E, T]) Username() *ast.StringColumnProjection[T, *string] {
+	column := Username()
+	projection := ast.NewStringColumnProjection[T, *string](
+		f.tableName(),
+		column.Name(),
 		func(t *T) *string {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.Username
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'username' in alias %s", f.alias.Alias.Name()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) Email() *ast.StringColumnProjection[T, *string] {
-	return ast.NewStringColumnProjection(
-		"users",
-		"email",
+func (f forUsersDto[E, T]) Email() *ast.StringColumnProjection[T, *string] {
+	column := Email()
+	projection := ast.NewStringColumnProjection[T, *string](
+		f.tableName(),
+		column.Name(),
 		func(t *T) *string {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.Email
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'email' in alias %s", f.alias.Alias.Name()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) FullName() *ast.StringColumnProjection[T, **string] {
-	return ast.NewStringColumnProjection(
-		"users",
-		"full_name",
+func (f forUsersDto[E, T]) FullName() *ast.StringColumnProjection[T, **string] {
+	column := FullName()
+	projection := ast.NewStringColumnProjection[T, **string](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **string {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.FullName
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'full_name' in alias %s", f.alias.Alias.Name()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	return ast.NewTimestampColumnProjection(
-		"users",
-		"created_at",
+func (f forUsersDto[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	column := CreatedAt()
+	projection := ast.NewTimestampColumnProjection[T, **time.Time](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **time.Time {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.CreatedAt
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", f.alias.Alias.Name()))
+	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	return ast.NewTimestampColumnProjection(
-		"users",
-		"updated_at",
+func (f forUsersDto[E, T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+	column := UpdatedAt()
+	projection := ast.NewTimestampColumnProjection[T, **time.Time](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **time.Time {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.UpdatedAt
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'updated_at' in alias %s", f.alias.Alias.Name()))
+	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
-	return ast.NewBoolColumnProjection(
-		"users",
-		"is_active",
+func (f forUsersDto[E, T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
+	column := IsActive()
+	projection := ast.NewBoolColumnProjection[T, **bool](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **bool {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.IsActive
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_active' in alias %s", f.alias.Alias.Name()))
+	projection.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
 }
 
-func (forUsersDto[E, T]) Attributes() *ast.JsonColumnProjection[T, **json.RawMessage] {
-	return ast.NewJsonColumnProjection(
-		"users",
-		"attributes",
+func (f forUsersDto[E, T]) Attributes() *ast.JsonColumnProjection[T, **json.RawMessage] {
+	column := Attributes()
+	projection := ast.NewJsonColumnProjection[T, **json.RawMessage](
+		f.tableName(),
+		column.Name(),
 		func(t *T) **json.RawMessage {
 			e := E(t)
 			dto := e.GetUsersDto()
 			return &dto.Attributes
 		},
 	)
+	if f.err != nil {
+		errExpr := ast.NewErrorExpression(f.err)
+		projection.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(column.Name(), errExpr)
+		return projection
+	}
+	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
+		return e.Name() == column.Name()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'attributes' in alias %s", f.alias.Alias.Name()))
+	projection.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(column.Name(), errExpr)
+	return projection
+}
+
+func (f forUsersDto[E, T]) tableName() string {
+	if f.alias == nil || f.alias.Alias == nil {
+		return "users"
+	}
+	return f.alias.Alias.Name()
 }
 
 func (f forUsersDto[E, T]) AllColumns() []ast.Projection[T] {

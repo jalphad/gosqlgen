@@ -961,4 +961,58 @@ func TestIntegration_CTEs(t *testing.T) {
 		assert.Empty(t, args)
 		assert.Contains(t, sql, "WITH active_users(id) AS")
 	})
+
+	t.Run("Alias-aware For projects CTE columns into custom row", func(t *testing.T) {
+		cleanupTables(t)
+
+		corpUser := &models.UsersDto{Username: "cte-for-user", Email: "cte-for@example.com", IsActive: new(true)}
+		insertUsers(t, corpUser)
+
+		countExpr := q.Count(users.Id()).As(ast.NewAlias("count"))
+		countProjection := q.Into(countExpr, func(r *userCountRow) *int64 { return &r.Count })
+		cteUser := users.For[*userCountRow]()
+		activeUsers := users.As("active_users", users.Id(), users.Email(), countExpr)
+		activeUser := users.For[*userCountRow](activeUsers)
+
+		cteBody := NewQuery[userCountRow](nil, users.Table()).
+			Select(cteUser.Id(), cteUser.Email(), countProjection).
+			Where(users.Email().Eq(q.Val(corpUser.Email))).
+			GroupBy(users.Id(), users.Email()).
+			Statement()
+
+		queryBuilder := NewQuery[userCountRow](pgxPool, q.Table(activeUsers.Alias)).
+			With(q.CTE(activeUsers.Alias, cteBody)).
+			Select(
+				activeUser.Id(),
+				activeUser.Email(),
+				q.Into(q.Rel(activeUsers.Alias, countExpr), func(r *userCountRow) *int64 { return &r.Count }),
+			)
+
+		sql, args, err := queryBuilder.ToSql()
+		require.NoError(t, err)
+		assert.Equal(t, "WITH active_users(id, email, count) AS (SELECT users.id, users.email, count(users.id) AS count FROM users WHERE users.email = $1 GROUP BY users.id, users.email) SELECT active_users.id, active_users.email, active_users.count FROM active_users", sql)
+		assert.Equal(t, []any{corpUser.Email}, args)
+
+		results, err := queryBuilder.Find(context.Background())
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		require.NotNil(t, results[0].Id)
+		assert.Equal(t, *corpUser.Id, *results[0].Id)
+		assert.Equal(t, corpUser.Email, results[0].Email)
+		assert.EqualValues(t, 1, results[0].Count)
+	})
+
+	t.Run("Alias-aware For unknown column returns render error", func(t *testing.T) {
+		activeUsers := users.As("active_users", users.Id())
+		activeUser := users.For[*userCountRow](activeUsers)
+
+		queryBuilder := NewQuery[userCountRow](nil, q.Table(activeUsers.Alias)).
+			Select(activeUser.Email())
+
+		sql, args, err := queryBuilder.ToSql()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown column 'email' in alias active_users")
+		assert.Empty(t, args)
+		assert.Contains(t, sql, "SELECT ")
+	})
 }
