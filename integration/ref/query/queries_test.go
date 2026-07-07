@@ -1,10 +1,12 @@
 package query
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
@@ -86,6 +88,77 @@ func TestAggregateFunctionHelpers(t *testing.T) {
 	// Assert
 	require.NoError(t, err)
 	assert.Equal(t, "SELECT sum(posts.view_count) AS sum_views, avg(posts.view_count) AS avg_views, min(posts.view_count) AS min_views, max(posts.view_count) AS max_views FROM posts", sql)
+}
+
+func TestStatementOnlySelectSupportsNamedExpressions(t *testing.T) {
+	// Arrange
+	postCount := Count(posts.Id()).As(ast.NewAlias("post_count"))
+	stmt := builder.NewStatementBuilder(posts.Table()).
+		Select(posts.UserId(), postCount).
+		Where(posts.Status().Eq(Val("published"))).
+		GroupBy(posts.UserId()).
+		OrderBy(Asc(posts.UserId())).
+		Limit(10).
+		Statement()
+	params := make([]any, 0)
+
+	// Act
+	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: posts.Table().Name()})
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT posts.user_id, count(posts.id) AS post_count FROM posts WHERE posts.status = $1 GROUP BY posts.user_id ORDER BY posts.user_id ASC LIMIT 10", sql)
+	assert.Equal(t, []any{"published"}, params)
+}
+
+func TestStatementOnlyUpdateSupportsNamedReturning(t *testing.T) {
+	// Arrange
+	id := uuid.New()
+	stmt := builder.NewStatementBuilder(users.Table()).
+		Update(Set(users.Email()).ToValue("updated@example.com")).
+		Where(users.Id().Eq(Val(id))).
+		Returning(users.Id(), users.Email()).
+		Statement()
+	params := make([]any, 0)
+
+	// Act
+	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: users.Table().Name()})
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "UPDATE users SET email = $1 WHERE users.id = $2 RETURNING users.id, users.email", sql)
+	assert.Equal(t, []any{"updated@example.com", id}, params)
+}
+
+func TestStatementOnlyDeleteSupportsNamedReturning(t *testing.T) {
+	// Arrange
+	stmt := builder.NewStatementBuilder(users.Table()).
+		Delete().
+		Where(users.Email().Eq(Val("deleted@example.com"))).
+		Returning(users.Id()).
+		Statement()
+	params := make([]any, 0)
+
+	// Act
+	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: users.Table().Name()})
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "DELETE FROM users WHERE users.email = $1 RETURNING users.id", sql)
+	assert.Equal(t, []any{"deleted@example.com"}, params)
+}
+
+func TestStatementOnlyFinalizeInterfaceExposesOnlyStatement(t *testing.T) {
+	// Arrange
+	finalize := reflect.TypeOf((*builder.StatementFinalizeQuery)(nil)).Elem()
+
+	// Act
+	method, ok := finalize.MethodByName("Statement")
+
+	// Assert
+	require.True(t, ok)
+	assert.Equal(t, "Statement", method.Name)
+	assert.Equal(t, 1, finalize.NumMethod())
 }
 
 func TestUsersDtoSelectOneUsesSelectedColumns(t *testing.T) {

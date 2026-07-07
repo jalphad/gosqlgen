@@ -55,6 +55,81 @@ type SelectFinalizeQuery[O any] interface {
 	Statement() ast.SqlStatement
 }
 
+type StatementStartQuery interface {
+	With(ctes ...*ast.CTE) StatementStartQuery
+	Select(columns ...ast.NamedExpression) StatementSelectJoinQuery
+	Update(toSet ...ast.UpdateSetExpr) StatementUpdateFromQuery
+	Delete() StatementDeleteUsingQuery
+}
+
+type StatementSelectJoinQuery interface {
+	With(ctes ...*ast.CTE) StatementSelectJoinQuery
+	From(table *ast.TableSource) StatementSelectWhereQuery
+	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) StatementSelectJoinQuery
+	StatementSelectWhereQuery
+}
+
+type StatementSelectWhereQuery interface {
+	Where(expr ast.OfType[bool]) StatementSelectGroupByQuery
+	StatementSelectGroupByQuery
+}
+
+type StatementSelectGroupByQuery interface {
+	GroupBy(columns ...ast.Expression) StatementSelectHavingQuery
+	StatementSelectHavingQuery
+}
+
+type StatementSelectHavingQuery interface {
+	Having(expr ast.OfType[bool]) StatementSelectOrderByQuery
+	StatementSelectOrderByQuery
+}
+
+type StatementSelectOrderByQuery interface {
+	OrderBy(orderBy ...*ast.OrderByItem) StatementSelectPagingQuery
+	StatementSelectPagingQuery
+}
+
+type StatementSelectPagingQuery interface {
+	Limit(limit int) StatementSelectPagingQuery
+	Offset(offset int) StatementSelectPagingQuery
+	StatementFinalizeQuery
+}
+
+type StatementUpdateFromQuery interface {
+	With(ctes ...*ast.CTE) StatementUpdateFromQuery
+	From(table ast.NamedTableExpression) StatementUpdateWhereQuery
+	StatementUpdateWhereQuery
+}
+
+type StatementUpdateWhereQuery interface {
+	Where(expr ast.OfType[bool]) StatementUpdateReturningQuery
+	StatementUpdateReturningQuery
+}
+
+type StatementUpdateReturningQuery interface {
+	Returning(columns ...ast.NamedExpression) StatementFinalizeQuery
+	StatementFinalizeQuery
+}
+
+type StatementDeleteUsingQuery interface {
+	Using(tables ...ast.NamedExpression) StatementDeleteWhereQuery
+	StatementDeleteWhereQuery
+}
+
+type StatementDeleteWhereQuery interface {
+	Where(expr ast.OfType[bool]) StatementDeleteReturningQuery
+	StatementDeleteReturningQuery
+}
+
+type StatementDeleteReturningQuery interface {
+	Returning(columns ...ast.NamedExpression) StatementFinalizeQuery
+	StatementFinalizeQuery
+}
+
+type StatementFinalizeQuery interface {
+	Statement() ast.SqlStatement
+}
+
 type InsertQuery[T any] interface {
 	Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T]
 }

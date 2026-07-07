@@ -75,3 +75,7 @@ func NewWideRecordsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.W
 func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.KnownTableBuilder[T] {
 	return builder.NewKnownTableBuilder[T](pool, table)
 }
+
+func NewStatementQuery(table *ast.TableSource) *builder.StatementBuilder {
+	return builder.NewStatementBuilder(table)
+}

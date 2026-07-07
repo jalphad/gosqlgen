@@ -969,13 +969,11 @@ func TestIntegration_CTEs(t *testing.T) {
 		insertUsers(t, corpUser)
 
 		countExpr := q.Count(users.Id()).As(ast.NewAlias("count"))
-		countProjection := q.Into(countExpr, func(r *userCountRow) *int64 { return &r.Count })
-		cteUser := users.For[*userCountRow]()
 		activeUsers := users.As("active_users", users.Id(), users.Email(), countExpr)
 		activeUser := users.For[*userCountRow](activeUsers)
 
-		cteBody := NewQuery[userCountRow](nil, users.Table()).
-			Select(cteUser.Id(), cteUser.Email(), countProjection).
+		cteBody := NewStatementQuery(users.Table()).
+			Select(users.Id(), users.Email(), countExpr).
 			Where(users.Email().Eq(q.Val(corpUser.Email))).
 			GroupBy(users.Id(), users.Email()).
 			Statement()

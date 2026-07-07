@@ -25,6 +25,49 @@ func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *Kn
 	}
 }
 
+type StatementBuilder struct {
+	table *ast.TableSource
+	with  []*ast.CTE
+}
+
+func NewStatementBuilder(table *ast.TableSource) *StatementBuilder {
+	return &StatementBuilder{table: table}
+}
+
+func (b *StatementBuilder) With(ctes ...*ast.CTE) StatementStartQuery {
+	b.with = append(b.with, ctes...)
+	return b
+}
+
+func (b *StatementBuilder) Select(columns ...ast.NamedExpression) StatementSelectJoinQuery {
+	return &StatementSelectBuilder{
+		stmt: &ast.SelectStatement{
+			With:       b.with,
+			SelectList: columns,
+			From:       b.table,
+		},
+	}
+}
+
+func (b *StatementBuilder) Update(toSet ...ast.UpdateSetExpr) StatementUpdateFromQuery {
+	return &StatementUpdateBuilder{
+		stmt: &ast.UpdateStatement{
+			With:    b.with,
+			Table:   b.table.Name(),
+			SetList: toSet,
+		},
+	}
+}
+
+func (b *StatementBuilder) Delete() StatementDeleteUsingQuery {
+	return &StatementDeleteBuilder{
+		stmt: &ast.DeleteStatement{
+			With:  b.with,
+			Table: b.table.Name(),
+		},
+	}
+}
+
 func (b *KnownTableBuilder[T]) WithTx(tx pgx.Tx) KnownTableStartQuery[T] {
 	b.tx = tx
 	return b
@@ -100,53 +143,47 @@ func (b *SelectBuilder[T]) WithTx(tx pgx.Tx) *SelectBuilder[T] {
 }
 
 func (b *SelectBuilder[T]) With(ctes ...*ast.CTE) SelectJoinQuery[T] {
-	b.stmt.With = append(b.stmt.With, ctes...)
+	selectWith(b.stmt, ctes...)
 	return b
 }
 
 func (b *SelectBuilder[T]) From(table *ast.TableSource) SelectWhereQuery[T] {
-	b.stmt.From = table
+	selectFrom(b.stmt, table)
 	return b
 }
 
 func (b *SelectBuilder[T]) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) SelectJoinQuery[T] {
-	b.stmt.From.Join(joinType, table, expr)
+	selectJoin(b.stmt, joinType, table, expr)
 	return b
 }
 
 func (b *SelectBuilder[T]) Where(expr ast.OfType[bool]) SelectGroupByQuery[T] {
-	b.stmt.Where = expr
+	selectWhere(b.stmt, expr)
 	return b
 }
 
 func (b *SelectBuilder[T]) GroupBy(columns ...ast.Expression) SelectHavingQuery[T] {
-	b.stmt.GroupBy = columns
+	selectGroupBy(b.stmt, columns...)
 	return b
 }
 
 func (b *SelectBuilder[T]) Having(expr ast.OfType[bool]) SelectOrderByQuery[T] {
-	b.stmt.Having = expr
+	selectHaving(b.stmt, expr)
 	return b
 }
 
 func (b *SelectBuilder[T]) OrderBy(orderBy ...*ast.OrderByItem) SelectPagingQuery[T] {
-	b.stmt.OrderBy = orderBy
+	selectOrderBy(b.stmt, orderBy...)
 	return b
 }
 
 func (b *SelectBuilder[T]) Limit(limit int) SelectPagingQuery[T] {
-	if b.stmt.Limit == nil {
-		b.stmt.Limit = &ast.LimitClause{}
-	}
-	b.stmt.Limit.Limit = limit
+	selectLimit(b.stmt, limit)
 	return b
 }
 
 func (b *SelectBuilder[T]) Offset(offset int) SelectPagingQuery[T] {
-	if b.stmt.Limit == nil {
-		b.stmt.Limit = &ast.LimitClause{}
-	}
-	b.stmt.Limit.Offset = offset
+	selectOffset(b.stmt, offset)
 	return b
 }
 
@@ -210,6 +247,101 @@ func (b *SelectBuilder[T]) FindOne(ctx context.Context) (T, error) {
 		return t, pgx.ErrNoRows
 	}
 	return results[0], nil
+}
+
+type StatementSelectBuilder struct {
+	stmt *ast.SelectStatement
+}
+
+func (b *StatementSelectBuilder) With(ctes ...*ast.CTE) StatementSelectJoinQuery {
+	selectWith(b.stmt, ctes...)
+	return b
+}
+
+func (b *StatementSelectBuilder) From(table *ast.TableSource) StatementSelectWhereQuery {
+	selectFrom(b.stmt, table)
+	return b
+}
+
+func (b *StatementSelectBuilder) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) StatementSelectJoinQuery {
+	selectJoin(b.stmt, joinType, table, expr)
+	return b
+}
+
+func (b *StatementSelectBuilder) Where(expr ast.OfType[bool]) StatementSelectGroupByQuery {
+	selectWhere(b.stmt, expr)
+	return b
+}
+
+func (b *StatementSelectBuilder) GroupBy(columns ...ast.Expression) StatementSelectHavingQuery {
+	selectGroupBy(b.stmt, columns...)
+	return b
+}
+
+func (b *StatementSelectBuilder) Having(expr ast.OfType[bool]) StatementSelectOrderByQuery {
+	selectHaving(b.stmt, expr)
+	return b
+}
+
+func (b *StatementSelectBuilder) OrderBy(orderBy ...*ast.OrderByItem) StatementSelectPagingQuery {
+	selectOrderBy(b.stmt, orderBy...)
+	return b
+}
+
+func (b *StatementSelectBuilder) Limit(limit int) StatementSelectPagingQuery {
+	selectLimit(b.stmt, limit)
+	return b
+}
+
+func (b *StatementSelectBuilder) Offset(offset int) StatementSelectPagingQuery {
+	selectOffset(b.stmt, offset)
+	return b
+}
+
+func (b *StatementSelectBuilder) Statement() ast.SqlStatement {
+	return b.stmt
+}
+
+func selectWith(stmt *ast.SelectStatement, ctes ...*ast.CTE) {
+	stmt.With = append(stmt.With, ctes...)
+}
+
+func selectFrom(stmt *ast.SelectStatement, table *ast.TableSource) {
+	stmt.From = table
+}
+
+func selectJoin(stmt *ast.SelectStatement, joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) {
+	stmt.From.Join(joinType, table, expr)
+}
+
+func selectWhere(stmt *ast.SelectStatement, expr ast.OfType[bool]) {
+	stmt.Where = expr
+}
+
+func selectGroupBy(stmt *ast.SelectStatement, columns ...ast.Expression) {
+	stmt.GroupBy = columns
+}
+
+func selectHaving(stmt *ast.SelectStatement, expr ast.OfType[bool]) {
+	stmt.Having = expr
+}
+
+func selectOrderBy(stmt *ast.SelectStatement, orderBy ...*ast.OrderByItem) {
+	stmt.OrderBy = orderBy
+}
+
+func selectLimit(stmt *ast.SelectStatement, limit int) {
+	if stmt.Limit == nil {
+		stmt.Limit = &ast.LimitClause{}
+	}
+	stmt.Limit.Limit = limit
+}
+
+func selectOffset(stmt *ast.SelectStatement, offset int) {
+	if stmt.Limit == nil {
+		stmt.Limit = &ast.LimitClause{}
+	}
+	stmt.Limit.Offset = offset
 }
 
 func projectionsToNamedExpressions[T any](projections []ast.Projection[T]) []ast.NamedExpression {
@@ -477,28 +609,28 @@ func NewUpdateBuilder[T any](pool *pgxpool.Pool, table string) *UpdateBuilder[T]
 }
 
 func (b *UpdateBuilder[T]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuery[T] {
-	b.stmt.SetList = toSet
+	updateSet(b.stmt, toSet...)
 	return b
 }
 
 func (b *UpdateBuilder[T]) With(ctes ...*ast.CTE) UpdateQuery[T] {
-	b.stmt.With = append(b.stmt.With, ctes...)
+	updateWith(b.stmt, ctes...)
 	return b
 }
 
 func (b *UpdateBuilder[T]) From(expr ast.NamedTableExpression) UpdateWhereQuery[T] {
-	b.stmt.From = expr
+	updateFrom(b.stmt, expr)
 	return b
 }
 
 func (b *UpdateBuilder[T]) Where(expr ast.OfType[bool]) UpdateReturningQuery[T] {
-	b.stmt.Where = expr
+	updateWhere(b.stmt, expr)
 	return b
 }
 
 func (b *UpdateBuilder[T]) Returning(projections ...ast.Projection[T]) UpdateFinalizeQuery[T] {
 	b.returning = projections
-	b.stmt.Returning = projectionsToNamedExpressions(projections)
+	updateReturning(b.stmt, projectionsToNamedExpressions(projections)...)
 	return b
 }
 
@@ -562,6 +694,54 @@ func (b *UpdateBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
 }
 
+type StatementUpdateBuilder struct {
+	stmt *ast.UpdateStatement
+}
+
+func (b *StatementUpdateBuilder) With(ctes ...*ast.CTE) StatementUpdateFromQuery {
+	updateWith(b.stmt, ctes...)
+	return b
+}
+
+func (b *StatementUpdateBuilder) From(expr ast.NamedTableExpression) StatementUpdateWhereQuery {
+	updateFrom(b.stmt, expr)
+	return b
+}
+
+func (b *StatementUpdateBuilder) Where(expr ast.OfType[bool]) StatementUpdateReturningQuery {
+	updateWhere(b.stmt, expr)
+	return b
+}
+
+func (b *StatementUpdateBuilder) Returning(columns ...ast.NamedExpression) StatementFinalizeQuery {
+	updateReturning(b.stmt, columns...)
+	return b
+}
+
+func (b *StatementUpdateBuilder) Statement() ast.SqlStatement {
+	return b.stmt
+}
+
+func updateSet(stmt *ast.UpdateStatement, toSet ...ast.UpdateSetExpr) {
+	stmt.SetList = toSet
+}
+
+func updateWith(stmt *ast.UpdateStatement, ctes ...*ast.CTE) {
+	stmt.With = append(stmt.With, ctes...)
+}
+
+func updateFrom(stmt *ast.UpdateStatement, expr ast.NamedTableExpression) {
+	stmt.From = expr
+}
+
+func updateWhere(stmt *ast.UpdateStatement, expr ast.OfType[bool]) {
+	stmt.Where = expr
+}
+
+func updateReturning(stmt *ast.UpdateStatement, columns ...ast.NamedExpression) {
+	stmt.Returning = columns
+}
+
 type DeleteBuilder[T any] struct {
 	pool      *pgxpool.Pool
 	tx        pgx.Tx
@@ -579,23 +759,23 @@ func NewDeleteBuilder[T any](pool *pgxpool.Pool, table string) *DeleteBuilder[T]
 }
 
 func (b *DeleteBuilder[T]) Delete(from string) DeleteUsingQuery[T] {
-	b.stmt.Table = from
+	deleteFrom(b.stmt, from)
 	return b
 }
 
 func (b *DeleteBuilder[T]) Using(tables ...ast.NamedExpression) DeleteWhereQuery[T] {
-	b.stmt.Using = tables
+	deleteUsing(b.stmt, tables...)
 	return b
 }
 
 func (b *DeleteBuilder[T]) Where(expr ast.OfType[bool]) DeleteReturningQuery[T] {
-	b.stmt.Where = expr
+	deleteWhere(b.stmt, expr)
 	return b
 }
 
 func (b *DeleteBuilder[T]) Returning(projections ...ast.Projection[T]) DeleteFinalizeQuery[T] {
 	b.returning = projections
-	b.stmt.Returning = projectionsToNamedExpressions(projections)
+	deleteReturning(b.stmt, projectionsToNamedExpressions(projections)...)
 	return b
 }
 
@@ -648,4 +828,43 @@ func (b *DeleteBuilder[T]) ToSql() (string, []any, error) {
 
 func (b *DeleteBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
+}
+
+type StatementDeleteBuilder struct {
+	stmt *ast.DeleteStatement
+}
+
+func (b *StatementDeleteBuilder) Using(tables ...ast.NamedExpression) StatementDeleteWhereQuery {
+	deleteUsing(b.stmt, tables...)
+	return b
+}
+
+func (b *StatementDeleteBuilder) Where(expr ast.OfType[bool]) StatementDeleteReturningQuery {
+	deleteWhere(b.stmt, expr)
+	return b
+}
+
+func (b *StatementDeleteBuilder) Returning(columns ...ast.NamedExpression) StatementFinalizeQuery {
+	deleteReturning(b.stmt, columns...)
+	return b
+}
+
+func (b *StatementDeleteBuilder) Statement() ast.SqlStatement {
+	return b.stmt
+}
+
+func deleteFrom(stmt *ast.DeleteStatement, from string) {
+	stmt.Table = from
+}
+
+func deleteUsing(stmt *ast.DeleteStatement, tables ...ast.NamedExpression) {
+	stmt.Using = tables
+}
+
+func deleteWhere(stmt *ast.DeleteStatement, expr ast.OfType[bool]) {
+	stmt.Where = expr
+}
+
+func deleteReturning(stmt *ast.DeleteStatement, columns ...ast.NamedExpression) {
+	stmt.Returning = columns
 }
