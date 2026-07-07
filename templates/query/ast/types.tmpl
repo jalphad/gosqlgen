@@ -145,6 +145,14 @@ func (t *IntType) Between(start, end OfType[int64]) *BoolType {
 	})
 }
 
+func (t *IntType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *IntType) IsNotNull() *BoolType {
+	return isNotNull(t)
+}
+
 func Float(e Expression) *FloatType {
 	return &FloatType{SQLType[float64]{e}}
 }
@@ -193,7 +201,15 @@ func (t *FloatType) Between(start, end OfType[float64]) *BoolType {
 	})
 }
 
-// NumericType represents an integer expression
+func (t *FloatType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *FloatType) IsNotNull() *BoolType {
+	return isNotNull(t)
+}
+
+// NumericType represents an numeric expression
 type NumericType struct {
 	sqlType[pgtype.Numeric]
 }
@@ -237,6 +253,14 @@ func (t *NumericType) Between(start, end OfType[pgtype.Numeric]) *BoolType {
 	})
 }
 
+func (t *NumericType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *NumericType) IsNotNull() *BoolType {
+	return isNotNull(t)
+}
+
 func Bool(e Expression) *BoolType {
 	return &BoolType{sqlType[bool]{e}}
 }
@@ -270,6 +294,10 @@ func (t *BoolType) IsNull() *BoolType {
 	return isNull(t)
 }
 
+func (t *BoolType) IsNotNull() *BoolType {
+	return isNotNull(t)
+}
+
 type TimestampType struct {
 	sqlType[time.Time]
 }
@@ -278,7 +306,49 @@ func Timestamp(e expression) *TimestampType {
 	return &TimestampType{sqlType[time.Time]{e}}
 }
 
-func (t *TimestampType) isOfType(_ time.Time) {}
+func (t *TimestampType) Eq(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *TimestampType) Gt(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
+}
+
+func (t *TimestampType) Lt(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: "<", Args: []Expression{t, expr}})
+}
+
+func (t *TimestampType) Gte(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t, expr}})
+}
+
+func (t *TimestampType) Lte(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
+}
+
+func (t *TimestampType) Between(start, end OfType[time.Time]) *BoolType {
+	return Bool(&UnaryNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			&BinaryNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			},
+		},
+	})
+}
+
+func (t *TimestampType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *TimestampType) IsNotNull() *BoolType {
+	return isNotNull(t)
+}
+
 
 type DateType struct {
 	sqlType[time.Time]
@@ -288,7 +358,49 @@ func Date(e expression) *DateType {
 	return &DateType{sqlType[time.Time]{e}}
 }
 
-func (d *DateType) isOfType(_ time.Time) {}
+func (t *DateType) Eq(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *DateType) Gt(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
+}
+
+func (t *DateType) Lt(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: "<", Args: []Expression{t, expr}})
+}
+
+func (t *DateType) Gte(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: ">=", Args: []Expression{t, expr}})
+}
+
+func (t *DateType) Lte(expr OfType[time.Time]) *BoolType {
+	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
+}
+
+func (t *DateType) Between(start, end OfType[time.Time]) *BoolType {
+	return Bool(&UnaryNode{
+		Op: "BETWEEN",
+		Args: []Expression{
+			&BinaryNode{
+				Op: "AND",
+				Args: []Expression{
+					start,
+					end,
+				},
+			},
+		},
+	})
+}
+
+func (t *DateType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *DateType) IsNotNull() *BoolType {
+	return isNotNull(t)
+}
+
 
 // TimeType represents a TIMESTAMP column
 type TimeType struct {
@@ -332,6 +444,14 @@ func (t *TimeType) Between(start, end OfType[time.Time]) *BoolType {
 			},
 		},
 	})
+}
+
+func (t *TimeType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *TimeType) IsNotNull() *BoolType {
+	return isNotNull(t)
 }
 
 func UUID(e Expression) *UUIDType {
