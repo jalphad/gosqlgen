@@ -53,7 +53,8 @@ type Expression interface {
 type expression = Expression
 
 type AsExprConstraint[T MappedTypes] interface {
-	AliasedFunction[T]
+	ofType[T]
+	NamedExpression
 }
 
 type AsExpression[T MappedTypes, C AsExprConstraint[T]] interface {

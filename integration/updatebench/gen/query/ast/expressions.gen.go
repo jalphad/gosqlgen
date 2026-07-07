@@ -53,7 +53,8 @@ type Expression interface {
 type expression = Expression
 
 type AsExprConstraint[T MappedTypes] interface {
-	AliasedFunction[T]
+	ofType[T]
+	NamedExpression
 }
 
 type AsExpression[T MappedTypes, C AsExprConstraint[T]] interface {
@@ -76,7 +77,23 @@ type TableExpression interface {
 	isTableExpression()
 }
 
-func NewNamedExpression[T MappedTypes](name string, expression OfType[T]) *NamedExpressionWrapper[T] {
+type namedExpression struct {
+	expression
+	name string
+}
+
+func NewNamedExpression(name string, expression Expression) NamedExpression {
+	return &namedExpression{
+		expression: expression,
+		name:       name,
+	}
+}
+
+func (e namedExpression) Name() string {
+	return e.name
+}
+
+func NewNamedExpressionOfType[T MappedTypes](name string, expression OfType[T]) *NamedExpressionWrapper[T] {
 	return &NamedExpressionWrapper[T]{
 		ofType: expression,
 		name:   name,

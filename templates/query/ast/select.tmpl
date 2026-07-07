@@ -114,12 +114,13 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		}
 		builder.WriteString(" ORDER BY ")
 		for i := 0; i < len(s.OrderBy)-1; i++ {
-			s.OrderBy[i].Field.toSQL(builder, params, ctx)
-			builder.WriteString(" " + string(s.OrderBy[i].Direction))
+			renderOrderByItem(s.OrderBy[i], builder, params, ctx)
+			if ctx != nil && ctx.Error != nil {
+				return
+			}
 			builder.WriteString(", ")
 		}
-		s.OrderBy[len(s.OrderBy)-1].Field.toSQL(builder, params, ctx)
-		builder.WriteString(" " + string(s.OrderBy[len(s.OrderBy)-1].Direction))
+		renderOrderByItem(s.OrderBy[len(s.OrderBy)-1], builder, params, ctx)
 	}
 
 	if s.Limit != nil {
@@ -139,6 +140,29 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 type OrderByItem struct {
 	Field     Expression
 	Direction SortDirection
+}
+
+func renderOrderByItem(item *OrderByItem, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if item == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("nil ORDER BY item")
+		}
+		return
+	}
+	if item.Field == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("ORDER BY item requires a field")
+		}
+		return
+	}
+	item.Field.toSQL(builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString(" " + string(item.Direction))
 }
 
 // SortDirection enumerates sort directions.

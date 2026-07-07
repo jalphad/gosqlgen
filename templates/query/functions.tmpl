@@ -23,6 +23,26 @@ func Count(expression ast.Expression) ast.Function[int64] {
 	return expr.Count(expression)
 }
 
+func RowNumber() ast.Function[int64] {
+	return expr.RowNumber()
+}
+
+func Rank() ast.Function[int64] {
+	return expr.Rank()
+}
+
+func DenseRank() ast.Function[int64] {
+	return expr.DenseRank()
+}
+
+func Lag[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return expr.Lag(expression)
+}
+
+func Lead[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return expr.Lead(expression)
+}
+
 func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Function[json.RawMessage] {
 	return expr.JsonbBuildObject(expressions...)
 }

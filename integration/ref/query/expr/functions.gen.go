@@ -40,6 +40,26 @@ func Count(expression ast.Expression) ast.Function[int64] {
 	return ast.NewFunction[int64](ast.NewFunctionNode("count", []ast.Expression{expression}, nil))
 }
 
+func RowNumber() ast.Function[int64] {
+	return ast.NewFunction[int64](newEmptyFunctionNode("row_number"))
+}
+
+func Rank() ast.Function[int64] {
+	return ast.NewFunction[int64](newEmptyFunctionNode("rank"))
+}
+
+func DenseRank() ast.Function[int64] {
+	return ast.NewFunction[int64](newEmptyFunctionNode("dense_rank"))
+}
+
+func Lag[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return ast.NewFunction[T](ast.NewFunctionNode("lag", []ast.Expression{expression}, nil))
+}
+
+func Lead[T ast.MappedTypes](expression ast.OfType[T]) ast.Function[T] {
+	return ast.NewFunction[T](ast.NewFunctionNode("lead", []ast.Expression{expression}, nil))
+}
+
 func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Function[json.RawMessage] {
 	return ast.NewFunction[json.RawMessage](ast.NewFunctionNode(
 		"jsonb_build_object",
@@ -75,6 +95,17 @@ func Values(provider ast.TableValuesProvider) *ast.ValuesTable {
 
 func Distinct(expressions ...ast.Expression) *ast.KeywordExpression {
 	return ast.NewKeywordExpression("DISTINCT", expressions...)
+}
+
+func newEmptyFunctionNode(op string) *ast.FunctionNode {
+	return ast.NewFunctionNode(op, nil,
+		func(node ast.ExpressionNode, builder *strings.Builder, _ *[]any, ctx *ast.QueryContext) {
+			if ctx != nil && ctx.Error != nil {
+				return
+			}
+			builder.WriteString(node.Op)
+			builder.WriteString("()")
+		})
 }
 
 func IsNull(expression ast.Expression) *ast.BoolType {

@@ -5,10 +5,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jalphad/gosqlgen/integration/ref/models"
+	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
+	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type postWindowRow struct {
+	Id      int64
+	RowRank int64
+}
 
 func TestUsersDtoSelectOneDefaultsToAllColumns(t *testing.T) {
 	// Arrange
@@ -24,7 +31,31 @@ func TestUsersDtoSelectOneDefaultsToAllColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active FROM users WHERE users.id = $1", sql)
+	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active, users.attributes FROM users WHERE users.id = $1", sql)
+}
+
+func TestSelectWindowFunctionProjection(t *testing.T) {
+	// Arrange
+	rank := As("row_rank", RowNumber().
+		Over().
+		PartitionBy(posts.UserId()).
+		OrderBy(Desc(posts.CreatedAt())))
+
+	// Act
+	sql, _, err := builder.NewKnownTableBuilder[postWindowRow](nil, posts.Table()).
+		Select(
+			Into(posts.Id(), func(row *postWindowRow) *int64 {
+				return &row.Id
+			}),
+			Into(rank, func(row *postWindowRow) *int64 {
+				return &row.RowRank
+			}),
+		).
+		ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT posts.id, row_number() OVER (PARTITION BY posts.user_id ORDER BY posts.created_at DESC) AS row_rank FROM posts", sql)
 }
 
 func TestUsersDtoSelectOneUsesSelectedColumns(t *testing.T) {
@@ -54,7 +85,7 @@ func TestUsersDtoSelectManyDefaultsToAllColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active FROM users", sql)
+	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active, users.attributes FROM users", sql)
 }
 
 func TestUsersDtoSelectManyUsesSelectedColumnsAndCanChainWhere(t *testing.T) {
@@ -201,7 +232,7 @@ func TestUsersDtoUpdateOneDefaultsToAllNonPrimaryKeyColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "UPDATE users SET created_at = $1, email = $2, full_name = $3, is_active = $4, updated_at = $5, username = $6 WHERE users.id = $7", sql)
+	assert.Equal(t, "UPDATE users SET attributes = $1, created_at = $2, email = $3, full_name = $4, is_active = $5, updated_at = $6, username = $7 WHERE users.id = $8", sql)
 }
 
 func TestUsersDtoUpdateOneUsesSelectedColumns(t *testing.T) {
