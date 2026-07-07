@@ -58,6 +58,36 @@ func TestSelectWindowFunctionProjection(t *testing.T) {
 	assert.Equal(t, "SELECT posts.id, row_number() OVER (PARTITION BY posts.user_id ORDER BY posts.created_at DESC) AS row_rank FROM posts", sql)
 }
 
+func TestAggregateFunctionHelpers(t *testing.T) {
+	// Arrange
+	sumViews := As("sum_views", Sum(posts.ViewCount()))
+	avgViews := As("avg_views", Avg(posts.ViewCount()))
+	minViews := As("min_views", Min(posts.ViewCount()))
+	maxViews := As("max_views", Max(posts.ViewCount()))
+
+	// Act
+	sql, _, err := builder.NewKnownTableBuilder[postWindowRow](nil, posts.Table()).
+		Select(
+			Into(sumViews, func(row *postWindowRow) *int64 {
+				return &row.Id
+			}),
+			Into(avgViews, func(row *postWindowRow) *int64 {
+				return &row.Id
+			}),
+			Into(minViews, func(row *postWindowRow) *int64 {
+				return &row.Id
+			}),
+			Into(maxViews, func(row *postWindowRow) *int64 {
+				return &row.Id
+			}),
+		).
+		ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT sum(posts.view_count) AS sum_views, avg(posts.view_count) AS avg_views, min(posts.view_count) AS min_views, max(posts.view_count) AS max_views FROM posts", sql)
+}
+
 func TestUsersDtoSelectOneUsesSelectedColumns(t *testing.T) {
 	// Arrange
 	id := uuid.New()
