@@ -16,6 +16,10 @@ func NewColumnNode(table, column string) *ColumnNode {
 	}
 }
 
+func (n *ColumnNode) Name() string {
+	return n.Column.Column
+}
+
 func (n *ColumnNode) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
 	if ctx != nil && ctx.Error != nil {
 		return

@@ -1,6 +1,9 @@
 package ast
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type AliasedFunction[T MappedTypes] interface {
 	ofType[T]
@@ -113,9 +116,11 @@ func (r Alias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
 	}
 	builder.WriteString("(")
 	for i := 0; i < len(r.columns)-1; i++ {
-		builder.WriteString(r.columns[i].Name() + ", ")
+		builder.WriteString(r.columns[i].Name())
+		builder.WriteString(", ")
 	}
-	builder.WriteString(r.columns[len(r.columns)-1].Name() + ")")
+	builder.WriteString(r.columns[len(r.columns)-1].Name())
+	builder.WriteString(")")
 }
 
 func (r Alias) Name() string {
@@ -128,6 +133,17 @@ func (r Alias) Columns() []NamedExpression {
 	}
 
 	return r.columns
+}
+
+func (r Alias) Column(name string) NamedExpression {
+	for _, e := range r.columns {
+		if e.Name() == name {
+			return NewColumnNode(r.name, e.Name())
+		}
+	}
+
+	return NewNamedExpression(r.name,
+		NewErrorExpression(fmt.Errorf("column does not exist for alias %s", r.name)))
 }
 
 func NewAlias(alias string, columns ...NamedExpression) *Alias {
