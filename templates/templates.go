@@ -343,6 +343,7 @@ func RenderTableStruct(data TableStructData) (string, error) {
 			for _, field := range fields {
 				re := regexp.MustCompile(`(?i)^(date|time(stamp)?)( with(out)? time zone)?$`)
 				if strings.HasSuffix(field.GoType, "time.Time") &&
+					!strings.EqualFold(field.SQLType, "timestamp with time zone") &&
 					re.MatchString(field.SQLType) {
 					return true
 				}

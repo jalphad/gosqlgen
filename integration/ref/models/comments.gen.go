@@ -85,8 +85,7 @@ func (c *CommentsDto) UnmarshalJSON(bts []byte) error {
 	type CommentsDto_ CommentsDto
 	type DtoWrapper struct {
 		CommentsDto_
-		CreatedAt NoTimezoneWrapper `db:"created_at" json:"created_at"`
-		TestDate  DateWrapper       `db:"test_date" json:"test_date"`
+		TestDate DateWrapper `db:"test_date" json:"test_date"`
 	}
 
 	var wrapper DtoWrapper

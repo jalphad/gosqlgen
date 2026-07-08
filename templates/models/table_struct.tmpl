@@ -74,7 +74,7 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(bts []byte) error {
 		{{ .FieldName }} TimeWrapper {{ .StructTags }}
 		{{- else if eq .SQLType "TIME WITH TIME ZONE" }}
 		{{ .FieldName }} TimeWithTZWrapper {{ .StructTags }}
-		{{- else if or (eq .SQLType "TIMESTAMP") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITH TIME ZONE") }}
+		{{- else if or (eq .SQLType "TIMESTAMP") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") }}
 		{{ .FieldName }} NoTimezoneWrapper {{ .StructTags }}
 		{{- end }}
 		{{- end }}
