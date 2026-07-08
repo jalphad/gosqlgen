@@ -23,6 +23,7 @@
             glibc.static
             delve
             gcc
+            cue
             go
             gotools
             gopls
@@ -32,6 +33,7 @@
             godef
             golint
             nodejs_24
+            python3Packages.mkdocs
             opencode
           ];
           packages = with pkgs; [

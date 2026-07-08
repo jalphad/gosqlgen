@@ -1,0 +1,26 @@
+site_name: gosql
+site_description: Type-safe Go SQL generation for Postgres schemas.
+strict: true
+
+nav:
+  - Home: index.md
+  - Tutorials:
+      - Getting Started: tutorials/getting-started.md
+  - Generated:
+      - Examples: generated/examples.md
+
+validation:
+  links:
+    absolute_links: warn
+    unrecognized_links: warn
+  nav:
+    omitted_files: warn
+    absolute_links: warn
+
+theme:
+  name: mkdocs
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
