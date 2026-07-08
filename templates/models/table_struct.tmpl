@@ -90,7 +90,7 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(bts []byte) error {
 	*{{ .ReceiverName }} = {{ .StructName }}(wrapper.{{ .StructName }}_)
 	{{- range .Fields }}
 	{{- if (hasSuffix .GoType "time.Time") }}
-	{{- if or (eq .SQLType "DATE") (eq .SQLType "TIME") (eq .SQLType "TIMESTAMP") (eq .SQLType "TIME WITH TIME ZONE") (eq .SQLType "TIME WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITH TIME ZONE") }}
+	{{- if or (eq .SQLType "DATE") (eq .SQLType "TIME") (eq .SQLType "TIMESTAMP") (eq .SQLType "TIME WITH TIME ZONE") (eq .SQLType "TIME WITHOUT TIME ZONE") (eq .SQLType "TIMESTAMP WITHOUT TIME ZONE") }}
 	{{ $.ReceiverName }}.{{ .FieldName }} = {{ if isPtr .GoType }}&{{ end }}wrapper.{{ .FieldName }}.Time
 	{{- end }}
 	{{- end }}

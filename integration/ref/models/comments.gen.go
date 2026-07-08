@@ -95,7 +95,6 @@ func (c *CommentsDto) UnmarshalJSON(bts []byte) error {
 	}
 
 	*c = CommentsDto(wrapper.CommentsDto_)
-	c.CreatedAt = &wrapper.CreatedAt.Time
 	c.TestDate = &wrapper.TestDate.Time
 
 	return nil
