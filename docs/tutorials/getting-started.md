@@ -2,11 +2,74 @@
 
 This tutorial builds and renders a typed `SELECT` query using the current generated reference API.
 
-The example uses the checked-in reference schema under `integration/ref`. In an application, these packages would be generated from your exported Postgres schema.
+The example uses the checked-in schema and generated reference package. In an application, you would follow the same flow with your own Postgres schema.
 
-## Select Active Users
+## Start With a Schema
 
-Create a query builder for the `users` table, select a few columns, add predicates, and render the SQL:
+Export or write a schema file containing `CREATE TABLE` statements. This tutorial uses `integration/schema.sql`; the `users` table starts like this:
+
+```sql
+CREATE TABLE users
+(
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    username   VARCHAR(50)  NOT NULL UNIQUE,
+    email      VARCHAR(255) NOT NULL UNIQUE,
+    full_name  VARCHAR(100),
+    created_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
+    is_active  BOOLEAN          DEFAULT true,
+    attributes JSONB
+);
+```
+
+## Generate Code
+
+<!-- docsgen:generation:start -->
+Add a small generator command in your application, for example `cmd/gen/main.go`:
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/jalphad/gosqlgen"
+)
+
+func main() {
+	gen := gosqlgen.New().
+		WithPackageName("db").
+		WithOutputPath(".").
+		WithPackagePath("example.com/myapp")
+
+	if err := gen.ParseFile("schema.sql"); err != nil {
+		log.Fatalf("parse schema: %v", err)
+	}
+	if err := gen.GenerateFiles(); err != nil {
+		log.Fatalf("generate files: %v", err)
+	}
+}
+```
+
+Run it:
+
+```sh
+go run ./cmd/gen
+```
+
+The generator writes these files:
+
+- `db/db.gen.go`
+- `db/models/users.gen.go`
+- `db/query/helpers.gen.go`
+- `db/query/users/users.go`
+
+This generation example is defined in `docs-src/examples.cue` and tested by [`docs/examples/generate_from_schema_test.go`](../examples/generate_from_schema_test.go).
+<!-- docsgen:generation:end -->
+
+## Query the Generated API
+
+Create a query builder for the generated `users` table, select a few columns, add predicates, and render the SQL:
 
 ```go
 qry := ref.NewQuery[models.UsersDto](nil, users.Table()).

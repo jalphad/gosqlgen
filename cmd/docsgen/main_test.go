@@ -10,12 +10,22 @@ import (
 func TestValidateExamplesRejectsDuplicateIDs(t *testing.T) {
 	// Arrange
 	examples := []example{
-		{ID: "duplicate", Source: "docs/examples/getting_started_test.go"},
-		{ID: "duplicate", Source: "docs/examples/getting_started_test.go"},
+		{
+			ID:          "duplicate",
+			Kind:        "query",
+			Source:      "docs/examples/getting_started_test.go",
+			ExpectedSQL: "SELECT 1",
+		},
+		{
+			ID:          "duplicate",
+			Kind:        "query",
+			Source:      "docs/examples/getting_started_test.go",
+			ExpectedSQL: "SELECT 1",
+		},
 	}
 
 	// Act
-	err := validateExamples("../..", examples)
+	err := validateExampleMetadata("../..", examples)
 
 	// Assert
 	require.Error(t, err)
