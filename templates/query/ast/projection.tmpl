@@ -401,12 +401,12 @@ func (p *JsonColumnProjection[R, D]) Value(r *R) (any, error) {
 	return scalarScanValue[json.RawMessage, D](p.dest(r))
 }
 
-type BytesColumnProjection[R any, D ScanDest[json.RawMessage]] struct {
+type BytesColumnProjection[R any, D ScanDest[[]byte]] struct {
 	*BytesColumnExpression
 	dest func(*R) D
 }
 
-func NewBytesColumnProjection[R any, D ScanDest[json.RawMessage]](
+func NewBytesColumnProjection[R any, D ScanDest[[]byte]](
 	table string,
 	column string,
 	ref func(*R) D,
@@ -418,11 +418,11 @@ func NewBytesColumnProjection[R any, D ScanDest[json.RawMessage]](
 }
 
 func (p *BytesColumnProjection[R, D]) BindScan(r *R) ScanBinding {
-	return &scalarScanBinding[json.RawMessage, D]{
+	return &scalarScanBinding[[]byte, D]{
 		dest: p.dest(r),
 	}
 }
 
 func (p *BytesColumnProjection[R, D]) Value(r *R) (any, error) {
-	return scalarScanValue[json.RawMessage, D](p.dest(r))
+	return scalarScanValue[[]byte, D](p.dest(r))
 }
