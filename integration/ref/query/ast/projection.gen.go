@@ -400,3 +400,29 @@ func (p *JsonColumnProjection[R, D]) BindScan(r *R) ScanBinding {
 func (p *JsonColumnProjection[R, D]) Value(r *R) (any, error) {
 	return scalarScanValue[json.RawMessage, D](p.dest(r))
 }
+
+type BytesColumnProjection[R any, D ScanDest[json.RawMessage]] struct {
+	*BytesColumnExpression
+	dest func(*R) D
+}
+
+func NewBytesColumnProjection[R any, D ScanDest[json.RawMessage]](
+	table string,
+	column string,
+	ref func(*R) D,
+) *BytesColumnProjection[R, D] {
+	return &BytesColumnProjection[R, D]{
+		BytesColumnExpression: NewBytesColumnExpression(table, column),
+		dest:                 ref,
+	}
+}
+
+func (p *BytesColumnProjection[R, D]) BindScan(r *R) ScanBinding {
+	return &scalarScanBinding[json.RawMessage, D]{
+		dest: p.dest(r),
+	}
+}
+
+func (p *BytesColumnProjection[R, D]) Value(r *R) (any, error) {
+	return scalarScanValue[json.RawMessage, D](p.dest(r))
+}

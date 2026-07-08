@@ -487,8 +487,25 @@ type ArrayType[T ArrayMappedTypes] struct {
 	ofType[T]
 }
 
+func Bytes(e Expression) *BytesType {
+	return &BytesType{sqlType[[]byte]{e}}
+}
+
+// BytesType represents a Bytes column
 type BytesType struct {
 	sqlType[[]byte]
+}
+
+func (t *BytesType) Eq(expr OfType[[]byte]) *BoolType {
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *BytesType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *BytesType) IsNotNull() *BoolType {
+	return isNotNull(t)
 }
 
 func Json(e Expression) *JsonType {
@@ -497,6 +514,18 @@ func Json(e Expression) *JsonType {
 
 type JsonType struct {
 	sqlType[json.RawMessage]
+}
+
+func (t *JsonType) Eq(expr OfType[[]byte]) *BoolType {
+	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *JsonType) IsNull() *BoolType {
+	return isNull(t)
+}
+
+func (t *JsonType) IsNotNull() *BoolType {
+	return isNotNull(t)
 }
 
 type (

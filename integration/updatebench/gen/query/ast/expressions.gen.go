@@ -397,6 +397,29 @@ func (e *JsonColumnExpression) Name() string {
 	return e.name
 }
 
+type BytesColumnExpression struct {
+	*bytesType
+	name string
+}
+
+func NewBytesColumnExpression(table, column string) *BytesColumnExpression {
+	return &BytesColumnExpression{
+		bytesType: Bytes(NewColumnNode(table, column)),
+		name:      column,
+	}
+}
+
+func NewBytesColumnExpressionFromExpr(name string, expression Expression) *BytesColumnExpression {
+	return &BytesColumnExpression{
+		bytesType: Bytes(expression),
+		name:      name,
+	}
+}
+
+func (e *BytesColumnExpression) Name() string {
+	return e.name
+}
+
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
 	table string      // Base table Name
