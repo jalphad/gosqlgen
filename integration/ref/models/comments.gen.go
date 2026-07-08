@@ -81,7 +81,7 @@ type CommentsDto struct {
 	UserIdRef *UsersDto `joined:"users" fk:"user_id"`
 }
 
-func (c *CommentsDto) UnmarshalJSON(b []byte) error {
+func (c *CommentsDto) UnmarshalJSON(bts []byte) error {
 	type CommentsDto_ CommentsDto
 	type DtoWrapper struct {
 		CommentsDto_
@@ -90,7 +90,7 @@ func (c *CommentsDto) UnmarshalJSON(b []byte) error {
 	}
 
 	var wrapper DtoWrapper
-	err := json.Unmarshal(b, &wrapper)
+	err := json.Unmarshal(bts, &wrapper)
 	if err != nil {
 		return err
 	}

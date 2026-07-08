@@ -3,6 +3,7 @@ package gosqlgen
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"path"
 	"sort"
 	"strings"
@@ -53,7 +54,6 @@ func (g *Generator) generatedPackagePath() string {
 // GenerateFiles generates Go code for all parsed tables as separate files
 // Returns a map of filename to file content
 func (g *Generator) GenerateFiles() (map[string]string, error) {
-	var err error
 	files := make(map[string]string)
 
 	// Generate common.gen.go with utility types
@@ -72,11 +72,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	for _, table := range g.parser.GetTables() {
 		tableBuf := bytes.Buffer{}
 		// Table struct
-		if err := g.generateTableStruct(&tableBuf, table); err != nil {
-			return nil, err
-		}
-
-		if err := g.generateDtosType(&tableBuf, table); err != nil {
+		if err = g.generateTableStruct(&tableBuf, table); err != nil {
 			return nil, err
 		}
 
@@ -102,7 +98,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	files["db.gen.go"] = string(formatted)
 
 	// Generate table query packages
-	if err := g.generateTableQueryPackages(files); err != nil {
+	if err = g.generateTableQueryPackages(files); err != nil {
 		return nil, err
 	}
 
@@ -111,9 +107,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for filename, content := range astFiles {
-		files[filename] = content
-	}
+	maps.Copy(files, astFiles)
 
 	// Generate query Builder package
 	packagePath := g.generatedPackagePath()
@@ -122,17 +116,13 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for filename, content := range builderFiles {
-		files[filename] = content
-	}
+	maps.Copy(files, builderFiles)
 
 	exprFiles, err := templates.RenderQueryExprPackage(packagePath)
 	if err != nil {
 		return nil, err
 	}
-	for filename, content := range exprFiles {
-		files[filename] = content
-	}
+	maps.Copy(files, exprFiles)
 
 	// Generate query package helper files
 	if err := g.generateQueryPackageHelpers(files); err != nil {
@@ -343,49 +333,6 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 	return nil
 }
 
-// generateDtosType generates the DTOs type
-func (g *Generator) generateDtosType(buf *bytes.Buffer, table *parser.Table) error {
-	baseName := templates.ToPascalCase(table.Name)
-	structName := baseName + "Dto"
-
-	// Prepare columns data
-	columns := make([]templates.DtosColumnData, 0, len(table.Columns))
-	for _, col := range table.Columns {
-		fieldName := templates.ToPascalCase(col.Name)
-		goType := col.GoType
-		isPointer := col.IsNullable || col.HasDefault || col.IsSequence
-
-		// Remove pointer suffix for collection type
-		if isPointer && strings.HasPrefix(goType, "*") {
-			goType = strings.TrimPrefix(goType, "*")
-		}
-
-		columns = append(columns, templates.DtosColumnData{
-			FieldName:  fieldName,
-			ColumnName: col.Name,
-			GoType:     goType,
-			IsPointer:  isPointer,
-		})
-	}
-
-	tableData := templates.DtosTableData{
-		StructName: structName,
-		TableName:  table.Name,
-		Columns:    columns,
-	}
-
-	// Render template
-	data := templates.DtosPackageData{
-		Table: tableData,
-	}
-	err := templates.RenderDtosPackage(buf, data)
-	if err != nil {
-		return fmt.Errorf("failed to render dtos package: %w", err)
-	}
-
-	return nil
-}
-
 // generateCommonTypes generates common types used across queries
 func (g *Generator) generateCommonTypes(buf *bytes.Buffer) error {
 	rendered, err := templates.RenderCommonTypes()
@@ -498,94 +445,6 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 
 	buf.WriteString(rendered)
 	buf.WriteString("\n")
-
-	// Generate collection loader methods if there are reverse rels or M2M rels
-	if len(table.ReverseRelationships) > 0 || len(table.ManyToManyRels) > 0 {
-		// Determine if table has a primary key
-		var primaryKeyField string
-		var primaryKeyType string
-		hasPrimaryKey := false
-		for _, col := range table.Columns {
-			if col.IsPrimary {
-				primaryKeyField = templates.ToPascalCase(col.Name)
-				primaryKeyType = col.GoType
-				hasPrimaryKey = true
-				break
-			}
-		}
-
-		// Build loader data for reverse relationships
-		reverseRelLoaderFields := make([]templates.ReverseRelLoaderField, 0)
-		for _, reverseRel := range table.ReverseRelationships {
-			fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
-			fromStructName := fromTableBaseName + "Dto"
-			fromTableMethod := fromTableBaseName // DB wrapper method uses table name
-			fkFieldName := templates.ToPascalCase(reverseRel.FKColumn)
-
-			reverseRelLoaderFields = append(reverseRelLoaderFields, templates.ReverseRelLoaderField{
-				FieldName:       reverseRel.FieldName,
-				FromTable:       reverseRel.FromTable.Name,
-				FromStructName:  fromStructName,
-				FromTableMethod: fromTableMethod,
-				FKFieldName:     fkFieldName,
-			})
-		}
-
-		// Build loader data for M2M relationships
-		m2mLoaderFields := make([]templates.ManyToManyLoaderField, 0)
-		for _, m2m := range table.ManyToManyRels {
-			refTable, ok := g.parser.GetTable(m2m.ReferencedTable.Name)
-			if !ok {
-				continue
-			}
-
-			// Find the primary key of the referenced table
-			var refPKField string
-			var refPKType string
-			for _, col := range refTable.Columns {
-				if col.IsPrimary {
-					refPKField = templates.ToPascalCase(col.Name)
-					refPKType = col.GoType
-					break
-				}
-			}
-
-			refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)
-			refStructName := refTableBaseName + "Dto"
-			refTableMethod := refTableBaseName // DB wrapper method uses table name
-
-			m2mLoaderFields = append(m2mLoaderFields, templates.ManyToManyLoaderField{
-				FieldName:             m2m.FieldName,
-				JunctionTable:         m2m.JunctionTable.Name,
-				LeftFKColumn:          m2m.LeftFKColumn,
-				RightFKColumn:         m2m.RightFKColumn,
-				ReferencedTable:       m2m.ReferencedTable.Name,
-				ReferencedStructName:  refStructName,
-				ReferencedTableMethod: refTableMethod,
-				ReferencedPKField:     refPKField,
-				ReferencedPKType:      refPKType,
-			})
-		}
-
-		loaderData := templates.CollectionLoaderData{
-			StructName:       structName,
-			TableName:        table.Name,
-			ReceiverName:     receiverName,
-			HasPrimaryKey:    hasPrimaryKey,
-			PrimaryKeyField:  primaryKeyField,
-			PrimaryKeyType:   primaryKeyType,
-			ReverseRelFields: reverseRelLoaderFields,
-			ManyToManyFields: m2mLoaderFields,
-		}
-
-		loadersRendered, err := templates.RenderCollectionLoaders(loaderData)
-		if err != nil {
-			return err
-		}
-
-		buf.WriteString(loadersRendered)
-		buf.WriteString("\n")
-	}
 
 	return nil
 }

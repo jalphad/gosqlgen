@@ -32,9 +32,6 @@ var joinBuildersTemplate string
 //go:embed db/db_wrapper.tmpl
 var dbWrapperTemplate string
 
-//go:embed models/collection_loaders.tmpl
-var collectionLoadersTemplate string
-
 //go:embed query/ast
 var astTemplates embed.FS
 
@@ -43,9 +40,6 @@ var builderTemplates embed.FS
 
 //go:embed query/expr
 var exprTemplates embed.FS
-
-//go:embed models/dtos.tmpl
-var dtosTemplate string
 
 //go:embed query/functions.tmpl
 var queryFunctionsTemplate string
@@ -319,11 +313,11 @@ func RenderTableStruct(data TableStructData) (string, error) {
 			return strings.TrimPrefix(goType, "*")
 		},
 		"modelType": func(goType string) string {
-			if strings.HasPrefix(goType, "[]") {
-				return "[]models." + strings.TrimPrefix(goType, "[]")
+			if cut, ok := strings.CutPrefix(goType, "[]"); ok {
+				return "[]models." + cut
 			}
-			if strings.HasPrefix(goType, "*") {
-				return "*models." + strings.TrimPrefix(goType, "*")
+			if cut, ok := strings.CutPrefix(goType, "*"); ok {
+				return "*models." + cut
 			}
 			return "models." + goType
 		},
@@ -380,11 +374,11 @@ func RenderColumnExpressions(data TableStructData) (string, error) {
 			return strings.TrimPrefix(goType, "*")
 		},
 		"modelType": func(goType string) string {
-			if strings.HasPrefix(goType, "[]") {
-				return "[]models." + strings.TrimPrefix(goType, "[]")
+			if cut, ok := strings.CutPrefix(goType, "[]"); ok {
+				return "[]models." + cut
 			}
-			if strings.HasPrefix(goType, "*") {
-				return "*models." + strings.TrimPrefix(goType, "*")
+			if cut, ok := strings.CutPrefix(goType, "*"); ok {
+				return "*models." + cut
 			}
 			return "models." + goType
 		},
@@ -505,21 +499,6 @@ func RenderJoinBuilders(data JoinBuildersData) (string, error) {
 // RenderDBWrapper renders to DB wrapper template with given data
 func RenderDBWrapper(data DBWrapperData) (string, error) {
 	t, err := template.New("dbWrapper").Parse(dbWrapperTemplate)
-	if err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, data); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
-// RenderCollectionLoaders renders to collection loader template with given data
-func RenderCollectionLoaders(data CollectionLoaderData) (string, error) {
-	t, err := template.New("collectionLoaders").Parse(collectionLoadersTemplate)
 	if err != nil {
 		return "", err
 	}
@@ -763,21 +742,7 @@ func RenderQueryExprPackage(packagePath string) (map[string]string, error) {
 	return files, nil
 }
 
-// RenderDtosPackage renders the DTOs package file
-func RenderDtosPackage(buf *bytes.Buffer, data DtosPackageData) error {
-	t, err := template.New("dtos").Parse(dtosTemplate)
-	if err != nil {
-		return fmt.Errorf("failed to parse dtos template: %w", err)
-	}
-
-	if err := t.Execute(buf, data); err != nil {
-		return fmt.Errorf("failed to execute dtos template: %w", err)
-	}
-
-	return nil
-}
-
-// GenerateInsertPackage generates query/inserts.gen.go with InsertOne and InsertMany functions
+// RenderQueryQueries generates query/queries.go with Insert/Update/Select/Delete One/Many functions
 func RenderQueryQueries(data QueryQueriesData) ([]byte, error) {
 	t, err := template.New("inserts").Funcs(template.FuncMap{
 		"toPascalCase": ToPascalCase,

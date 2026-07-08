@@ -90,7 +90,7 @@ type UsersDto struct {
 	PostsByUserId    []PostsDto    `reverse:"posts" fk:"user_id"`
 }
 
-func (u *UsersDto) UnmarshalJSON(b []byte) error {
+func (u *UsersDto) UnmarshalJSON(bts []byte) error {
 	type UsersDto_ UsersDto
 	type DtoWrapper struct {
 		UsersDto_
@@ -99,7 +99,7 @@ func (u *UsersDto) UnmarshalJSON(b []byte) error {
 	}
 
 	var wrapper DtoWrapper
-	err := json.Unmarshal(b, &wrapper)
+	err := json.Unmarshal(bts, &wrapper)
 	if err != nil {
 		return err
 	}

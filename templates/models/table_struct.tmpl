@@ -62,7 +62,7 @@ type {{ .StructName }} struct {
 }
 
 {{- if needsCustomUnmarshal .Fields }}
-func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
+func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(bts []byte) error {
 	type {{ .StructName }}_ {{ .StructName }}
 	type DtoWrapper struct {
 		{{ .StructName }}_
@@ -82,7 +82,7 @@ func ({{ .ReceiverName }} *{{ .StructName }}) UnmarshalJSON(b []byte) error {
 	}
 
 	var wrapper DtoWrapper
-	err := json.Unmarshal(b, &wrapper)
+	err := json.Unmarshal(bts, &wrapper)
 	if err != nil {
 		return err
 	}

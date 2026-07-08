@@ -104,7 +104,7 @@ type PostsDto struct {
 	Tags []TagsDto `manytomany:"post_tags"`
 }
 
-func (p *PostsDto) UnmarshalJSON(b []byte) error {
+func (p *PostsDto) UnmarshalJSON(bts []byte) error {
 	type PostsDto_ PostsDto
 	type DtoWrapper struct {
 		PostsDto_
@@ -114,7 +114,7 @@ func (p *PostsDto) UnmarshalJSON(b []byte) error {
 	}
 
 	var wrapper DtoWrapper
-	err := json.Unmarshal(b, &wrapper)
+	err := json.Unmarshal(bts, &wrapper)
 	if err != nil {
 		return err
 	}
