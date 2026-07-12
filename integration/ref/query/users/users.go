@@ -288,13 +288,13 @@ func (f forUsersDto[T]) PostsByUserId(columns ...ast.NamedExpression) ast.Projec
 }
 
 type Alias[T any] struct {
-	*ast.Alias
+	*ast.TableAlias
 	forUsersDto[T]
 }
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.UsersDto] {
 	return Alias[models.UsersDto]{
-		Alias: ast.NewAlias(name, columns...),
+		TableAlias: ast.NewTableAlias(name, columns...),
 		forUsersDto: forUsersDto[models.UsersDto]{
 			dest: func(u *models.UsersDto) *models.UsersDto {
 				return u
@@ -304,7 +304,7 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.UsersDto] {
 }
 
 func (a Alias[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
-	projection := newId(a.Alias.Name(), func(t *T) **uuid.UUID {
+	projection := newId(a.TableAlias.Name(), func(t *T) **uuid.UUID {
 		dto := a.dest(t)
 		return &dto.Id
 	})
@@ -313,13 +313,13 @@ func (a Alias[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.Name()))
 	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Username() *ast.StringColumnProjection[T, *string] {
-	projection := newUsername(a.Alias.Name(), func(t *T) *string {
+	projection := newUsername(a.TableAlias.Name(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Username
 	})
@@ -328,13 +328,13 @@ func (a Alias[T]) Username() *ast.StringColumnProjection[T, *string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'username' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'username' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Email() *ast.StringColumnProjection[T, *string] {
-	projection := newEmail(a.Alias.Name(), func(t *T) *string {
+	projection := newEmail(a.TableAlias.Name(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Email
 	})
@@ -343,13 +343,13 @@ func (a Alias[T]) Email() *ast.StringColumnProjection[T, *string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'email' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'email' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) FullName() *ast.StringColumnProjection[T, **string] {
-	projection := newFullName(a.Alias.Name(), func(t *T) **string {
+	projection := newFullName(a.TableAlias.Name(), func(t *T) **string {
 		dto := a.dest(t)
 		return &dto.FullName
 	})
@@ -358,13 +358,13 @@ func (a Alias[T]) FullName() *ast.StringColumnProjection[T, **string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'full_name' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'full_name' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	projection := newCreatedAt(a.Alias.Name(), func(t *T) **time.Time {
+	projection := newCreatedAt(a.TableAlias.Name(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.CreatedAt
 	})
@@ -373,13 +373,13 @@ func (a Alias[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", a.TableAlias.Name()))
 	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	projection := newUpdatedAt(a.Alias.Name(), func(t *T) **time.Time {
+	projection := newUpdatedAt(a.TableAlias.Name(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.UpdatedAt
 	})
@@ -388,13 +388,13 @@ func (a Alias[T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'updated_at' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'updated_at' in alias %s", a.TableAlias.Name()))
 	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
-	projection := newIsActive(a.Alias.Name(), func(t *T) **bool {
+	projection := newIsActive(a.TableAlias.Name(), func(t *T) **bool {
 		dto := a.dest(t)
 		return &dto.IsActive
 	})
@@ -403,13 +403,13 @@ func (a Alias[T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_active' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_active' in alias %s", a.TableAlias.Name()))
 	projection.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Attributes() *ast.JsonColumnProjection[T, **json.RawMessage] {
-	projection := newAttributes(a.Alias.Name(), func(t *T) **json.RawMessage {
+	projection := newAttributes(a.TableAlias.Name(), func(t *T) **json.RawMessage {
 		dto := a.dest(t)
 		return &dto.Attributes
 	})
@@ -418,7 +418,7 @@ func (a Alias[T]) Attributes() *ast.JsonColumnProjection[T, **json.RawMessage] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'attributes' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'attributes' in alias %s", a.TableAlias.Name()))
 	projection.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
@@ -436,9 +436,9 @@ func (a Alias[T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.UsersDto) Alias[T] {
+func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.UsersDto) Alias[T] {
 	return Alias[T]{
-		Alias:       alias,
+		TableAlias:  alias,
 		forUsersDto: forUsersDto[T]{dest: dest},
 	}
 }

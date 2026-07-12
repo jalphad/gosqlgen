@@ -144,7 +144,7 @@ func CommentsDtoDeleteMany(pool *pgxpool.Pool, dtos models.CommentsDtos) builder
 	v := comments.As("v", primaryKeyCommentsDtoDeleteValueColumns...)
 	return comments.NewQuery(pool).
 		Delete().
-		Using(Values(CommentsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(CommentsDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(comments.Id().Eq(v.Id()))
 }
 
@@ -314,9 +314,9 @@ func CommentsDtoUpdateMany(pool *pgxpool.Pool, dtos models.CommentsDtos, opts ..
 		dtos:       dtos,
 		extractors: valueExtractors,
 		castTypes:  valueCastTypes,
-	}).As(v.Alias)
+	}).As(v.TableAlias)
 	if options.source == updateBatchSourceUnnest {
-		from = Unnest(CommentsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+		from = Unnest(CommentsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.TableAlias)
 	}
 	return comments.NewQuery(pool).
 		Update(sets...).
@@ -502,7 +502,7 @@ func PostTagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostTagsDtos) builder
 	v := post_tags.As("v", primaryKeyPostTagsDtoDeleteValueColumns...)
 	return post_tags.NewQuery(pool).
 		Delete().
-		Using(Values(PostTagsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(PostTagsDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(post_tags.PostId().Eq(v.PostId()).And(post_tags.TagId().Eq(v.TagId())))
 }
 
@@ -608,7 +608,7 @@ func PostsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostsDtos) builder.Delet
 	v := posts.As("v", primaryKeyPostsDtoDeleteValueColumns...)
 	return posts.NewQuery(pool).
 		Delete().
-		Using(Values(PostsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(PostsDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(posts.Id().Eq(v.Id()))
 }
 
@@ -792,9 +792,9 @@ func PostsDtoUpdateMany(pool *pgxpool.Pool, dtos models.PostsDtos, opts ...Updat
 		dtos:       dtos,
 		extractors: valueExtractors,
 		castTypes:  valueCastTypes,
-	}).As(v.Alias)
+	}).As(v.TableAlias)
 	if options.source == updateBatchSourceUnnest {
-		from = Unnest(PostsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+		from = Unnest(PostsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.TableAlias)
 	}
 	return posts.NewQuery(pool).
 		Update(sets...).
@@ -990,7 +990,7 @@ func TagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.TagsDtos) builder.DeleteF
 	v := tags.As("v", primaryKeyTagsDtoDeleteValueColumns...)
 	return tags.NewQuery(pool).
 		Delete().
-		Using(Values(TagsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(TagsDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(tags.Id().Eq(v.Id()))
 }
 
@@ -1134,9 +1134,9 @@ func TagsDtoUpdateMany(pool *pgxpool.Pool, dtos models.TagsDtos, opts ...UpdateO
 		dtos:       dtos,
 		extractors: valueExtractors,
 		castTypes:  valueCastTypes,
-	}).As(v.Alias)
+	}).As(v.TableAlias)
 	if options.source == updateBatchSourceUnnest {
-		from = Unnest(TagsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+		from = Unnest(TagsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.TableAlias)
 	}
 	return tags.NewQuery(pool).
 		Update(sets...).
@@ -1302,7 +1302,7 @@ func UsersDtoDeleteMany(pool *pgxpool.Pool, dtos models.UsersDtos) builder.Delet
 	v := users.As("v", primaryKeyUsersDtoDeleteValueColumns...)
 	return users.NewQuery(pool).
 		Delete().
-		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(users.Id().Eq(v.Id()))
 }
 
@@ -1480,9 +1480,9 @@ func UsersDtoUpdateMany(pool *pgxpool.Pool, dtos models.UsersDtos, opts ...Updat
 		dtos:       dtos,
 		extractors: valueExtractors,
 		castTypes:  valueCastTypes,
-	}).As(v.Alias)
+	}).As(v.TableAlias)
 	if options.source == updateBatchSourceUnnest {
-		from = Unnest(UsersDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+		from = Unnest(UsersDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.TableAlias)
 	}
 	return users.NewQuery(pool).
 		Update(sets...).

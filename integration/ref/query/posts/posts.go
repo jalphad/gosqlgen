@@ -301,13 +301,13 @@ func (f forPostsDto[T]) Tags(columns ...ast.NamedExpression) ast.Projection[T] {
 }
 
 type Alias[T any] struct {
-	*ast.Alias
+	*ast.TableAlias
 	forPostsDto[T]
 }
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.PostsDto] {
 	return Alias[models.PostsDto]{
-		Alias: ast.NewAlias(name, columns...),
+		TableAlias: ast.NewTableAlias(name, columns...),
 		forPostsDto: forPostsDto[models.PostsDto]{
 			dest: func(p *models.PostsDto) *models.PostsDto {
 				return p
@@ -317,7 +317,7 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.PostsDto] {
 }
 
 func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
-	projection := newId(a.Alias.Name(), func(t *T) **int64 {
+	projection := newId(a.TableAlias.Name(), func(t *T) **int64 {
 		dto := a.dest(t)
 		return &dto.Id
 	})
@@ -326,13 +326,13 @@ func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.Name()))
 	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
-	projection := newUserId(a.Alias.Name(), func(t *T) *uuid.UUID {
+	projection := newUserId(a.TableAlias.Name(), func(t *T) *uuid.UUID {
 		dto := a.dest(t)
 		return &dto.UserId
 	})
@@ -341,13 +341,13 @@ func (a Alias[T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'user_id' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'user_id' in alias %s", a.TableAlias.Name()))
 	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Title() *ast.StringColumnProjection[T, *string] {
-	projection := newTitle(a.Alias.Name(), func(t *T) *string {
+	projection := newTitle(a.TableAlias.Name(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Title
 	})
@@ -356,13 +356,13 @@ func (a Alias[T]) Title() *ast.StringColumnProjection[T, *string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'title' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'title' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Content() *ast.StringColumnProjection[T, **string] {
-	projection := newContent(a.Alias.Name(), func(t *T) **string {
+	projection := newContent(a.TableAlias.Name(), func(t *T) **string {
 		dto := a.dest(t)
 		return &dto.Content
 	})
@@ -371,13 +371,13 @@ func (a Alias[T]) Content() *ast.StringColumnProjection[T, **string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'content' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'content' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Status() *ast.StringColumnProjection[T, **string] {
-	projection := newStatus(a.Alias.Name(), func(t *T) **string {
+	projection := newStatus(a.TableAlias.Name(), func(t *T) **string {
 		dto := a.dest(t)
 		return &dto.Status
 	})
@@ -386,13 +386,13 @@ func (a Alias[T]) Status() *ast.StringColumnProjection[T, **string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'status' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'status' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) PublishedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	projection := newPublishedAt(a.Alias.Name(), func(t *T) **time.Time {
+	projection := newPublishedAt(a.TableAlias.Name(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.PublishedAt
 	})
@@ -401,13 +401,13 @@ func (a Alias[T]) PublishedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'published_at' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'published_at' in alias %s", a.TableAlias.Name()))
 	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) ViewCount() *ast.IntColumnProjection[T, **int64] {
-	projection := newViewCount(a.Alias.Name(), func(t *T) **int64 {
+	projection := newViewCount(a.TableAlias.Name(), func(t *T) **int64 {
 		dto := a.dest(t)
 		return &dto.ViewCount
 	})
@@ -416,13 +416,13 @@ func (a Alias[T]) ViewCount() *ast.IntColumnProjection[T, **int64] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'view_count' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'view_count' in alias %s", a.TableAlias.Name()))
 	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	projection := newCreatedAt(a.Alias.Name(), func(t *T) **time.Time {
+	projection := newCreatedAt(a.TableAlias.Name(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.CreatedAt
 	})
@@ -431,13 +431,13 @@ func (a Alias[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", a.TableAlias.Name()))
 	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	projection := newUpdatedAt(a.Alias.Name(), func(t *T) **time.Time {
+	projection := newUpdatedAt(a.TableAlias.Name(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.UpdatedAt
 	})
@@ -446,7 +446,7 @@ func (a Alias[T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'updated_at' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'updated_at' in alias %s", a.TableAlias.Name()))
 	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
@@ -465,9 +465,9 @@ func (a Alias[T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.PostsDto) Alias[T] {
+func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.PostsDto) Alias[T] {
 	return Alias[T]{
-		Alias:       alias,
+		TableAlias:  alias,
 		forPostsDto: forPostsDto[T]{dest: dest},
 	}
 }

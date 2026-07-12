@@ -177,13 +177,13 @@ func (f for{{ $.StructName }}[T]) {{ .FieldName }}(columns ...ast.NamedExpressio
 {{ end }}
 
 type Alias[T any] struct {
-	*ast.Alias
+	*ast.TableAlias
 	for{{ $.StructName }}[T]
 }
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.{{ .StructName }}] {
 	return Alias[models.{{ .StructName }}]{
-		Alias: ast.NewAlias(name, columns...),
+		TableAlias: ast.NewTableAlias(name, columns...),
 		for{{ $.StructName }}: for{{ $.StructName }}[models.{{ .StructName }}]{
 			dest: func({{ $.ReceiverName }} *models.{{ .StructName }}) *models.{{ .StructName }} {
 				return {{ $.ReceiverName }}
@@ -194,7 +194,7 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.{{ .StructName
 
 {{ range .Fields }}
 func (a Alias[T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
-	projection := new{{ .FieldName }}(a.Alias.Name(), func(t *T) {{ scanDestType .GoType }} {
+	projection := new{{ .FieldName }}(a.TableAlias.Name(), func(t *T) {{ scanDestType .GoType }} {
 		dto := a.dest(t)
 		return &dto.{{ .FieldName }}
 	})
@@ -203,7 +203,7 @@ func (a Alias[T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.TableAlias.Name()))
 	projection.{{ toTypeExpression .GoType .SQLType }} = ast.New{{ toTypeExpression .GoType .SQLType }}FromExpr(projection.Name(), errExpr)
 	return projection
 }
@@ -217,9 +217,9 @@ func (a Alias[T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.{{ .StructName }}) Alias[T] {
+func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.{{ .StructName }}) Alias[T] {
 	return Alias[T]{
-		Alias: alias,
+		TableAlias: alias,
 		for{{ $.StructName }}: for{{ $.StructName }}[T]{dest: dest},
 	}
 }

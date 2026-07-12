@@ -59,7 +59,7 @@ type AsExprConstraint[T MappedTypes] interface {
 
 type AsExpression[T MappedTypes, C AsExprConstraint[T]] interface {
 	Expression
-	As(alias *Alias) C
+	As(alias *ColumnAlias) C
 }
 
 type NamedExpression interface {
@@ -423,7 +423,7 @@ func (e *BytesColumnExpression) Name() string {
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	table string      // Base table Name
+	table string // Base table Name
 }
 
 func NewTableSource(name string) *TableSource {
@@ -432,8 +432,8 @@ func NewTableSource(name string) *TableSource {
 	}
 }
 
-func (s *TableSource) As(alias string) *Alias {
-	return &Alias{
+func (s *TableSource) As(alias string) *TableAlias {
+	return &TableAlias{
 		name:   alias,
 		source: s,
 	}
@@ -470,7 +470,14 @@ func (s *TableSource) Join(jointype JoinType, table NamedTableExpression, on OfT
 }
 
 func renderTableExpression(table TableExpression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	if alias, ok := table.(*Alias); ok && alias.source == nil {
+	if alias, ok := table.(*TableAlias); ok && alias.source == nil {
+		builder.WriteString(alias.Name())
+		return
+	}
+	if alias, ok := table.(interface {
+		Name() string
+		Columns() []NamedExpression
+	}); ok && len(alias.Columns()) > 0 {
 		builder.WriteString(alias.Name())
 		return
 	}

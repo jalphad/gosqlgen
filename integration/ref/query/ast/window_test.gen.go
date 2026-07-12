@@ -80,7 +80,7 @@ func TestWindowFunctionRendering(t *testing.T) {
 		expr := NewFunction[int64](NewFunctionNode("count", []Expression{NewIntColumnExpression("posts", "id")}, nil)).
 			Over().
 			PartitionBy(NewIntColumnExpression("posts", "user_id")).
-			As(NewAlias("post_count"))
+			As(NewColumnAlias("post_count"))
 
 		// Act
 		sql, err := RenderWithContext(expr, &[]any{}, &QueryContext{})

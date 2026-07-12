@@ -177,11 +177,11 @@ type LimitClause struct {
 
 // CTE represents a Common Table ExpressionNode (WITH clause).
 type CTE struct {
-	Alias *Alias
+	Alias *TableAlias
 	Query SqlStatement
 }
 
-func NewCTE(alias *Alias, query SqlStatement) *CTE {
+func NewCTE(alias *TableAlias, query SqlStatement) *CTE {
 	return &CTE{
 		Alias: alias,
 		Query: query,

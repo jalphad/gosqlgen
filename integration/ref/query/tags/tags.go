@@ -148,13 +148,13 @@ func (f forTagsDto[T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
 }
 
 type Alias[T any] struct {
-	*ast.Alias
+	*ast.TableAlias
 	forTagsDto[T]
 }
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.TagsDto] {
 	return Alias[models.TagsDto]{
-		Alias: ast.NewAlias(name, columns...),
+		TableAlias: ast.NewTableAlias(name, columns...),
 		forTagsDto: forTagsDto[models.TagsDto]{
 			dest: func(t *models.TagsDto) *models.TagsDto {
 				return t
@@ -164,7 +164,7 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.TagsDto] {
 }
 
 func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
-	projection := newId(a.Alias.Name(), func(t *T) **int64 {
+	projection := newId(a.TableAlias.Name(), func(t *T) **int64 {
 		dto := a.dest(t)
 		return &dto.Id
 	})
@@ -173,13 +173,13 @@ func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.Name()))
 	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Name() *ast.StringColumnProjection[T, *string] {
-	projection := newName(a.Alias.Name(), func(t *T) *string {
+	projection := newName(a.TableAlias.Name(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Name
 	})
@@ -188,13 +188,13 @@ func (a Alias[T]) Name() *ast.StringColumnProjection[T, *string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'name' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'name' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Slug() *ast.StringColumnProjection[T, *string] {
-	projection := newSlug(a.Alias.Name(), func(t *T) *string {
+	projection := newSlug(a.TableAlias.Name(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Slug
 	})
@@ -203,7 +203,7 @@ func (a Alias[T]) Slug() *ast.StringColumnProjection[T, *string] {
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'slug' in alias %s", a.Alias.Name()))
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'slug' in alias %s", a.TableAlias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
 }
@@ -216,9 +216,9 @@ func (a Alias[T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.TagsDto) Alias[T] {
+func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.TagsDto) Alias[T] {
 	return Alias[T]{
-		Alias:      alias,
+		TableAlias: alias,
 		forTagsDto: forTagsDto[T]{dest: dest},
 	}
 }

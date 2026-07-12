@@ -25,7 +25,7 @@ func NewValuesTable(provider TableValuesProvider) *ValuesTable {
 	return &ValuesTable{provider: provider}
 }
 
-func (v *ValuesTable) As(alias *Alias) *NamedValuesTable {
+func (v *ValuesTable) As(alias *TableAlias) *NamedValuesTable {
 	return &NamedValuesTable{
 		table: v,
 		alias: alias,
@@ -124,7 +124,7 @@ func (v *ValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 
 type NamedValuesTable struct {
 	table *ValuesTable
-	alias *Alias
+	alias *TableAlias
 }
 
 func (v *NamedValuesTable) Name() string {

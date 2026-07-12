@@ -55,7 +55,7 @@ func TestUsersSelfJoinUsesAliasScopedDestinations(t *testing.T) {
 	subordinate := users.AliasFor(users.Table().As("subordinate"), (*usersSelfJoinRow).SubordinateDto)
 
 	// Act
-	sql, _, err := builder.NewKnownTableBuilder[usersSelfJoinRow](nil, manager.Alias).
+	sql, _, err := builder.NewKnownTableBuilder[usersSelfJoinRow](nil, manager.TableAlias).
 		Select(manager.Id(), manager.Email(), subordinate.Id(), subordinate.Email()).
 		Join(ast.JoinLeft, subordinate, subordinate.IsActive().Eq(manager.IsActive())).
 		ToSql()
@@ -74,7 +74,7 @@ func TestCTEAliasJoinDoesNotRenderColumnList(t *testing.T) {
 
 	// Act
 	sql, _, err := builder.NewKnownTableBuilder[models.PostsDto](nil, posts.Table()).
-		With(ast.NewCTE(activeUsers.Alias, cteBody)).
+		With(ast.NewCTE(activeUsers.TableAlias, cteBody)).
 		Select(posts.Id()).
 		Join(ast.JoinLeft, activeUsers, posts.UserId().Eq(activeUsers.Id())).
 		ToSql()
@@ -140,7 +140,7 @@ func TestAggregateFunctionHelpers(t *testing.T) {
 
 func TestStatementOnlySelectSupportsNamedExpressions(t *testing.T) {
 	// Arrange
-	postCount := Count(posts.Id()).As(ast.NewAlias("post_count"))
+	postCount := Count(posts.Id()).As(ast.NewColumnAlias("post_count"))
 	stmt := builder.NewStatementBuilder(posts.Table()).
 		Select(posts.UserId(), postCount).
 		Where(posts.Status().Eq(Val("published"))).

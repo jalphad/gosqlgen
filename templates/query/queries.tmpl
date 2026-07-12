@@ -146,7 +146,7 @@ func {{ $table.StructName }}DeleteMany(pool *pgxpool.Pool, dtos models.{{ $table
 	v := {{ $tablePkg }}.As("v", primaryKey{{ $table.StructName }}DeleteValueColumns...)
 	return {{ $tablePkg }}.NewQuery(pool).
 		Delete().
-		Using(Values({{ .StructName }}DeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values({{ .StructName }}DeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where({{- range $index, $pk := $table.PrimaryKeyColumns }}{{- if $index }}.And({{ $tablePkg }}.{{ $pk.FieldName }}().Eq(v.{{ $pk.FieldName }}())){{ else }}{{ $tablePkg }}.{{ $pk.FieldName }}().Eq(v.{{ $pk.FieldName }}()){{ end }}{{- end }})
 }
 
@@ -339,9 +339,9 @@ func {{ $table.StructName }}UpdateMany(pool *pgxpool.Pool, dtos models.{{ $table
 		dtos:       dtos,
 		extractors: valueExtractors,
 		castTypes:  valueCastTypes,
-	}).As(v.Alias)
+	}).As(v.TableAlias)
 	if options.source == updateBatchSourceUnnest {
-		from = Unnest({{ .StructName }}UpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+		from = Unnest({{ .StructName }}UpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.TableAlias)
 	}
 	return {{ $tablePkg }}.NewQuery(pool).
 		Update(sets...).
