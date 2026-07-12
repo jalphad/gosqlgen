@@ -14,11 +14,11 @@ import (
 type KnownTableBuilder[T any] struct {
 	pool  *pgxpool.Pool
 	tx    pgx.Tx
-	table *ast.TableSource
+	table ast.NamedTableExpression
 	with  []*ast.CTE
 }
 
-func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *KnownTableBuilder[T] {
+func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table ast.NamedTableExpression) *KnownTableBuilder[T] {
 	return &KnownTableBuilder[T]{
 		pool:  pool,
 		table: table,
@@ -26,11 +26,11 @@ func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *Kn
 }
 
 type StatementBuilder struct {
-	table *ast.TableSource
+	table ast.NamedTableExpression
 	with  []*ast.CTE
 }
 
-func NewStatementBuilder(table *ast.TableSource) *StatementBuilder {
+func NewStatementBuilder(table ast.NamedTableExpression) *StatementBuilder {
 	return &StatementBuilder{table: table}
 }
 
@@ -147,7 +147,7 @@ func (b *SelectBuilder[T]) With(ctes ...*ast.CTE) SelectJoinQuery[T] {
 	return b
 }
 
-func (b *SelectBuilder[T]) From(table *ast.TableSource) SelectWhereQuery[T] {
+func (b *SelectBuilder[T]) From(table ast.TableExpression) SelectWhereQuery[T] {
 	selectFrom(b.stmt, table)
 	return b
 }
@@ -189,7 +189,7 @@ func (b *SelectBuilder[T]) Offset(offset int) SelectPagingQuery[T] {
 
 func (b *SelectBuilder[T]) ToSql() (string, []any, error) {
 	params := make([]any, 0)
-	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.From.Name()})
+	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: ast.TableExpressionName(b.stmt.From)})
 	return sql, params, err
 }
 
@@ -199,7 +199,7 @@ func (b *SelectBuilder[T]) Statement() ast.SqlStatement {
 
 func (b *SelectBuilder[T]) Find(ctx context.Context) ([]T, error) {
 	queryCtx := &ast.QueryContext{
-		PrimaryTable: b.stmt.From.Name(),
+		PrimaryTable: ast.TableExpressionName(b.stmt.From),
 	}
 
 	args := make([]any, 0)
@@ -258,7 +258,7 @@ func (b *StatementSelectBuilder) With(ctes ...*ast.CTE) StatementSelectJoinQuery
 	return b
 }
 
-func (b *StatementSelectBuilder) From(table *ast.TableSource) StatementSelectWhereQuery {
+func (b *StatementSelectBuilder) From(table ast.TableExpression) StatementSelectWhereQuery {
 	selectFrom(b.stmt, table)
 	return b
 }
@@ -306,12 +306,12 @@ func selectWith(stmt *ast.SelectStatement, ctes ...*ast.CTE) {
 	stmt.With = append(stmt.With, ctes...)
 }
 
-func selectFrom(stmt *ast.SelectStatement, table *ast.TableSource) {
+func selectFrom(stmt *ast.SelectStatement, table ast.TableExpression) {
 	stmt.From = table
 }
 
 func selectJoin(stmt *ast.SelectStatement, joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) {
-	stmt.From.Join(joinType, table, expr)
+	stmt.From = stmt.From.Join(joinType, table, expr)
 }
 
 func selectWhere(stmt *ast.SelectStatement, expr ast.OfType[bool]) {

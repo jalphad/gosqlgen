@@ -143,7 +143,7 @@ func {{ $table.StructName }}DeleteOne(pool *pgxpool.Pool, dto *models.{{ $table.
 
 // {{ $table.StructName }}DeleteMany deletes {{ $table.TableName }} DTOs by primary key
 func {{ $table.StructName }}DeleteMany(pool *pgxpool.Pool, dtos models.{{ $table.StructName }}s) builder.DeleteFinalizeQuery[models.{{ $table.StructName }}] {
-	v := {{ $tablePkg }}.As[*models.{{ $table.StructName }}]("v", primaryKey{{ $table.StructName }}DeleteValueColumns...)
+	v := {{ $tablePkg }}.As("v", primaryKey{{ $table.StructName }}DeleteValueColumns...)
 	return {{ $tablePkg }}.NewQuery(pool).
 		Delete().
 		Using(Values({{ .StructName }}DeleteValuesProvider{dtos: dtos}).As(v.Alias)).
@@ -331,7 +331,7 @@ func {{ $table.StructName }}UpdateMany(pool *pgxpool.Pool, dtos models.{{ $table
 	if err != nil {
 		return nil, err
 	}
-	v := {{ $tablePkg }}.As[*models.{{ $table.StructName }}]("v", valueColumns...)
+	v := {{ $tablePkg }}.As("v", valueColumns...)
 	if len(sets) == 0 {
 		sets = append(sets, ast.UpdateSetList{})
 	}

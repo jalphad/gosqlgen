@@ -12,7 +12,7 @@ type KnownTableSelectQuery[O any] interface {
 }
 
 type SelectFromQuery[O any] interface {
-	From(table *ast.TableSource) SelectWhereQuery[O]
+	From(table ast.TableExpression) SelectWhereQuery[O]
 	SelectWhereQuery[O]
 }
 
@@ -64,7 +64,7 @@ type StatementStartQuery interface {
 
 type StatementSelectJoinQuery interface {
 	With(ctes ...*ast.CTE) StatementSelectJoinQuery
-	From(table *ast.TableSource) StatementSelectWhereQuery
+	From(table ast.TableExpression) StatementSelectWhereQuery
 	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) StatementSelectJoinQuery
 	StatementSelectWhereQuery
 }

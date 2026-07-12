@@ -19,6 +19,19 @@ type postWindowRow struct {
 	RowRank int64
 }
 
+type usersSelfJoinRow struct {
+	Manager     models.UsersDto
+	Subordinate models.UsersDto
+}
+
+func (r *usersSelfJoinRow) ManagerDto() *models.UsersDto {
+	return &r.Manager
+}
+
+func (r *usersSelfJoinRow) SubordinateDto() *models.UsersDto {
+	return &r.Subordinate
+}
+
 func TestUsersDtoSelectOneDefaultsToAllColumns(t *testing.T) {
 	// Arrange
 	id := uuid.New()
@@ -34,6 +47,41 @@ func TestUsersDtoSelectOneDefaultsToAllColumns(t *testing.T) {
 	// Assert
 	require.NoError(t, err)
 	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active, users.attributes FROM users WHERE users.id = $1", sql)
+}
+
+func TestUsersSelfJoinUsesAliasScopedDestinations(t *testing.T) {
+	// Arrange
+	manager := users.AliasFor(users.Table().As("manager"), (*usersSelfJoinRow).ManagerDto)
+	subordinate := users.AliasFor(users.Table().As("subordinate"), (*usersSelfJoinRow).SubordinateDto)
+
+	// Act
+	sql, _, err := builder.NewKnownTableBuilder[usersSelfJoinRow](nil, manager.Alias).
+		Select(manager.Id(), manager.Email(), subordinate.Id(), subordinate.Email()).
+		Join(ast.JoinLeft, subordinate, subordinate.IsActive().Eq(manager.IsActive())).
+		ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT manager.id, manager.email, subordinate.id, subordinate.email FROM users AS manager LEFT JOIN users AS subordinate ON subordinate.is_active = manager.is_active", sql)
+}
+
+func TestCTEAliasJoinDoesNotRenderColumnList(t *testing.T) {
+	// Arrange
+	activeUsers := users.As("active_users", users.Id(), users.Email())
+	cteBody := builder.NewStatementBuilder(users.Table()).
+		Select(users.Id(), users.Email()).
+		Statement()
+
+	// Act
+	sql, _, err := builder.NewKnownTableBuilder[models.PostsDto](nil, posts.Table()).
+		With(ast.NewCTE(activeUsers.Alias, cteBody)).
+		Select(posts.Id()).
+		Join(ast.JoinLeft, activeUsers, posts.UserId().Eq(activeUsers.Id())).
+		ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "WITH active_users(id, email) AS (SELECT users.id, users.email FROM users) SELECT posts.id FROM posts LEFT JOIN active_users ON posts.user_id = active_users.id", sql)
 }
 
 func TestSelectWindowFunctionProjection(t *testing.T) {

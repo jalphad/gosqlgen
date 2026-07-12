@@ -141,7 +141,7 @@ func CommentsDtoDeleteOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.D
 
 // CommentsDtoDeleteMany deletes comments DTOs by primary key
 func CommentsDtoDeleteMany(pool *pgxpool.Pool, dtos models.CommentsDtos) builder.DeleteFinalizeQuery[models.CommentsDto] {
-	v := comments.As[*models.CommentsDto]("v", primaryKeyCommentsDtoDeleteValueColumns...)
+	v := comments.As("v", primaryKeyCommentsDtoDeleteValueColumns...)
 	return comments.NewQuery(pool).
 		Delete().
 		Using(Values(CommentsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
@@ -306,7 +306,7 @@ func CommentsDtoUpdateMany(pool *pgxpool.Pool, dtos models.CommentsDtos, opts ..
 	if err != nil {
 		return nil, err
 	}
-	v := comments.As[*models.CommentsDto]("v", valueColumns...)
+	v := comments.As("v", valueColumns...)
 	if len(sets) == 0 {
 		sets = append(sets, ast.UpdateSetList{})
 	}
@@ -499,7 +499,7 @@ func PostTagsDtoDeleteOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.D
 
 // PostTagsDtoDeleteMany deletes post_tags DTOs by primary key
 func PostTagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostTagsDtos) builder.DeleteFinalizeQuery[models.PostTagsDto] {
-	v := post_tags.As[*models.PostTagsDto]("v", primaryKeyPostTagsDtoDeleteValueColumns...)
+	v := post_tags.As("v", primaryKeyPostTagsDtoDeleteValueColumns...)
 	return post_tags.NewQuery(pool).
 		Delete().
 		Using(Values(PostTagsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
@@ -605,7 +605,7 @@ func PostsDtoDeleteOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.DeleteF
 
 // PostsDtoDeleteMany deletes posts DTOs by primary key
 func PostsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostsDtos) builder.DeleteFinalizeQuery[models.PostsDto] {
-	v := posts.As[*models.PostsDto]("v", primaryKeyPostsDtoDeleteValueColumns...)
+	v := posts.As("v", primaryKeyPostsDtoDeleteValueColumns...)
 	return posts.NewQuery(pool).
 		Delete().
 		Using(Values(PostsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
@@ -784,7 +784,7 @@ func PostsDtoUpdateMany(pool *pgxpool.Pool, dtos models.PostsDtos, opts ...Updat
 	if err != nil {
 		return nil, err
 	}
-	v := posts.As[*models.PostsDto]("v", valueColumns...)
+	v := posts.As("v", valueColumns...)
 	if len(sets) == 0 {
 		sets = append(sets, ast.UpdateSetList{})
 	}
@@ -987,7 +987,7 @@ func TagsDtoDeleteOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.DeleteFin
 
 // TagsDtoDeleteMany deletes tags DTOs by primary key
 func TagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.TagsDtos) builder.DeleteFinalizeQuery[models.TagsDto] {
-	v := tags.As[*models.TagsDto]("v", primaryKeyTagsDtoDeleteValueColumns...)
+	v := tags.As("v", primaryKeyTagsDtoDeleteValueColumns...)
 	return tags.NewQuery(pool).
 		Delete().
 		Using(Values(TagsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
@@ -1126,7 +1126,7 @@ func TagsDtoUpdateMany(pool *pgxpool.Pool, dtos models.TagsDtos, opts ...UpdateO
 	if err != nil {
 		return nil, err
 	}
-	v := tags.As[*models.TagsDto]("v", valueColumns...)
+	v := tags.As("v", valueColumns...)
 	if len(sets) == 0 {
 		sets = append(sets, ast.UpdateSetList{})
 	}
@@ -1299,7 +1299,7 @@ func UsersDtoDeleteOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.DeleteF
 
 // UsersDtoDeleteMany deletes users DTOs by primary key
 func UsersDtoDeleteMany(pool *pgxpool.Pool, dtos models.UsersDtos) builder.DeleteFinalizeQuery[models.UsersDto] {
-	v := users.As[*models.UsersDto]("v", primaryKeyUsersDtoDeleteValueColumns...)
+	v := users.As("v", primaryKeyUsersDtoDeleteValueColumns...)
 	return users.NewQuery(pool).
 		Delete().
 		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
@@ -1472,7 +1472,7 @@ func UsersDtoUpdateMany(pool *pgxpool.Pool, dtos models.UsersDtos, opts ...Updat
 	if err != nil {
 		return nil, err
 	}
-	v := users.As[*models.UsersDto]("v", valueColumns...)
+	v := users.As("v", valueColumns...)
 	if len(sets) == 0 {
 		sets = append(sets, ast.UpdateSetList{})
 	}

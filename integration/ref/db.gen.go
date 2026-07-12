@@ -123,10 +123,10 @@ func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDt
 	return users.NewQuery(pool)
 }
 
-func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.KnownTableBuilder[T] {
+func NewQuery[T any](pool *pgxpool.Pool, table ast.NamedTableExpression) *builder.KnownTableBuilder[T] {
 	return builder.NewKnownTableBuilder[T](pool, table)
 }
 
-func NewStatementQuery(table *ast.TableSource) *builder.StatementBuilder {
+func NewStatementQuery(table ast.NamedTableExpression) *builder.StatementBuilder {
 	return builder.NewStatementBuilder(table)
 }

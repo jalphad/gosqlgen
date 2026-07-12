@@ -143,7 +143,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 			},
 			From: &TableSource{table: "users"},
 		}
-		selectStmt.From.Join(JoinLeft, &TableSource{table: "posts"}, NewSQLType(true))
+		selectStmt.From = selectStmt.From.Join(JoinLeft, &TableSource{table: "posts"}, NewSQLType(true))
 
 		ctx := &QueryContext{}
 		_, err := RenderWithContext(selectStmt, &[]any{}, ctx)

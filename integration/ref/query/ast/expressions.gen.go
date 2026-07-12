@@ -75,6 +75,7 @@ type NamedTableExpression interface {
 type TableExpression interface {
 	Expression
 	isTableExpression()
+	Join(joinType JoinType, right NamedTableExpression, on OfType[bool]) TableExpression
 }
 
 type namedExpression struct {
@@ -423,12 +424,18 @@ func (e *BytesColumnExpression) Name() string {
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
 	table string      // Base table Name
-	joins []*JoinExpr // Optional joins
 }
 
 func NewTableSource(name string) *TableSource {
 	return &TableSource{
 		table: name,
+	}
+}
+
+func (s *TableSource) As(alias string) *Alias {
+	return &Alias{
+		name:   alias,
+		source: s,
 	}
 }
 
@@ -441,33 +448,102 @@ func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	// Track primary table
 	if ctx != nil {
 		if ctx.PrimaryTable == "" {
-			ctx.PrimaryTable = s.table
+			ctx.PrimaryTable = s.Name()
 		}
 		// Add to AllTables if not already there
 		if ctx.AllTables == nil {
-			ctx.AllTables = []string{s.table}
-		} else if !slices.Contains(ctx.AllTables, s.table) {
-			ctx.AllTables = append(ctx.AllTables, s.table)
+			ctx.AllTables = []string{s.Name()}
+		} else if !slices.Contains(ctx.AllTables, s.Name()) {
+			ctx.AllTables = append(ctx.AllTables, s.Name())
 		}
 	}
 
 	builder.WriteString(s.table)
-	for _, join := range s.joins {
-		join.toSQL(builder, params, ctx)
-	}
 }
 
 func (s *TableSource) Name() string {
 	return s.table
 }
 
-func (s *TableSource) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) *TableSource {
-	s.joins = append(s.joins, &JoinExpr{
+func (s *TableSource) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
+	return joinTableExpression(s, jointype, table, on)
+}
+
+func renderTableExpression(table TableExpression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if alias, ok := table.(*Alias); ok && alias.source == nil {
+		builder.WriteString(alias.Name())
+		return
+	}
+	table.toSQL(builder, params, ctx)
+}
+
+func TableExpressionName(table TableExpression) string {
+	switch table := table.(type) {
+	case NamedTableExpression:
+		return table.Name()
+	case *JoinedTableExpression:
+		return TableExpressionName(table.Left)
+	default:
+		return ""
+	}
+}
+
+type JoinedTableExpression struct {
+	Left  TableExpression
+	Joins []*JoinExpr
+}
+
+func joinTableExpression(left TableExpression, jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
+	join := &JoinExpr{
 		Type:      jointype,
 		Right:     table,
 		Condition: on,
-	})
-	return s
+	}
+	if joined, ok := left.(*JoinedTableExpression); ok {
+		joined.Joins = append(joined.Joins, join)
+		return joined
+	}
+	return &JoinedTableExpression{
+		Left:  left,
+		Joins: []*JoinExpr{join},
+	}
+}
+
+func (j *JoinedTableExpression) isTableExpression() {}
+
+func (j *JoinedTableExpression) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
+	return joinTableExpression(j, jointype, table, on)
+}
+
+func (j *JoinedTableExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if j == nil || j.Left == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("joined table expression requires a left table expression")
+		}
+		return
+	}
+	renderTableExpression(j.Left, builder, params, ctx)
+	for _, join := range j.Joins {
+		join.toSQL(builder, params, ctx)
+		if ctx != nil && ctx.Error != nil {
+			return
+		}
+	}
+}
+
+func joinedTableNames(table TableExpression) []string {
+	joined, ok := table.(*JoinedTableExpression)
+	if !ok {
+		return nil
+	}
+	ret := make([]string, 0, len(joined.Joins))
+	for _, join := range joined.Joins {
+		ret = append(ret, join.Right.Name())
+	}
+	return ret
 }
 
 // JoinExpr represents a JOIN operation.
@@ -494,7 +570,7 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 	}
 
 	builder.WriteString(string(j.Type) + " JOIN ")
-	j.Right.toSQL(builder, params, ctx)
+	renderTableExpression(j.Right, builder, params, ctx)
 	builder.WriteString(" ON ")
 	j.Condition.toSQL(builder, params, ctx)
 }

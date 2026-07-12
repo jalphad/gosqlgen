@@ -99,12 +99,3 @@ func (c *CommentsDto) UnmarshalJSON(bts []byte) error {
 
 	return nil
 }
-
-func (c *CommentsDto) GetCommentsDto() *CommentsDto {
-	return c
-}
-
-type ExportsCommentsDto[T any] interface {
-	*T
-	GetCommentsDto() *CommentsDto
-}

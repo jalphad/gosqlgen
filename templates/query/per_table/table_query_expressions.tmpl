@@ -69,23 +69,24 @@ func (into{{ .StructName }}) AllColumns() []ast.Projection[models.{{ .StructName
 	}
 }
 
-type for{{ .StructName }}[E models.Exports{{ .StructName }}[T], T any] struct {}
+type for{{ .StructName }}[T any] struct {
+	dest func(*T) *models.{{ .StructName }}
+}
 
-func For[E models.Exports{{ .StructName }}[T], T any]() for{{ .StructName }}[E, T] {
-	return for{{ .StructName }}[E, T]{}
+func For[T any](dest func(*T) *models.{{ .StructName }}) for{{ .StructName }}[T] {
+	return for{{ .StructName }}[T]{dest: dest}
 }
 
 {{ range .Fields }}
-func (f for{{ $.StructName }}[E, T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
+func (f for{{ $.StructName }}[T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
 	return new{{ .FieldName }}("{{ $.TableName }}", func(t *T) {{ scanDestType .GoType }} {
-		e := E(t)
-		dto := e.Get{{ $.StructName }}()
+		dto := f.dest(t)
 		return &dto.{{ .FieldName }}
 	})
 }
 {{ end }}
 
-func (f for{{ .StructName }}[E, T]) AllColumns() []ast.Projection[T] {
+func (f for{{ .StructName }}[T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 	{{- range .Fields }}
 		f.{{ .FieldName }}(),
@@ -119,7 +120,7 @@ func default{{ .FieldName }}Columns() []ast.NamedExpression {
 
 {{ range .ReverseRelFields }}
 {{- $rel := . }}
-func (for{{ $.StructName }}[E, T]) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[T] {
+func (f for{{ $.StructName }}[T]) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[T] {
 	if len(columns) == 0 {
 		columns = default{{ .FieldName }}Columns()
 	}
@@ -127,8 +128,7 @@ func (for{{ $.StructName }}[E, T]) {{ .FieldName }}(columns ...ast.NamedExpressi
 	return ast.NewJSONProjection(
 		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
 		func(t *T) *{{ modelType .GoType }} {
-			e := E(t)
-			dto := e.Get{{ $.StructName }}()
+			dto := f.dest(t)
 			return &dto.{{ .FieldName }}
 		},
 	)
@@ -161,7 +161,7 @@ func default{{ .FieldName }}Columns() []ast.NamedExpression {
 
 {{ range .ManyToManyFields }}
 {{- $rel := . }}
-func (for{{ $.StructName }}[E, T]) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[T] {
+func (f for{{ $.StructName }}[T]) {{ .FieldName }}(columns ...ast.NamedExpression) ast.Projection[T] {
 	if len(columns) == 0 {
 		columns = default{{ .FieldName }}Columns()
 	}
@@ -169,33 +169,36 @@ func (for{{ $.StructName }}[E, T]) {{ .FieldName }}(columns ...ast.NamedExpressi
 	return ast.NewJSONProjection(
 		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
 		func(t *T) *{{ modelType .GoType }} {
-			e := E(t)
-			dto := e.Get{{ $.StructName }}()
+			dto := f.dest(t)
 			return &dto.{{ .FieldName }}
 		},
 	)
 }
 {{ end }}
 
-type Alias[E models.Exports{{ .StructName }}[T], T any] struct {
-		*ast.Alias
-		for{{ $.StructName }}[E, T]
+type Alias[T any] struct {
+	*ast.Alias
+	for{{ $.StructName }}[T]
 }
 
-func As[E models.Exports{{ .StructName }}[T], T any](name string, columns ...ast.NamedExpression) Alias[E, T] {
-	return Alias[E, T]{
+func As(name string, columns ...ast.NamedExpression) Alias[models.{{ .StructName }}] {
+	return Alias[models.{{ .StructName }}]{
 		Alias: ast.NewAlias(name, columns...),
+		for{{ $.StructName }}: for{{ $.StructName }}[models.{{ .StructName }}]{
+			dest: func({{ $.ReceiverName }} *models.{{ .StructName }}) *models.{{ .StructName }} {
+				return {{ $.ReceiverName }}
+			},
+		},
 	}
 }
 
 {{ range .Fields }}
-func (a *Alias[E, T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
+func (a Alias[T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
 	projection := new{{ .FieldName }}(a.Alias.Name(), func(t *T) {{ scanDestType .GoType }} {
-		e := E(t)
-		dto := e.Get{{ $.StructName }}()
+		dto := a.dest(t)
 		return &dto.{{ .FieldName }}
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -205,6 +208,21 @@ func (a *Alias[E, T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLTy
 	return projection
 }
 {{ end }}
+
+func (a Alias[T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+	{{- range .Fields }}
+		a.{{ .FieldName }}(),
+	{{- end }}
+	}
+}
+
+func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.{{ .StructName }}) Alias[T] {
+	return Alias[T]{
+		Alias: alias,
+		for{{ $.StructName }}: for{{ $.StructName }}[T]{dest: dest},
+	}
+}
 
 {{ range .Fields }}
 func new{{ .FieldName }}[T any](table string, ref func(*T) {{ scanDestType .GoType }}) *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {

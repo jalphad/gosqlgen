@@ -71,37 +71,36 @@ func (intoTagsDto) AllColumns() []ast.Projection[models.TagsDto] {
 	}
 }
 
-type forTagsDto[E models.ExportsTagsDto[T], T any] struct{}
-
-func For[E models.ExportsTagsDto[T], T any]() forTagsDto[E, T] {
-	return forTagsDto[E, T]{}
+type forTagsDto[T any] struct {
+	dest func(*T) *models.TagsDto
 }
 
-func (f forTagsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+func For[T any](dest func(*T) *models.TagsDto) forTagsDto[T] {
+	return forTagsDto[T]{dest: dest}
+}
+
+func (f forTagsDto[T]) Id() *ast.IntColumnProjection[T, **int64] {
 	return newId("tags", func(t *T) **int64 {
-		e := E(t)
-		dto := e.GetTagsDto()
+		dto := f.dest(t)
 		return &dto.Id
 	})
 }
 
-func (f forTagsDto[E, T]) Name() *ast.StringColumnProjection[T, *string] {
+func (f forTagsDto[T]) Name() *ast.StringColumnProjection[T, *string] {
 	return newName("tags", func(t *T) *string {
-		e := E(t)
-		dto := e.GetTagsDto()
+		dto := f.dest(t)
 		return &dto.Name
 	})
 }
 
-func (f forTagsDto[E, T]) Slug() *ast.StringColumnProjection[T, *string] {
+func (f forTagsDto[T]) Slug() *ast.StringColumnProjection[T, *string] {
 	return newSlug("tags", func(t *T) *string {
-		e := E(t)
-		dto := e.GetTagsDto()
+		dto := f.dest(t)
 		return &dto.Slug
 	})
 }
 
-func (f forTagsDto[E, T]) AllColumns() []ast.Projection[T] {
+func (f forTagsDto[T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 		f.Id(),
 		f.Name(),
@@ -135,38 +134,41 @@ func defaultPostsColumns() []ast.NamedExpression {
 	}
 }
 
-func (forTagsDto[E, T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
+func (f forTagsDto[T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
 	if len(columns) == 0 {
 		columns = defaultPostsColumns()
 	}
 	return ast.NewJSONProjection(
 		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
 		func(t *T) *[]models.PostsDto {
-			e := E(t)
-			dto := e.GetTagsDto()
+			dto := f.dest(t)
 			return &dto.Posts
 		},
 	)
 }
 
-type Alias[E models.ExportsTagsDto[T], T any] struct {
+type Alias[T any] struct {
 	*ast.Alias
-	forTagsDto[E, T]
+	forTagsDto[T]
 }
 
-func As[E models.ExportsTagsDto[T], T any](name string, columns ...ast.NamedExpression) Alias[E, T] {
-	return Alias[E, T]{
+func As(name string, columns ...ast.NamedExpression) Alias[models.TagsDto] {
+	return Alias[models.TagsDto]{
 		Alias: ast.NewAlias(name, columns...),
+		forTagsDto: forTagsDto[models.TagsDto]{
+			dest: func(t *models.TagsDto) *models.TagsDto {
+				return t
+			},
+		},
 	}
 }
 
-func (a *Alias[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
 	projection := newId(a.Alias.Name(), func(t *T) **int64 {
-		e := E(t)
-		dto := e.GetTagsDto()
+		dto := a.dest(t)
 		return &dto.Id
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -176,13 +178,12 @@ func (a *Alias[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
 	return projection
 }
 
-func (a *Alias[E, T]) Name() *ast.StringColumnProjection[T, *string] {
+func (a Alias[T]) Name() *ast.StringColumnProjection[T, *string] {
 	projection := newName(a.Alias.Name(), func(t *T) *string {
-		e := E(t)
-		dto := e.GetTagsDto()
+		dto := a.dest(t)
 		return &dto.Name
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -192,13 +193,12 @@ func (a *Alias[E, T]) Name() *ast.StringColumnProjection[T, *string] {
 	return projection
 }
 
-func (a *Alias[E, T]) Slug() *ast.StringColumnProjection[T, *string] {
+func (a Alias[T]) Slug() *ast.StringColumnProjection[T, *string] {
 	projection := newSlug(a.Alias.Name(), func(t *T) *string {
-		e := E(t)
-		dto := e.GetTagsDto()
+		dto := a.dest(t)
 		return &dto.Slug
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -206,6 +206,21 @@ func (a *Alias[E, T]) Slug() *ast.StringColumnProjection[T, *string] {
 	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'slug' in alias %s", a.Alias.Name()))
 	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
+}
+
+func (a Alias[T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		a.Id(),
+		a.Name(),
+		a.Slug(),
+	}
+}
+
+func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.TagsDto) Alias[T] {
+	return Alias[T]{
+		Alias:      alias,
+		forTagsDto: forTagsDto[T]{dest: dest},
+	}
 }
 
 func newId[T any](table string, ref func(*T) **int64) *ast.IntColumnProjection[T, **int64] {

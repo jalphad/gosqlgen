@@ -31,12 +31,3 @@ type PostTagsDto struct {
 	PostIdRef *PostsDto `joined:"posts" fk:"post_id"`
 	TagIdRef  *TagsDto  `joined:"tags" fk:"tag_id"`
 }
-
-func (p *PostTagsDto) GetPostTagsDto() *PostTagsDto {
-	return p
-}
-
-type ExportsPostTagsDto[T any] interface {
-	*T
-	GetPostTagsDto() *PostTagsDto
-}

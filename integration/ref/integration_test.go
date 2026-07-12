@@ -37,8 +37,8 @@ type userCountRow struct {
 	Count int64
 }
 
-func (u *userCountRow) GetUsersDto() *models.UsersDto {
-	return &u.UsersDto
+func (r *userCountRow) GetUsersDto() *models.UsersDto {
+	return &r.UsersDto
 }
 
 func TestMain(m *testing.M) {
@@ -446,7 +446,7 @@ func TestIntegration_QueryBuilder(t *testing.T) {
 
 	t.Run("Count With Embedded DTO", func(t *testing.T) {
 		count := q.Into(q.Count(users.Id()).As(ast.NewAlias("count")), func(r *userCountRow) *int64 { return &r.Count })
-		user := users.For[*userCountRow]()
+		user := users.For((*userCountRow).GetUsersDto)
 		results, err := NewQuery[userCountRow](pgxPool, users.Table()).
 			Select(user.Id(), user.Username(), user.Email(), count).
 			Where(users.IsActive().IsTrue()).
@@ -851,7 +851,7 @@ func TestContextTracking(t *testing.T) {
 
 	t.Run("Select with LEFT JOIN", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title()}, From: users.Table()}
-		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
+		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
@@ -863,8 +863,8 @@ func TestContextTracking(t *testing.T) {
 
 	t.Run("Select with multiple JOINs", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title(), comments.Content()}, From: users.Table()}
-		selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
-		selectStmt.From.Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id()))
+		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
+		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id()))
 		ctx := &ast.QueryContext{PrimaryTable: "users"}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
@@ -884,13 +884,13 @@ func TestIntegration_CTEs(t *testing.T) {
 		insertUsers(t, corpUser, otherUser)
 
 		type userSummary struct{ Email string }
-		activeUsers := users.As[*models.UsersDto]("active_users", users.Id(), users.Email())
+		activeUsers := users.As("active_users", users.Id(), users.Email())
 		cteBody := NewQuery[models.UsersDto](nil, users.Table()).
 			Select(users.Id(), users.Email()).
 			Where(users.Email().Like("%@example.com")).
 			Statement()
 
-		queryBuilder := NewQuery[userSummary](pgxPool, q.Table(activeUsers.Alias)).
+		queryBuilder := NewQuery[userSummary](pgxPool, activeUsers.Alias).
 			With(q.CTE(activeUsers.Alias, cteBody)).
 			Select(q.Into(activeUsers.Email(), func(s *userSummary) *string { return &s.Email })).
 			Where(activeUsers.Id().Eq(q.Val(*corpUser.Id)))
@@ -918,14 +918,14 @@ func TestIntegration_CTEs(t *testing.T) {
 			FullName *string
 		}
 
-		updatedUsers := users.As[*models.UsersDto]("updated_users", users.Id(), users.Email(), users.FullName())
+		updatedUsers := users.As("updated_users", users.Id(), users.Email(), users.FullName())
 		cteBody := NewUsersQuery(nil).
 			Update(q.SetTo(updateDTO, users.Email(), users.FullName())).
 			Where(users.Id().Eq(q.Val(*updateDTO.Id))).
 			Returning(users.Id(), users.Email(), users.FullName()).
 			Statement()
 
-		queryBuilder := NewQuery[updatedUser](pgxPool, q.Table(updatedUsers.Alias)).
+		queryBuilder := NewQuery[updatedUser](pgxPool, updatedUsers.Alias).
 			With(q.CTE(updatedUsers.Alias, cteBody)).
 			Select(
 				q.Into(updatedUsers.Email(), func(u *updatedUser) *string { return &u.Email }),
@@ -947,11 +947,11 @@ func TestIntegration_CTEs(t *testing.T) {
 	})
 
 	t.Run("Unknown alias column returns render error", func(t *testing.T) {
-		activeUsers := users.As[*models.UsersDto]("active_users", users.Id())
+		activeUsers := users.As("active_users", users.Id())
 		cteBody := NewQuery[models.UsersDto](nil, users.Table()).Select(users.Id()).Statement()
 		type userSummary struct{ Email string }
 
-		queryBuilder := NewQuery[userSummary](nil, q.Table(activeUsers.Alias)).
+		queryBuilder := NewQuery[userSummary](nil, activeUsers.Alias).
 			With(q.CTE(activeUsers.Alias, cteBody)).
 			Select(q.Into(activeUsers.Email(), func(s *userSummary) *string { return &s.Email }))
 
@@ -969,7 +969,8 @@ func TestIntegration_CTEs(t *testing.T) {
 		insertUsers(t, corpUser)
 
 		countExpr := q.Count(users.Id()).As(ast.NewAlias("count"))
-		activeUsers := users.As[*userCountRow]("active_users", users.Id(), users.Email(), countExpr)
+		activeUsers := users.As("active_users", users.Id(), users.Email(), countExpr)
+		activeUsersForRow := users.AliasFor(activeUsers.Alias, (*userCountRow).GetUsersDto)
 
 		cteBody := NewStatementQuery(users.Table()).
 			Select(users.Id(), users.Email(), countExpr).
@@ -977,11 +978,11 @@ func TestIntegration_CTEs(t *testing.T) {
 			GroupBy(users.Id(), users.Email()).
 			Statement()
 
-		queryBuilder := NewQuery[userCountRow](pgxPool, q.Table(activeUsers.Alias)).
+		queryBuilder := NewQuery[userCountRow](pgxPool, activeUsers.Alias).
 			With(q.CTE(activeUsers.Alias, cteBody)).
 			Select(
-				activeUsers.Id(),
-				activeUsers.Email(),
+				activeUsersForRow.Id(),
+				activeUsersForRow.Email(),
 				q.Into(q.Rel(activeUsers.Alias, countExpr), func(r *userCountRow) *int64 { return &r.Count }),
 			)
 
@@ -1000,10 +1001,11 @@ func TestIntegration_CTEs(t *testing.T) {
 	})
 
 	t.Run("Alias-aware For unknown column returns render error", func(t *testing.T) {
-		activeUsers := users.As[*userCountRow]("active_users", users.Id())
+		activeUsers := users.As("active_users", users.Id())
+		activeUsersForRow := users.AliasFor(activeUsers.Alias, (*userCountRow).GetUsersDto)
 
-		queryBuilder := NewQuery[userCountRow](nil, q.Table(activeUsers.Alias)).
-			Select(activeUsers.Email())
+		queryBuilder := NewQuery[userCountRow](nil, activeUsers.Alias).
+			Select(activeUsersForRow.Email())
 
 		sql, args, err := queryBuilder.ToSql()
 		require.Error(t, err)

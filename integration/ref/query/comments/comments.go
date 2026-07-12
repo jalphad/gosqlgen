@@ -120,69 +120,64 @@ func (intoCommentsDto) AllColumns() []ast.Projection[models.CommentsDto] {
 	}
 }
 
-type forCommentsDto[E models.ExportsCommentsDto[T], T any] struct{}
-
-func For[E models.ExportsCommentsDto[T], T any]() forCommentsDto[E, T] {
-	return forCommentsDto[E, T]{}
+type forCommentsDto[T any] struct {
+	dest func(*T) *models.CommentsDto
 }
 
-func (f forCommentsDto[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+func For[T any](dest func(*T) *models.CommentsDto) forCommentsDto[T] {
+	return forCommentsDto[T]{dest: dest}
+}
+
+func (f forCommentsDto[T]) Id() *ast.IntColumnProjection[T, **int64] {
 	return newId("comments", func(t *T) **int64 {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.Id
 	})
 }
 
-func (f forCommentsDto[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
+func (f forCommentsDto[T]) PostId() *ast.IntColumnProjection[T, *int64] {
 	return newPostId("comments", func(t *T) *int64 {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.PostId
 	})
 }
 
-func (f forCommentsDto[E, T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
+func (f forCommentsDto[T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
 	return newUserId("comments", func(t *T) *uuid.UUID {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.UserId
 	})
 }
 
-func (f forCommentsDto[E, T]) Content() *ast.StringColumnProjection[T, *string] {
+func (f forCommentsDto[T]) Content() *ast.StringColumnProjection[T, *string] {
 	return newContent("comments", func(t *T) *string {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.Content
 	})
 }
 
-func (f forCommentsDto[E, T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
+func (f forCommentsDto[T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
 	return newIsApproved("comments", func(t *T) **bool {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.IsApproved
 	})
 }
 
-func (f forCommentsDto[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+func (f forCommentsDto[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	return newCreatedAt("comments", func(t *T) **time.Time {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.CreatedAt
 	})
 }
 
-func (f forCommentsDto[E, T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
+func (f forCommentsDto[T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
 	return newTestDate("comments", func(t *T) **time.Time {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := f.dest(t)
 		return &dto.TestDate
 	})
 }
 
-func (f forCommentsDto[E, T]) AllColumns() []ast.Projection[T] {
+func (f forCommentsDto[T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 		f.Id(),
 		f.PostId(),
@@ -194,24 +189,28 @@ func (f forCommentsDto[E, T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-type Alias[E models.ExportsCommentsDto[T], T any] struct {
+type Alias[T any] struct {
 	*ast.Alias
-	forCommentsDto[E, T]
+	forCommentsDto[T]
 }
 
-func As[E models.ExportsCommentsDto[T], T any](name string, columns ...ast.NamedExpression) Alias[E, T] {
-	return Alias[E, T]{
+func As(name string, columns ...ast.NamedExpression) Alias[models.CommentsDto] {
+	return Alias[models.CommentsDto]{
 		Alias: ast.NewAlias(name, columns...),
+		forCommentsDto: forCommentsDto[models.CommentsDto]{
+			dest: func(c *models.CommentsDto) *models.CommentsDto {
+				return c
+			},
+		},
 	}
 }
 
-func (a *Alias[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
+func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
 	projection := newId(a.Alias.Name(), func(t *T) **int64 {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.Id
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -221,13 +220,12 @@ func (a *Alias[E, T]) Id() *ast.IntColumnProjection[T, **int64] {
 	return projection
 }
 
-func (a *Alias[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
+func (a Alias[T]) PostId() *ast.IntColumnProjection[T, *int64] {
 	projection := newPostId(a.Alias.Name(), func(t *T) *int64 {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.PostId
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -237,13 +235,12 @@ func (a *Alias[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
 	return projection
 }
 
-func (a *Alias[E, T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
+func (a Alias[T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
 	projection := newUserId(a.Alias.Name(), func(t *T) *uuid.UUID {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.UserId
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -253,13 +250,12 @@ func (a *Alias[E, T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
 	return projection
 }
 
-func (a *Alias[E, T]) Content() *ast.StringColumnProjection[T, *string] {
+func (a Alias[T]) Content() *ast.StringColumnProjection[T, *string] {
 	projection := newContent(a.Alias.Name(), func(t *T) *string {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.Content
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -269,13 +265,12 @@ func (a *Alias[E, T]) Content() *ast.StringColumnProjection[T, *string] {
 	return projection
 }
 
-func (a *Alias[E, T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
+func (a Alias[T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
 	projection := newIsApproved(a.Alias.Name(), func(t *T) **bool {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.IsApproved
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -285,13 +280,12 @@ func (a *Alias[E, T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
 	return projection
 }
 
-func (a *Alias[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
+func (a Alias[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
 	projection := newCreatedAt(a.Alias.Name(), func(t *T) **time.Time {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.CreatedAt
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -301,13 +295,12 @@ func (a *Alias[E, T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time]
 	return projection
 }
 
-func (a *Alias[E, T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
+func (a Alias[T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
 	projection := newTestDate(a.Alias.Name(), func(t *T) **time.Time {
-		e := E(t)
-		dto := e.GetCommentsDto()
+		dto := a.dest(t)
 		return &dto.TestDate
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -315,6 +308,25 @@ func (a *Alias[E, T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
 	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'test_date' in alias %s", a.Alias.Name()))
 	projection.DateColumnExpression = ast.NewDateColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
+}
+
+func (a Alias[T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		a.Id(),
+		a.PostId(),
+		a.UserId(),
+		a.Content(),
+		a.IsApproved(),
+		a.CreatedAt(),
+		a.TestDate(),
+	}
+}
+
+func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.CommentsDto) Alias[T] {
+	return Alias[T]{
+		Alias:          alias,
+		forCommentsDto: forCommentsDto[T]{dest: dest},
+	}
 }
 
 func newId[T any](table string, ref func(*T) **int64) *ast.IntColumnProjection[T, **int64] {

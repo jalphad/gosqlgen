@@ -195,6 +195,10 @@ type NamedSetReturningFunction struct {
 
 func (f *NamedSetReturningFunction) isTableExpression() {}
 
+func (f *NamedSetReturningFunction) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
+	return joinTableExpression(f, jointype, table, on)
+}
+
 type SetReturningFunction struct {
 	function[[]any]
 	columns []NamedExpression
@@ -219,13 +223,33 @@ func (f *SetReturningFunction) As(alias *Alias) *NamedSetReturningFunction {
 
 func (f *SetReturningFunction) isTableExpression() {}
 
+func (f *SetReturningFunction) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
+	return joinTableExpression(f, jointype, table, on)
+}
+
 type Alias struct {
 	name    string
 	columns []NamedExpression
+	source  *TableSource
 }
 
-func (r Alias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+func (r *Alias) isTableExpression() {}
+
+func (r *Alias) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
+	return joinTableExpression(r, jointype, table, on)
+}
+
+func (r *Alias) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if r.source != nil {
+		r.source.toSQL(builder, params, ctx)
+		if ctx != nil && ctx.Error != nil {
+			return
+		}
+		builder.WriteString(" AS ")
+		builder.WriteString(r.name)
 		return
 	}
 	builder.WriteString(r.name)
@@ -241,11 +265,11 @@ func (r Alias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
 	builder.WriteString(")")
 }
 
-func (r Alias) Name() string {
+func (r *Alias) Name() string {
 	return r.name
 }
 
-func (r Alias) Columns() []NamedExpression {
+func (r *Alias) Columns() []NamedExpression {
 	if r.columns == nil {
 		return []NamedExpression{}
 	}
@@ -253,7 +277,7 @@ func (r Alias) Columns() []NamedExpression {
 	return r.columns
 }
 
-func (r Alias) Column(name string) NamedExpression {
+func (r *Alias) Column(name string) NamedExpression {
 	for _, e := range r.columns {
 		if e.Name() == name {
 			return NewColumnNode(r.name, e.Name())

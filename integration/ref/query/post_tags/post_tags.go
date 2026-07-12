@@ -58,53 +58,57 @@ func (intoPostTagsDto) AllColumns() []ast.Projection[models.PostTagsDto] {
 	}
 }
 
-type forPostTagsDto[E models.ExportsPostTagsDto[T], T any] struct{}
-
-func For[E models.ExportsPostTagsDto[T], T any]() forPostTagsDto[E, T] {
-	return forPostTagsDto[E, T]{}
+type forPostTagsDto[T any] struct {
+	dest func(*T) *models.PostTagsDto
 }
 
-func (f forPostTagsDto[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
+func For[T any](dest func(*T) *models.PostTagsDto) forPostTagsDto[T] {
+	return forPostTagsDto[T]{dest: dest}
+}
+
+func (f forPostTagsDto[T]) PostId() *ast.IntColumnProjection[T, *int64] {
 	return newPostId("post_tags", func(t *T) *int64 {
-		e := E(t)
-		dto := e.GetPostTagsDto()
+		dto := f.dest(t)
 		return &dto.PostId
 	})
 }
 
-func (f forPostTagsDto[E, T]) TagId() *ast.IntColumnProjection[T, *int64] {
+func (f forPostTagsDto[T]) TagId() *ast.IntColumnProjection[T, *int64] {
 	return newTagId("post_tags", func(t *T) *int64 {
-		e := E(t)
-		dto := e.GetPostTagsDto()
+		dto := f.dest(t)
 		return &dto.TagId
 	})
 }
 
-func (f forPostTagsDto[E, T]) AllColumns() []ast.Projection[T] {
+func (f forPostTagsDto[T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 		f.PostId(),
 		f.TagId(),
 	}
 }
 
-type Alias[E models.ExportsPostTagsDto[T], T any] struct {
+type Alias[T any] struct {
 	*ast.Alias
-	forPostTagsDto[E, T]
+	forPostTagsDto[T]
 }
 
-func As[E models.ExportsPostTagsDto[T], T any](name string, columns ...ast.NamedExpression) Alias[E, T] {
-	return Alias[E, T]{
+func As(name string, columns ...ast.NamedExpression) Alias[models.PostTagsDto] {
+	return Alias[models.PostTagsDto]{
 		Alias: ast.NewAlias(name, columns...),
+		forPostTagsDto: forPostTagsDto[models.PostTagsDto]{
+			dest: func(p *models.PostTagsDto) *models.PostTagsDto {
+				return p
+			},
+		},
 	}
 }
 
-func (a *Alias[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
+func (a Alias[T]) PostId() *ast.IntColumnProjection[T, *int64] {
 	projection := newPostId(a.Alias.Name(), func(t *T) *int64 {
-		e := E(t)
-		dto := e.GetPostTagsDto()
+		dto := a.dest(t)
 		return &dto.PostId
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -114,13 +118,12 @@ func (a *Alias[E, T]) PostId() *ast.IntColumnProjection[T, *int64] {
 	return projection
 }
 
-func (a *Alias[E, T]) TagId() *ast.IntColumnProjection[T, *int64] {
+func (a Alias[T]) TagId() *ast.IntColumnProjection[T, *int64] {
 	projection := newTagId(a.Alias.Name(), func(t *T) *int64 {
-		e := E(t)
-		dto := e.GetPostTagsDto()
+		dto := a.dest(t)
 		return &dto.TagId
 	})
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
 		return e.Name() == projection.Name()
 	}) {
 		return projection
@@ -128,6 +131,20 @@ func (a *Alias[E, T]) TagId() *ast.IntColumnProjection[T, *int64] {
 	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'tag_id' in alias %s", a.Alias.Name()))
 	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
 	return projection
+}
+
+func (a Alias[T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		a.PostId(),
+		a.TagId(),
+	}
+}
+
+func AliasFor[T any](alias *ast.Alias, dest func(*T) *models.PostTagsDto) Alias[T] {
+	return Alias[T]{
+		Alias:          alias,
+		forPostTagsDto: forPostTagsDto[T]{dest: dest},
+	}
 }
 
 func newPostId[T any](table string, ref func(*T) *int64) *ast.IntColumnProjection[T, *int64] {
