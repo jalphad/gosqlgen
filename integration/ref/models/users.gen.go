@@ -111,6 +111,10 @@ func (u *UsersDto) UnmarshalJSON(bts []byte) error {
 	return nil
 }
 
+func (u *UsersDto) GetUsersDto() *UsersDto {
+	return u
+}
+
 type ExportsUsersDto[T any] interface {
 	*T
 	GetUsersDto() *UsersDto

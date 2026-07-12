@@ -127,6 +127,10 @@ func (p *PostsDto) UnmarshalJSON(bts []byte) error {
 	return nil
 }
 
+func (p *PostsDto) GetPostsDto() *PostsDto {
+	return p
+}
+
 type ExportsPostsDto[T any] interface {
 	*T
 	GetPostsDto() *PostsDto

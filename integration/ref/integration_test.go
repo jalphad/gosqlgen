@@ -884,7 +884,7 @@ func TestIntegration_CTEs(t *testing.T) {
 		insertUsers(t, corpUser, otherUser)
 
 		type userSummary struct{ Email string }
-		activeUsers := users.As("active_users", users.Id(), users.Email())
+		activeUsers := users.As[*models.UsersDto]("active_users", users.Id(), users.Email())
 		cteBody := NewQuery[models.UsersDto](nil, users.Table()).
 			Select(users.Id(), users.Email()).
 			Where(users.Email().Like("%@example.com")).
@@ -918,7 +918,7 @@ func TestIntegration_CTEs(t *testing.T) {
 			FullName *string
 		}
 
-		updatedUsers := users.As("updated_users", users.Id(), users.Email(), users.FullName())
+		updatedUsers := users.As[*models.UsersDto]("updated_users", users.Id(), users.Email(), users.FullName())
 		cteBody := NewUsersQuery(nil).
 			Update(q.SetTo(updateDTO, users.Email(), users.FullName())).
 			Where(users.Id().Eq(q.Val(*updateDTO.Id))).
@@ -947,7 +947,7 @@ func TestIntegration_CTEs(t *testing.T) {
 	})
 
 	t.Run("Unknown alias column returns render error", func(t *testing.T) {
-		activeUsers := users.As("active_users", users.Id())
+		activeUsers := users.As[*models.UsersDto]("active_users", users.Id())
 		cteBody := NewQuery[models.UsersDto](nil, users.Table()).Select(users.Id()).Statement()
 		type userSummary struct{ Email string }
 
@@ -969,8 +969,7 @@ func TestIntegration_CTEs(t *testing.T) {
 		insertUsers(t, corpUser)
 
 		countExpr := q.Count(users.Id()).As(ast.NewAlias("count"))
-		activeUsers := users.As("active_users", users.Id(), users.Email(), countExpr)
-		activeUser := users.For[*userCountRow](activeUsers)
+		activeUsers := users.As[*userCountRow]("active_users", users.Id(), users.Email(), countExpr)
 
 		cteBody := NewStatementQuery(users.Table()).
 			Select(users.Id(), users.Email(), countExpr).
@@ -981,8 +980,8 @@ func TestIntegration_CTEs(t *testing.T) {
 		queryBuilder := NewQuery[userCountRow](pgxPool, q.Table(activeUsers.Alias)).
 			With(q.CTE(activeUsers.Alias, cteBody)).
 			Select(
-				activeUser.Id(),
-				activeUser.Email(),
+				activeUsers.Id(),
+				activeUsers.Email(),
 				q.Into(q.Rel(activeUsers.Alias, countExpr), func(r *userCountRow) *int64 { return &r.Count }),
 			)
 
@@ -1001,11 +1000,10 @@ func TestIntegration_CTEs(t *testing.T) {
 	})
 
 	t.Run("Alias-aware For unknown column returns render error", func(t *testing.T) {
-		activeUsers := users.As("active_users", users.Id())
-		activeUser := users.For[*userCountRow](activeUsers)
+		activeUsers := users.As[*userCountRow]("active_users", users.Id())
 
 		queryBuilder := NewQuery[userCountRow](nil, q.Table(activeUsers.Alias)).
-			Select(activeUser.Email())
+			Select(activeUsers.Email())
 
 		sql, args, err := queryBuilder.ToSql()
 		require.Error(t, err)

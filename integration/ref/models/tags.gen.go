@@ -40,6 +40,10 @@ type TagsDto struct {
 	Posts []PostsDto `manytomany:"post_tags"`
 }
 
+func (t *TagsDto) GetTagsDto() *TagsDto {
+	return t
+}
+
 type ExportsTagsDto[T any] interface {
 	*T
 	GetTagsDto() *TagsDto
