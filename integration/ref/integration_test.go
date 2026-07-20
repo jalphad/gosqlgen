@@ -124,48 +124,60 @@ func cleanupTables(t *testing.T) {
 
 func insertUsers(t *testing.T, rows ...*models.UsersDto) {
 	t.Helper()
-	err := NewUsersQuery(pgxPool).
+	_, inserted, err := NewUsersQuery(pgxPool).
 		Insert(users.Username(), users.Email(), users.FullName(), users.IsActive(), users.Attributes()).
+		Values(rows...).
 		Returning(users.Id()).
-		Values(rows...).Exec(context.Background())
+		Exec(context.Background())
 	require.NoError(t, err)
-	for _, row := range rows {
+	require.Len(t, inserted, len(rows))
+	for i, row := range rows {
+		row.Id = inserted[i].Id
 		require.NotNil(t, row.Id)
 	}
 }
 
 func insertPosts(t *testing.T, rows ...*models.PostsDto) {
 	t.Helper()
-	err := NewPostsQuery(pgxPool).
+	_, inserted, err := NewPostsQuery(pgxPool).
 		Insert(posts.UserId(), posts.Title(), posts.Content(), posts.Status(), posts.ViewCount()).
+		Values(rows...).
 		Returning(posts.Id()).
-		Values(rows...).Exec(context.Background())
+		Exec(context.Background())
 	require.NoError(t, err)
-	for _, row := range rows {
+	require.Len(t, inserted, len(rows))
+	for i, row := range rows {
+		row.Id = inserted[i].Id
 		require.NotNil(t, row.Id)
 	}
 }
 
 func insertComments(t *testing.T, rows ...*models.CommentsDto) {
 	t.Helper()
-	err := NewCommentsQuery(pgxPool).
+	_, inserted, err := NewCommentsQuery(pgxPool).
 		Insert(comments.PostId(), comments.UserId(), comments.Content(), comments.IsApproved()).
+		Values(rows...).
 		Returning(comments.Id()).
-		Values(rows...).Exec(context.Background())
+		Exec(context.Background())
 	require.NoError(t, err)
-	for _, row := range rows {
+	require.Len(t, inserted, len(rows))
+	for i, row := range rows {
+		row.Id = inserted[i].Id
 		require.NotNil(t, row.Id)
 	}
 }
 
 func insertTags(t *testing.T, rows ...*models.TagsDto) {
 	t.Helper()
-	err := NewTagsQuery(pgxPool).
+	_, inserted, err := NewTagsQuery(pgxPool).
 		Insert(tags.Into.Name(), tags.Into.Slug()).
+		Values(rows...).
 		Returning(tags.Into.Id()).
-		Values(rows...).Exec(context.Background())
+		Exec(context.Background())
 	require.NoError(t, err)
-	for _, row := range rows {
+	require.Len(t, inserted, len(rows))
+	for i, row := range rows {
+		row.Id = inserted[i].Id
 		require.NotNil(t, row.Id)
 	}
 }
@@ -303,11 +315,11 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		insertUsers(t, user)
 		user.Email = "updated@conflict.example.com"
 
-		err := NewUsersQuery(pgxPool).
+		_, _, err := NewUsersQuery(pgxPool).
 			Insert(users.Email(), users.Username(), users.FullName(), users.IsActive()).
+			Values(user).
 			OnConflict(users.Username()).Do(ast.Update(users.Email())).
 			Returning(users.Id()).
-			Values(user).
 			Exec(context.Background())
 
 		require.NoError(t, err)
@@ -560,18 +572,26 @@ func TestIntegration_Transactions(t *testing.T) {
 
 		err := pgx.BeginFunc(context.Background(), pgxPool, func(tx pgx.Tx) error {
 			user = &models.UsersDto{Username: "txuser", Email: "tx@example.com"}
-			if err := NewUsersQuery(nil).WithTx(tx).
+			_, insertedUsers, err := NewUsersQuery(nil).WithTx(tx).
 				Insert(users.Username(), users.Email()).
+				Values(user).
 				Returning(users.Id()).
-				Values(user).Exec(context.Background()); err != nil {
+				Exec(context.Background())
+			if err != nil {
 				return err
 			}
+			user.Id = insertedUsers[0].Id
 
 			post = &models.PostsDto{UserId: *user.Id, Title: "Transaction Post"}
-			return NewPostsQuery(nil).WithTx(tx).
+			_, insertedPosts, err := NewPostsQuery(nil).WithTx(tx).
 				Insert(posts.UserId(), posts.Title()).
+				Values(post).
 				Returning(posts.Id()).
-				Values(post).Exec(context.Background())
+				Exec(context.Background())
+			if err == nil {
+				post.Id = insertedPosts[0].Id
+			}
+			return err
 		})
 
 		require.NoError(t, err)
@@ -589,10 +609,11 @@ func TestIntegration_Transactions(t *testing.T) {
 	t.Run("Failed Transaction Rollback", func(t *testing.T) {
 		err := pgx.BeginFunc(context.Background(), pgxPool, func(tx pgx.Tx) error {
 			user := &models.UsersDto{Username: "rollbackuser", Email: "rollback@example.com"}
-			if err := NewUsersQuery(nil).WithTx(tx).
+			if _, _, err := NewUsersQuery(nil).WithTx(tx).
 				Insert(users.Username(), users.Email()).
+				Values(user).
 				Returning(users.Id()).
-				Values(user).Exec(context.Background()); err != nil {
+				Exec(context.Background()); err != nil {
 				return err
 			}
 			return assert.AnError
@@ -606,6 +627,34 @@ func TestIntegration_Transactions(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, usersFound)
 	})
+}
+
+func TestIntegration_InsertFromSelect(t *testing.T) {
+	cleanupTables(t)
+
+	// Arrange
+	insertUsers(t,
+		&models.UsersDto{Username: "selected-user", Email: "selected@example.com"},
+		&models.UsersDto{Username: "ignored-user", Email: "ignored@example.com"},
+	)
+	source := NewQuery[models.UsersDto](pgxPool, users.Table()).
+		Select(users.Username(), users.Email()).
+		Where(users.Username().Eq(q.Val("selected-user")))
+
+	// Act
+	affected, inserted, err := NewTagsQuery(pgxPool).
+		Insert(tags.Name(), tags.Slug()).
+		Select(source).
+		Returning(tags.Id(), tags.Name(), tags.Slug()).
+		Exec(context.Background())
+
+	// Assert
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, affected)
+	require.Len(t, inserted, 1)
+	require.NotNil(t, inserted[0].Id)
+	assert.Equal(t, "selected-user", inserted[0].Name)
+	assert.Equal(t, "selected@example.com", inserted[0].Slug)
 }
 
 func TestIntegration_NullableFields(t *testing.T) {

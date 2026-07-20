@@ -9,6 +9,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/ast"
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 	"github.com/jalphad/gosqlgen/integration/ref/query/posts"
+	"github.com/jalphad/gosqlgen/integration/ref/query/tags"
 	"github.com/jalphad/gosqlgen/integration/ref/query/users"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -194,6 +195,25 @@ func TestStatementOnlyDeleteSupportsNamedReturning(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "DELETE FROM users WHERE users.email = $1 RETURNING users.id", sql)
 	assert.Equal(t, []any{"deleted@example.com"}, params)
+}
+
+func TestInsertFromStatementSelectRendersInSQLOrder(t *testing.T) {
+	// Arrange
+	source := builder.NewStatementBuilder(users.Table()).
+		Select(users.Username(), users.Email()).
+		Where(users.Email().Eq(Val("source@example.com")))
+
+	// Act
+	sql, params, err := builder.NewKnownTableBuilder[models.TagsDto](nil, tags.Table()).
+		Insert(tags.Name(), tags.Slug()).
+		Select(source).
+		Returning(tags.Id()).
+		ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, "INSERT INTO tags(name, slug) SELECT users.username, users.email FROM users WHERE users.email = $1 RETURNING tags.id", sql)
+	assert.Equal(t, []any{"source@example.com"}, params)
 }
 
 func TestStatementOnlyFinalizeInterfaceExposesOnlyStatement(t *testing.T) {

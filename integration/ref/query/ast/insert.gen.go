@@ -10,6 +10,7 @@ type InsertStatement struct {
 	Table      string
 	Into       []NamedExpression
 	Values     []Expression
+	Select     *SelectStatement
 	OnConflict *Conflict
 	Returning  []NamedExpression
 	context    *QueryContext
@@ -51,15 +52,47 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 	}
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
 
-	if ctx != nil {
-		ctx.CurrentPart = QueryPartValues
+	switch {
+	case len(s.Values) > 0 && s.Select != nil:
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("INSERT requires exactly one VALUES or SELECT source")
+		}
+		return
+	case len(s.Values) > 0:
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartValues
+		}
+		builder.WriteString(" VALUES ")
+		for i := 0; i < len(s.Values)-1; i++ {
+			s.Values[i].toSQL(builder, params, ctx)
+			builder.WriteString(", ")
+		}
+		s.Values[len(s.Values)-1].toSQL(builder, params, ctx)
+	case s.Select != nil:
+		if len(s.Select.SelectList) > 0 && len(s.Into) != len(s.Select.SelectList) {
+			if ctx != nil && ctx.Error == nil {
+				ctx.Error = fmt.Errorf("INSERT has %d target columns but SELECT returns %d columns", len(s.Into), len(s.Select.SelectList))
+			}
+			return
+		}
+		builder.WriteString(" ")
+		savedType := QueryType("")
+		savedPart := QueryPart("")
+		if ctx != nil {
+			savedType = ctx.Type
+			savedPart = ctx.CurrentPart
+		}
+		s.Select.toSQL(builder, params, ctx)
+		if ctx != nil {
+			ctx.Type = savedType
+			ctx.CurrentPart = savedPart
+		}
+	default:
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("INSERT requires a VALUES or SELECT source")
+		}
+		return
 	}
-	builder.WriteString(" VALUES ")
-	for i := 0; i < len(s.Values)-1; i++ {
-		s.Values[i].toSQL(builder, params, ctx)
-		builder.WriteString(", ")
-	}
-	s.Values[len(s.Values)-1].toSQL(builder, params, ctx)
 
 	if s.OnConflict != nil {
 		s.OnConflict.toSQL(builder, params, ctx)

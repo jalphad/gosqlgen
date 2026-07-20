@@ -199,14 +199,12 @@ func {{ $table.StructName }}InsertOne(pool *pgxpool.Pool, dto *models.{{ $table.
 			{{ $tablePkg }}.{{ .FieldName }}(),
 			{{- end }}
 		).
-		{{- if $table.PrimaryKeyFields }}
+		Values(dto){{ if $table.PrimaryKeyFields }}.
 		Returning(
 			{{- range $index, $pkField := $table.PrimaryKeyFields }}
 			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
 			{{- end -}}
-		).
-		{{- end }}
-		Values(dto)
+		){{ end }}
 }
 
 // {{ $table.StructName }}InsertMany inserts multiple {{ $table.TableName }} DTOs
@@ -217,14 +215,12 @@ func {{ $table.StructName }}InsertMany(pool *pgxpool.Pool, dtos ...*models.{{ $t
 			{{ $tablePkg }}.{{ .FieldName }}(),
 			{{- end }}
 		).
-		{{- if $table.PrimaryKeyFields }}
+		Values(dtos...){{ if $table.PrimaryKeyFields }}.
 		Returning(
 			{{- range $index, $pkField := $table.PrimaryKeyFields }}
 			{{- if $index }}, {{ end }}{{ $tablePkg }}.{{ $pkField }}()
 			{{- end -}}
-		).
-		{{- end }}
-		Values(dtos...)
+		){{ end }}
 }
 
 {{ if $table.UpdateColumns }}

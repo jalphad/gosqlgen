@@ -190,8 +190,8 @@ func CommentsDtoInsertOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.I
 			comments.UserId(),
 			comments.Content(),
 		).
-		Returning(comments.Id()).
-		Values(dto)
+		Values(dto).
+		Returning(comments.Id())
 }
 
 // CommentsDtoInsertMany inserts multiple comments DTOs
@@ -202,8 +202,8 @@ func CommentsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.CommentsDto) buil
 			comments.UserId(),
 			comments.Content(),
 		).
-		Returning(comments.Id()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(comments.Id())
 }
 
 type CommentsDtoUpdateValueExtractor func(*models.CommentsDto) any
@@ -552,8 +552,8 @@ func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.I
 			post_tags.PostId(),
 			post_tags.TagId(),
 		).
-		Returning(post_tags.PostId(), post_tags.TagId()).
-		Values(dto)
+		Values(dto).
+		Returning(post_tags.PostId(), post_tags.TagId())
 }
 
 // PostTagsDtoInsertMany inserts multiple post_tags DTOs
@@ -563,8 +563,8 @@ func PostTagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostTagsDto) buil
 			post_tags.PostId(),
 			post_tags.TagId(),
 		).
-		Returning(post_tags.PostId(), post_tags.TagId()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(post_tags.PostId(), post_tags.TagId())
 }
 
 // PostsDtoSelectOne selects a single posts DTO by primary key
@@ -655,8 +655,8 @@ func PostsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertF
 			posts.Content(),
 			posts.PublishedAt(),
 		).
-		Returning(posts.Id()).
-		Values(dto)
+		Values(dto).
+		Returning(posts.Id())
 }
 
 // PostsDtoInsertMany inserts multiple posts DTOs
@@ -668,8 +668,8 @@ func PostsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostsDto) builder.In
 			posts.Content(),
 			posts.PublishedAt(),
 		).
-		Returning(posts.Id()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(posts.Id())
 }
 
 type PostsDtoUpdateValueExtractor func(*models.PostsDto) any
@@ -1035,8 +1035,8 @@ func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFin
 			tags.Name(),
 			tags.Slug(),
 		).
-		Returning(tags.Id()).
-		Values(dto)
+		Values(dto).
+		Returning(tags.Id())
 }
 
 // TagsDtoInsertMany inserts multiple tags DTOs
@@ -1046,8 +1046,8 @@ func TagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.TagsDto) builder.Inse
 			tags.Name(),
 			tags.Slug(),
 		).
-		Returning(tags.Id()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(tags.Id())
 }
 
 type TagsDtoUpdateValueExtractor func(*models.TagsDto) any
@@ -1349,8 +1349,8 @@ func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertF
 			users.FullName(),
 			users.Attributes(),
 		).
-		Returning(users.Id()).
-		Values(dto)
+		Values(dto).
+		Returning(users.Id())
 }
 
 // UsersDtoInsertMany inserts multiple users DTOs
@@ -1362,8 +1362,8 @@ func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.In
 			users.FullName(),
 			users.Attributes(),
 		).
-		Returning(users.Id()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(users.Id())
 }
 
 type UsersDtoUpdateValueExtractor func(*models.UsersDto) any

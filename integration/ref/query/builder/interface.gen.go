@@ -52,6 +52,7 @@ type SelectFinalizeQuery[O any] interface {
 	Find(ctx context.Context) ([]O, error)
 	FindOne(ctx context.Context) (O, error)
 	ToSql() (string, []any, error)
+	SelectStatement() *ast.SelectStatement
 	Statement() ast.SqlStatement
 }
 
@@ -92,7 +93,12 @@ type StatementSelectOrderByQuery interface {
 type StatementSelectPagingQuery interface {
 	Limit(limit int) StatementSelectPagingQuery
 	Offset(offset int) StatementSelectPagingQuery
-	StatementFinalizeQuery
+	StatementSelectFinalizeQuery
+}
+
+type StatementSelectFinalizeQuery interface {
+	SelectStatement() *ast.SelectStatement
+	Statement() ast.SqlStatement
 }
 
 type StatementUpdateFromQuery interface {
@@ -131,7 +137,7 @@ type StatementFinalizeQuery interface {
 }
 
 type InsertQuery[T any] interface {
-	Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T]
+	Insert(columns ...ast.NamedExpression) InsertSourceQuery[T]
 }
 
 type InsertOnConflictQuery[T any] interface {
@@ -145,16 +151,17 @@ type InsertOnConflictDoQuery[T any] interface {
 }
 
 type InsertReturningQuery[T any] interface {
-	Returning(projections ...ast.Projection[T]) InsertValuesQuery[T]
-	InsertValuesQuery[T]
+	Returning(projections ...ast.Projection[T]) InsertFinalizeQuery[T]
+	InsertFinalizeQuery[T]
 }
 
-type InsertValuesQuery[T any] interface {
-	Values(values ...*T) InsertFinalizeQuery[T]
+type InsertSourceQuery[T any] interface {
+	Values(values ...*T) InsertOnConflictQuery[T]
+	Select(query StatementSelectFinalizeQuery) InsertOnConflictQuery[T]
 }
 
 type InsertFinalizeQuery[T any] interface {
-	Exec(context.Context) error
+	Exec(context.Context) (int64, []T, error)
 	ToSql() (string, []any, error)
 	Statement() ast.SqlStatement
 }
