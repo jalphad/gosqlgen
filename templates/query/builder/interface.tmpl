@@ -18,7 +18,7 @@ type SelectFromQuery[O any] interface {
 
 type SelectJoinQuery[O any] interface {
 	With(ctes ...*ast.CTE) SelectJoinQuery[O]
-	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) SelectJoinQuery[O]
+	Join(join *ast.JoinExpr) SelectJoinQuery[O]
 	SelectWhereQuery[O]
 }
 
@@ -66,7 +66,7 @@ type StatementStartQuery interface {
 type StatementSelectJoinQuery interface {
 	With(ctes ...*ast.CTE) StatementSelectJoinQuery
 	From(table ast.TableExpression) StatementSelectWhereQuery
-	Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) StatementSelectJoinQuery
+	Join(join *ast.JoinExpr) StatementSelectJoinQuery
 	StatementSelectWhereQuery
 }
 
@@ -176,7 +176,7 @@ type UpdateFromQuery[T any] interface {
 }
 
 type UpdateJoinQuery[T any] interface {
-	Join(joinType ast.JoinType, table string, expr ast.OfType[bool]) UpdateJoinQuery[T]
+	Join(join *ast.JoinExpr) UpdateJoinQuery[T]
 	UpdateWhereQuery[T]
 }
 

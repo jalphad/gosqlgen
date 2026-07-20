@@ -34,8 +34,8 @@ func (v *ValuesTable) As(alias *TableAlias) *NamedValuesTable {
 
 func (v *ValuesTable) isTableExpression() {}
 
-func (v *ValuesTable) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
-	return joinTableExpression(v, jointype, table, on)
+func (v *ValuesTable) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(v, join)
 }
 
 func (v *ValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -143,8 +143,8 @@ func (v *NamedValuesTable) Name() string {
 
 func (v *NamedValuesTable) isTableExpression() {}
 
-func (v *NamedValuesTable) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
-	return joinTableExpression(v, jointype, table, on)
+func (v *NamedValuesTable) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(v, join)
 }
 
 func (v *NamedValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {

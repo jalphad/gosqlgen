@@ -58,7 +58,7 @@ func TestUsersSelfJoinUsesAliasScopedDestinations(t *testing.T) {
 	// Act
 	sql, _, err := builder.NewKnownTableBuilder[usersSelfJoinRow](nil, manager.TableAlias).
 		Select(manager.Id(), manager.Email(), subordinate.Id(), subordinate.Email()).
-		Join(ast.JoinLeft, subordinate, subordinate.IsActive().Eq(manager.IsActive())).
+		Join(ast.LeftJoin(subordinate, ast.On(subordinate.IsActive().Eq(manager.IsActive())))).
 		ToSql()
 
 	// Assert
@@ -77,7 +77,7 @@ func TestCTEAliasJoinDoesNotRenderColumnList(t *testing.T) {
 	sql, _, err := builder.NewKnownTableBuilder[models.PostsDto](nil, posts.Table()).
 		With(ast.NewCTE(activeUsers.TableAlias, cteBody)).
 		Select(posts.Id()).
-		Join(ast.JoinLeft, activeUsers, posts.UserId().Eq(activeUsers.Id())).
+		Join(ast.LeftJoin(activeUsers, ast.On(posts.UserId().Eq(activeUsers.Id())))).
 		ToSql()
 
 	// Assert

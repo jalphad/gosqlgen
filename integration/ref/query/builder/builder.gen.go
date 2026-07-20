@@ -152,8 +152,8 @@ func (b *SelectBuilder[T]) From(table ast.TableExpression) SelectWhereQuery[T] {
 	return b
 }
 
-func (b *SelectBuilder[T]) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) SelectJoinQuery[T] {
-	selectJoin(b.stmt, joinType, table, expr)
+func (b *SelectBuilder[T]) Join(join *ast.JoinExpr) SelectJoinQuery[T] {
+	selectJoin(b.stmt, join)
 	return b
 }
 
@@ -267,8 +267,8 @@ func (b *StatementSelectBuilder) From(table ast.TableExpression) StatementSelect
 	return b
 }
 
-func (b *StatementSelectBuilder) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) StatementSelectJoinQuery {
-	selectJoin(b.stmt, joinType, table, expr)
+func (b *StatementSelectBuilder) Join(join *ast.JoinExpr) StatementSelectJoinQuery {
+	selectJoin(b.stmt, join)
 	return b
 }
 
@@ -318,8 +318,8 @@ func selectFrom(stmt *ast.SelectStatement, table ast.TableExpression) {
 	stmt.From = table
 }
 
-func selectJoin(stmt *ast.SelectStatement, joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) {
-	stmt.From = stmt.From.Join(joinType, table, expr)
+func selectJoin(stmt *ast.SelectStatement, join *ast.JoinExpr) {
+	stmt.From = stmt.From.Join(join)
 }
 
 func selectWhere(stmt *ast.SelectStatement, expr ast.OfType[bool]) {

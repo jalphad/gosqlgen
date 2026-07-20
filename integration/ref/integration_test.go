@@ -494,7 +494,7 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.PostsByUserId(posts.Id(), posts.Title())).
-			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
+			Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id())))).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
@@ -510,7 +510,7 @@ func TestIntegration_RelationshipProjection(t *testing.T) {
 
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.PostsByUserId(posts.Id(), posts.Title())).
-			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
+			Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id())))).
 			Where(users.Id().Eq(q.Val(*user.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
@@ -544,7 +544,7 @@ func TestIntegration_Joins(t *testing.T) {
 				q.Into(posts.Title(), func(p *postWithUser) *string { return &p.Title }),
 				q.Into(users.Username(), func(p *postWithUser) *string { return &p.Username }),
 			).
-			Join(ast.JoinLeft, users.Table(), posts.UserId().Eq(users.Id())).
+			Join(ast.LeftJoin(users.Table(), ast.On(posts.UserId().Eq(users.Id())))).
 			Where(posts.UserId().Eq(q.Val(*user.Id))).
 			OrderBy(q.Asc(posts.Id())).
 			Find(context.Background())
@@ -753,7 +753,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Posts for User", func(t *testing.T) {
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.PostsByUserId(posts.Id(), posts.Title())).
-			Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id())).
+			Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id())))).
 			Where(users.Id().Eq(q.Val(*user1.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
@@ -766,7 +766,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Comments for Post", func(t *testing.T) {
 		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Into.CommentsByPostId(comments.Id(), comments.Content())).
-			Join(ast.JoinLeft, comments.Table(), comments.PostId().Eq(posts.Id())).
+			Join(ast.LeftJoin(comments.Table(), ast.On(comments.PostId().Eq(posts.Id())))).
 			Where(posts.Id().Eq(q.Val(*post1.Id))).
 			GroupBy(posts.Id()).
 			FindOne(context.Background())
@@ -779,7 +779,7 @@ func TestIntegration_ReverseRelationships(t *testing.T) {
 	t.Run("Load Comments for User", func(t *testing.T) {
 		result, err := NewQuery[models.UsersDto](pgxPool, users.Table()).
 			Select(users.Id(), users.Into.CommentsByUserId(comments.Id(), comments.Content())).
-			Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id())).
+			Join(ast.LeftJoin(comments.Table(), ast.On(comments.UserId().Eq(users.Id())))).
 			Where(users.Id().Eq(q.Val(*user1.Id))).
 			GroupBy(users.Id()).
 			FindOne(context.Background())
@@ -809,8 +809,8 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	t.Run("Load Tags for Post", func(t *testing.T) {
 		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Into.Tags(tags.Id(), tags.Name())).
-			Join(ast.JoinLeft, post_tags.Table(), posts.Id().Eq(post_tags.PostId())).
-			Join(ast.JoinLeft, tags.Table(), post_tags.TagId().Eq(tags.Id())).
+			Join(ast.LeftJoin(post_tags.Table(), ast.On(posts.Id().Eq(post_tags.PostId())))).
+			Join(ast.LeftJoin(tags.Table(), ast.On(post_tags.TagId().Eq(tags.Id())))).
 			Where(posts.Id().Eq(q.Val(*post1.Id))).
 			GroupBy(posts.Id()).
 			FindOne(context.Background())
@@ -823,8 +823,8 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	t.Run("Load Posts for Tag", func(t *testing.T) {
 		result, err := NewQuery[models.TagsDto](pgxPool, tags.Table()).
 			Select(tags.Into.Id(), tags.Into.Posts(posts.Id(), posts.Title())).
-			Join(ast.JoinLeft, post_tags.Table(), tags.Id().Eq(post_tags.TagId())).
-			Join(ast.JoinLeft, posts.Table(), post_tags.PostId().Eq(posts.Id())).
+			Join(ast.LeftJoin(post_tags.Table(), ast.On(tags.Id().Eq(post_tags.TagId())))).
+			Join(ast.LeftJoin(posts.Table(), ast.On(post_tags.PostId().Eq(posts.Id())))).
 			Where(tags.Name().Eq(q.Val("programming"))).
 			GroupBy(tags.Id()).
 			FindOne(context.Background())
@@ -840,8 +840,8 @@ func TestIntegration_ManyToMany(t *testing.T) {
 
 		result, err := NewQuery[models.PostsDto](pgxPool, posts.Table()).
 			Select(posts.Id(), posts.Into.Tags(tags.Id(), tags.Name())).
-			Join(ast.JoinLeft, post_tags.Table(), posts.Id().Eq(post_tags.PostId())).
-			Join(ast.JoinLeft, tags.Table(), post_tags.TagId().Eq(tags.Id())).
+			Join(ast.LeftJoin(post_tags.Table(), ast.On(posts.Id().Eq(post_tags.PostId())))).
+			Join(ast.LeftJoin(tags.Table(), ast.On(post_tags.TagId().Eq(tags.Id())))).
 			Where(posts.Id().Eq(q.Val(*post3.Id))).
 			GroupBy(posts.Id()).
 			FindOne(context.Background())
@@ -903,7 +903,7 @@ func TestContextTracking(t *testing.T) {
 
 	t.Run("Select with LEFT JOIN", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title()}, From: users.Table()}
-		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
+		selectStmt.From = selectStmt.From.Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id()))))
 		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
@@ -915,8 +915,8 @@ func TestContextTracking(t *testing.T) {
 
 	t.Run("Select with multiple JOINs", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title(), comments.Content()}, From: users.Table()}
-		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
-		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id()))
+		selectStmt.From = selectStmt.From.Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id()))))
+		selectStmt.From = selectStmt.From.Join(ast.LeftJoin(comments.Table(), ast.On(comments.UserId().Eq(users.Id()))))
 		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
@@ -957,7 +957,7 @@ func TestIntegration_CTEs(t *testing.T) {
 
 		linkSource := NewStatementQuery(insertedPost.TableAlias).
 			Select(insertedPost.Id(), insertedTags.Id()).
-			Join(ast.JoinInner, insertedTags.TableAlias, q.Val(true))
+			Join(ast.InnerJoin(insertedTags.TableAlias, ast.On(q.Val(true))))
 		insertedPostTags := post_tags.As(
 			"inserted_post_tags",
 			post_tags.PostId(),

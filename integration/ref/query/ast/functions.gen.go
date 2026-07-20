@@ -99,7 +99,7 @@ type WindowFunction[T MappedTypes] interface {
 }
 
 type windowFunction[T MappedTypes] struct {
-	function   function[T]
+	function  function[T]
 	partition []Expression
 	orderBy   []*OrderByItem
 }
@@ -212,8 +212,8 @@ func (f *NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]an
 
 func (f *NamedSetReturningFunction) isTableExpression() {}
 
-func (f *NamedSetReturningFunction) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
-	return joinTableExpression(f, jointype, table, on)
+func (f *NamedSetReturningFunction) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(f, join)
 }
 
 type SetReturningFunction struct {
@@ -238,8 +238,8 @@ func (f *SetReturningFunction) As(alias *TableAlias) *NamedSetReturningFunction 
 
 func (f *SetReturningFunction) isTableExpression() {}
 
-func (f *SetReturningFunction) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
-	return joinTableExpression(f, jointype, table, on)
+func (f *SetReturningFunction) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(f, join)
 }
 
 type ColumnAlias struct {
@@ -269,8 +269,8 @@ type TableAlias struct {
 
 func (r *TableAlias) isTableExpression() {}
 
-func (r *TableAlias) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) TableExpression {
-	return joinTableExpression(r, jointype, table, on)
+func (r *TableAlias) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(r, join)
 }
 
 func (r *TableAlias) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
