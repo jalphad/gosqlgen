@@ -994,7 +994,7 @@ func TestIntegration_CTEs(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		assert.Equal(t, "WITH inserted_post(id) AS (INSERT INTO posts(user_id, title) VALUES ($1, $2) RETURNING posts.id), inserted_tags(id) AS (INSERT INTO tags(name, slug) VALUES ($3, $4), ($5, $6) RETURNING tags.id), inserted_post_tags(post_id, tag_id) AS (INSERT INTO post_tags(post_id, tag_id) SELECT inserted_post.id, inserted_tags.id FROM inserted_post INNER JOIN inserted_tags ON $7 RETURNING post_tags.post_id, post_tags.tag_id) SELECT inserted_post_tags.post_id, inserted_post_tags.tag_id FROM inserted_post_tags ORDER BY inserted_post_tags.tag_id ASC", sql)
-		assert.Equal(t, []any{&post.UserId, &post.Title, &tagRows[0].Name, &tagRows[0].Slug, &tagRows[1].Name, &tagRows[1].Slug, true}, args)
+		assert.Equal(t, []any{post.UserId, post.Title, tagRows[0].Name, tagRows[0].Slug, tagRows[1].Name, tagRows[1].Slug, true}, args)
 		require.Len(t, results, 2)
 		assert.Equal(t, results[0].PostID, results[1].PostID)
 		assert.NotEqual(t, results[0].TagID, results[1].TagID)

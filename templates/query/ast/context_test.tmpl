@@ -1,10 +1,33 @@
 package ast
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+type contextTestValuesProvider struct {
+	values [][]any
+}
+
+func (p contextTestValuesProvider) RowCount() int {
+	return len(p.values)
+}
+
+func (p contextTestValuesProvider) ColumnCount() int {
+	if len(p.values) == 0 {
+		return 0
+	}
+	return len(p.values[0])
+}
+
+func (p contextTestValuesProvider) Value(row int, column int) (any, error) {
+	if row < 0 || row >= len(p.values) || column < 0 || column >= len(p.values[row]) {
+		return nil, fmt.Errorf("VALUES position (%d, %d) is out of range", row, column)
+	}
+	return p.values[row][column], nil
+}
 
 func TestQueryContextTypeAndPart(t *testing.T) {
 	t.Run("SELECT query type is tracked", func(t *testing.T) {
@@ -26,7 +49,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 		insertStmt := &InsertStatement{
 			Table:  "users",
 			Into:   []NamedExpression{NewIntColumnExpression("users", "id")},
-			Values: []Expression{NewLiteralExpression(1)},
+			Values: NewValuesTable(contextTestValuesProvider{values: [][]any{{1}}}),
 		}
 
 		ctx := &QueryContext{}
@@ -87,7 +110,7 @@ func TestQueryContextTypeAndPart(t *testing.T) {
 		insertStmt := &InsertStatement{
 			Table:  "users",
 			Into:   []NamedExpression{NewIntColumnExpression("users", "id")},
-			Values: []Expression{NewLiteralExpression(1)},
+			Values: NewValuesTable(contextTestValuesProvider{values: [][]any{{1}}}),
 			Returning: []NamedExpression{
 				NewIntColumnExpression("users", "id"),
 			},

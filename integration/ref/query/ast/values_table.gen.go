@@ -39,6 +39,10 @@ func (v *ValuesTable) Join(jointype JoinType, table NamedTableExpression, on OfT
 }
 
 func (v *ValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	v.render(builder, params, ctx, true)
+}
+
+func (v *ValuesTable) render(builder *strings.Builder, params *[]any, ctx *QueryContext, parenthesized bool) {
 	if ctx != nil && ctx.Error != nil {
 		return
 	}
@@ -72,7 +76,11 @@ func (v *ValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	}
 	currentParams := *params
 
-	builder.WriteString("(VALUES ")
+	if parenthesized {
+		builder.WriteString("(VALUES ")
+	} else {
+		builder.WriteString("VALUES ")
+	}
 	var placeholder [20]byte
 	for row := 0; row < rowCount; row++ {
 		if row > 0 {
@@ -119,7 +127,9 @@ func (v *ValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 		builder.WriteByte(')')
 	}
 	*params = currentParams
-	builder.WriteByte(')')
+	if parenthesized {
+		builder.WriteByte(')')
+	}
 }
 
 type NamedValuesTable struct {

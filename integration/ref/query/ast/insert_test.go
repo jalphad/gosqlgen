@@ -1,11 +1,58 @@
 package ast
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type insertTestValuesProvider struct {
+	values [][]any
+}
+
+func (p insertTestValuesProvider) RowCount() int {
+	return len(p.values)
+}
+
+func (p insertTestValuesProvider) ColumnCount() int {
+	if len(p.values) == 0 {
+		return 0
+	}
+	return len(p.values[0])
+}
+
+func (p insertTestValuesProvider) Value(row int, column int) (any, error) {
+	if row < 0 || row >= len(p.values) || column < 0 || column >= len(p.values[row]) {
+		return nil, fmt.Errorf("VALUES position (%d, %d) is out of range", row, column)
+	}
+	return p.values[row][column], nil
+}
+
+func TestValuesTableRenderingShapes(t *testing.T) {
+	// Arrange
+	values := NewValuesTable(insertTestValuesProvider{values: [][]any{{"first"}, {"second"}}})
+	tableParams := make([]any, 0)
+	insertParams := make([]any, 0)
+	insert := &InsertStatement{
+		Table:  "tags",
+		Into:   []NamedExpression{NewNamedExpression("name", NewColumnNode("tags", "name"))},
+		Values: values,
+	}
+
+	// Act
+	tableSQL, tableErr := RenderWithContext(values, &tableParams, &QueryContext{})
+	insertSQL, insertErr := RenderWithContext(insert, &insertParams, &QueryContext{})
+
+	// Assert
+	require.NoError(t, tableErr)
+	require.NoError(t, insertErr)
+	assert.Equal(t, "(VALUES ($1), ($2))", tableSQL)
+	assert.Equal(t, "INSERT INTO tags(name) VALUES ($1), ($2)", insertSQL)
+	assert.Equal(t, []any{"first", "second"}, tableParams)
+	assert.Equal(t, []any{"first", "second"}, insertParams)
+}
 
 func TestInsertStatementSelectSource(t *testing.T) {
 	// Arrange

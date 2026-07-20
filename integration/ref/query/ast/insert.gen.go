@@ -9,7 +9,7 @@ type InsertStatement struct {
 	With       []*CTE
 	Table      string
 	Into       []NamedExpression
-	Values     []Expression
+	Values     *ValuesTable
 	Select     *SelectStatement
 	OnConflict *Conflict
 	Returning  []NamedExpression
@@ -47,27 +47,29 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		ctx.CurrentPart = QueryPartInto
 	}
 	columns := make([]string, 0, len(s.Into))
-	for _, column := range s.Into {
+	for i, column := range s.Into {
+		if column == nil {
+			if ctx != nil && ctx.Error == nil {
+				ctx.Error = fmt.Errorf("INSERT column %d is nil", i)
+			}
+			return
+		}
 		columns = append(columns, column.Name())
 	}
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
 
 	switch {
-	case len(s.Values) > 0 && s.Select != nil:
+	case s.Values != nil && s.Select != nil:
 		if ctx != nil && ctx.Error == nil {
 			ctx.Error = fmt.Errorf("INSERT requires exactly one VALUES or SELECT source")
 		}
 		return
-	case len(s.Values) > 0:
+	case s.Values != nil:
 		if ctx != nil {
 			ctx.CurrentPart = QueryPartValues
 		}
-		builder.WriteString(" VALUES ")
-		for i := 0; i < len(s.Values)-1; i++ {
-			s.Values[i].toSQL(builder, params, ctx)
-			builder.WriteString(", ")
-		}
-		s.Values[len(s.Values)-1].toSQL(builder, params, ctx)
+		builder.WriteString(" ")
+		s.Values.render(builder, params, ctx, false)
 	case s.Select != nil:
 		if len(s.Select.SelectList) > 0 && len(s.Into) != len(s.Select.SelectList) {
 			if ctx != nil && ctx.Error == nil {

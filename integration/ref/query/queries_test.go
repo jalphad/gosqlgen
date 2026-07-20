@@ -216,6 +216,54 @@ func TestInsertFromStatementSelectRendersInSQLOrder(t *testing.T) {
 	assert.Equal(t, []any{"source@example.com"}, params)
 }
 
+func TestInsertValuesRejectsEmptyAndNilRows(t *testing.T) {
+	// Arrange
+	var nilTag *models.TagsDto
+
+	// Act
+	_, _, emptyErr := builder.NewKnownTableBuilder[models.TagsDto](nil, tags.Table()).
+		Insert(tags.Name()).
+		Values().
+		ToSql()
+	_, _, nilErr := builder.NewKnownTableBuilder[models.TagsDto](nil, tags.Table()).
+		Insert(tags.Name()).
+		Values(nilTag).
+		ToSql()
+
+	// Assert
+	require.EqualError(t, emptyErr, "VALUES table requires at least one row and one column")
+	require.EqualError(t, nilErr, "INSERT VALUES row 0 is nil")
+}
+
+func TestInsertValuesRejectsNonProjectionColumns(t *testing.T) {
+	// Arrange
+	tag := &models.TagsDto{Name: "invalid"}
+	column := ast.NewNamedExpression("name", ast.NewColumnNode("tags", "name"))
+
+	// Act
+	_, _, err := builder.NewKnownTableBuilder[models.TagsDto](nil, tags.Table()).
+		Insert(column).
+		Values(tag).
+		ToSql()
+
+	// Assert
+	require.EqualError(t, err, `INSERT column "name" is not a projection for the inserted type`)
+}
+
+func TestInsertValuesRejectsNilColumns(t *testing.T) {
+	// Arrange
+	tag := &models.TagsDto{Name: "invalid"}
+
+	// Act
+	_, _, err := builder.NewKnownTableBuilder[models.TagsDto](nil, tags.Table()).
+		Insert(nil).
+		Values(tag).
+		ToSql()
+
+	// Assert
+	require.EqualError(t, err, "INSERT column 0 is nil")
+}
+
 func TestStatementOnlyFinalizeInterfaceExposesOnlyStatement(t *testing.T) {
 	// Arrange
 	finalize := reflect.TypeOf((*builder.StatementFinalizeQuery)(nil)).Elem()

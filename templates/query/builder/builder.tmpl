@@ -430,24 +430,56 @@ func (b *InsertBuilder[T]) Returning(projections ...ast.Projection[T]) InsertFin
 
 func (b *InsertBuilder[T]) Values(values ...*T) InsertOnConflictQuery[T] {
 	columns := b.stmt.Into
-	projections := make([]ast.Projection[T], 0, len(columns))
-	for _, column := range columns {
+	provider := &insertValuesProvider[T]{
+		rows:        values,
+		projections: make([]ast.Projection[T], len(columns)),
+	}
+	for i, column := range columns {
 		if projection, ok := column.(ast.Projection[T]); ok {
-			projections = append(projections, projection)
+			provider.projections[i] = projection
+			continue
+		}
+		if provider.err == nil {
+			if column == nil {
+				provider.err = fmt.Errorf("INSERT column %d is nil", i)
+			} else {
+				provider.err = fmt.Errorf("INSERT column %q is not a projection for the inserted type", column.Name())
+			}
 		}
 	}
-	toAdd := make([]ast.Expression, len(values))
-	for i, value := range values {
-		fieldValues := make([]ast.Expression, len(projections))
-		for j, projection := range projections {
-			dest := projection.BindScan(value).Destination()
-			fieldValues[j] = ast.NewLiteralExpression(dest)
-		}
-		toAdd[i] = ast.NewGroupedExpression(fieldValues...)
-	}
-	b.stmt.Values = append(b.stmt.Values, toAdd...)
+	b.stmt.Values = ast.NewValuesTable(provider)
 
 	return b
+}
+
+type insertValuesProvider[T any] struct {
+	rows        []*T
+	projections []ast.Projection[T]
+	err         error
+}
+
+func (p *insertValuesProvider[T]) RowCount() int {
+	return len(p.rows)
+}
+
+func (p *insertValuesProvider[T]) ColumnCount() int {
+	return len(p.projections)
+}
+
+func (p *insertValuesProvider[T]) Value(row int, column int) (any, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
+	if row < 0 || row >= len(p.rows) {
+		return nil, fmt.Errorf("INSERT VALUES row %d is out of range", row)
+	}
+	if p.rows[row] == nil {
+		return nil, fmt.Errorf("INSERT VALUES row %d is nil", row)
+	}
+	if column < 0 || column >= len(p.projections) {
+		return nil, fmt.Errorf("INSERT VALUES column %d is out of range", column)
+	}
+	return p.projections[column].Value(p.rows[row])
 }
 
 func (b *InsertBuilder[T]) Select(query StatementSelectFinalizeQuery) InsertOnConflictQuery[T] {
@@ -512,50 +544,6 @@ func (b *InsertBuilder[T]) ToSql() (string, []any, error) {
 
 func (b *InsertBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
-}
-
-// ExecBatch inserts multiple records efficiently using pgx batch
-func (b *InsertBuilder[T]) ExecBatch(ctx context.Context, records []T) error {
-	if len(records) == 0 {
-		return nil
-	}
-	columns := b.stmt.Into
-	projections := make([]ast.Projection[T], 0, len(columns))
-	for _, column := range columns {
-		if projection, ok := column.(ast.Projection[T]); ok {
-			projections = append(projections, projection)
-		}
-	}
-
-	batch := &pgx.Batch{}
-	for _, record := range records {
-		for _, projection := range projections {
-			value := projection.BindScan(&record).Destination()
-			b.stmt.Values = append(b.stmt.Values, ast.NewLiteralExpression(value))
-		}
-		args := []any{}
-		query := ast.Render(b.stmt, &args)
-		batch.Queue(query, args...)
-	}
-
-	var br pgx.BatchResults
-	if b.tx != nil {
-		br = b.tx.SendBatch(ctx, batch)
-	} else {
-		br = b.pool.SendBatch(ctx, batch)
-	}
-	defer br.Close()
-
-	// Scan returned PKs (if any) back into records
-	if len(b.stmt.Returning) > 0 {
-		for _, record := range records {
-			if err := scanProjections(&record, b.returning, br.QueryRow()); err != nil {
-				return fmt.Errorf("failed to scan batch result %+v: %w", record, err)
-			}
-		}
-	}
-
-	return br.Close()
 }
 
 type UpdateBuilder[T any] struct {
