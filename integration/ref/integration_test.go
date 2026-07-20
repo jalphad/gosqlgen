@@ -314,11 +314,14 @@ func TestIntegration_UserCRUD(t *testing.T) {
 		user := &models.UsersDto{Username: "conflictedjohndoe", Email: "john@conflict.example.com", FullName: new("John Doe"), IsActive: new(true)}
 		insertUsers(t, user)
 		user.Email = "updated@conflict.example.com"
+		excluded := users.As("EXCLUDED", users.Email())
 
 		_, _, err := NewUsersQuery(pgxPool).
 			Insert(users.Email(), users.Username(), users.FullName(), users.IsActive()).
 			Values(user).
-			OnConflict(users.Username()).Do(ast.Update(users.Email())).
+			OnConflict(users.Username()).Do(ast.Update(
+			q.Set(users.Email()).To(excluded.Email()),
+		)).
 			Returning(users.Id()).
 			Exec(context.Background())
 

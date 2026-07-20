@@ -216,6 +216,29 @@ func TestInsertFromStatementSelectRendersInSQLOrder(t *testing.T) {
 	assert.Equal(t, []any{"source@example.com"}, params)
 }
 
+func TestInsertOnConflictReusesUpdateSets(t *testing.T) {
+	// Arrange
+	excluded := tags.As("EXCLUDED", tags.Slug())
+	row := &models.TagsDto{Name: "original", Slug: "original-slug"}
+
+	// Act
+	sql, params, err := builder.NewKnownTableBuilder[models.TagsDto](nil, tags.Table()).
+		Insert(tags.Name(), tags.Slug()).
+		Values(row).
+		OnConflict(tags.Slug()).
+		Do(ast.Update(
+			Set(tags.Name()).ToValue("updated"),
+			Set(tags.Slug()).To(excluded.Slug()),
+		)).
+		Returning(tags.Id()).
+		ToSql()
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, `INSERT INTO "public"."tags"(name, slug) VALUES ($1, $2) ON CONFLICT (slug) DO UPDATE SET name = $3, slug = EXCLUDED.slug RETURNING "public"."tags".id`, sql)
+	assert.Equal(t, []any{"original", "original-slug", "updated"}, params)
+}
+
 func TestInsertValuesRejectsEmptyAndNilRows(t *testing.T) {
 	// Arrange
 	var nilTag *models.TagsDto

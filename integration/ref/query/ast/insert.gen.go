@@ -126,7 +126,14 @@ func (c *Conflict) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 	for _, column := range c.Columns {
 		columns = append(columns, column.Name())
 	}
-	builder.WriteString(" ON CONFLICT (" + strings.Join(columns, ", ") + ") DO" + Render(c.Action, params))
+	builder.WriteString(" ON CONFLICT (" + strings.Join(columns, ", ") + ") DO")
+	if c.Action == nil {
+		if ctx != nil {
+			ctx.Error = fmt.Errorf("ON CONFLICT requires an action")
+		}
+		return
+	}
+	c.Action.toSQL(builder, params, ctx)
 }
 
 type OnConflictDoExpression interface {
@@ -140,7 +147,7 @@ func Nothing() OnConflictDoExpression {
 	}
 }
 
-func Update(set ...NamedExpression) OnConflictDoExpression {
+func Update(set ...UpdateSetExpr) OnConflictDoExpression {
 	return &ConflictAction{
 		Do:  " UPDATE",
 		Set: set,
@@ -149,7 +156,7 @@ func Update(set ...NamedExpression) OnConflictDoExpression {
 
 type ConflictAction struct {
 	Do        string
-	Set       []NamedExpression
+	Set       []UpdateSetExpr
 	WhereExpr OfType[bool]
 }
 
@@ -163,14 +170,32 @@ func (a *ConflictAction) toSQL(builder *strings.Builder, params *[]any, ctx *Que
 		return
 	}
 	builder.WriteString(a.Do)
-	if len(a.Set) > 0 {
-		var elems []string
-		for _, expr := range a.Set {
-			elems = append(elems, fmt.Sprintf("%s = EXCLUDED.%s", expr.Name(), expr.Name()))
+	if a.Do == " UPDATE" {
+		if len(a.Set) == 0 {
+			if ctx != nil {
+				ctx.Error = fmt.Errorf("ON CONFLICT DO UPDATE requires at least one SET assignment")
+			}
+			return
 		}
-		builder.WriteString(" SET " + strings.Join(elems, ", "))
+		builder.WriteString(" SET ")
+		for i, set := range a.Set {
+			if set == nil {
+				if ctx != nil {
+					ctx.Error = fmt.Errorf("ON CONFLICT DO UPDATE assignment %d is nil", i)
+				}
+				return
+			}
+			if i > 0 {
+				builder.WriteString(", ")
+			}
+			set.toSQL(builder, params, ctx)
+			if ctx != nil && ctx.Error != nil {
+				return
+			}
+		}
 	}
 	if a.WhereExpr != nil {
-		builder.WriteString(" WHERE " + Render(a.WhereExpr, params))
+		builder.WriteString(" WHERE ")
+		a.WhereExpr.toSQL(builder, params, ctx)
 	}
 }
