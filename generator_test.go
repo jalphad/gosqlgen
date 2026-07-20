@@ -206,6 +206,93 @@ func TestGenerator_GenerateFilesUsesJsonColumnProjectionForJsonColumns(t *testin
 	assert.Contains(t, queryFile, "func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.EventsDto) Alias[T]")
 }
 
+func TestGenerator_GenerateFilesFiltersSchemasAndQualifiesTableNames(t *testing.T) {
+	// Arrange
+	p := parser.NewParser()
+	err := p.Parse(`
+		CREATE TABLE public.users (
+			id UUID PRIMARY KEY
+		);
+		CREATE TABLE "select"."events" (
+			id UUID PRIMARY KEY,
+			user_id UUID REFERENCES public.users(id)
+		);
+	`)
+	require.NoError(t, err)
+
+	generator := NewGenerator(p)
+	generator.SetPackagePath("example.local/app")
+	generator.SetPackageName("audit")
+	generator.SetSchemas([]string{"select"})
+
+	// Act
+	files, err := generator.GenerateFiles()
+
+	// Assert
+	require.NoError(t, err)
+	assert.NotContains(t, files, "models/users.gen.go")
+
+	modelFile := requireGeneratedContent(t, files, "models/events.gen.go")
+	assert.Contains(t, modelFile, "type EventsDto struct")
+	assert.NotContains(t, modelFile, "UserIdRef")
+
+	queryFile := requireGeneratedContent(t, files, "query/events/events.go")
+	assert.Contains(t, queryFile, "ast.NewTableSource(`\"select\".\"events\"`)")
+	assert.Contains(t, queryFile, "newId(`\"select\".\"events\"`")
+}
+
+func TestGenerator_GenerateFilesPrefixesCollidingTableAPIs(t *testing.T) {
+	// Arrange
+	p := parser.NewParser()
+	err := p.Parse(`
+		CREATE TABLE auth.users (
+			id UUID PRIMARY KEY
+		);
+		CREATE TABLE billing.users (
+			id UUID PRIMARY KEY
+		);
+	`)
+	require.NoError(t, err)
+
+	generator := NewGenerator(p)
+	generator.SetPackagePath("example.local/app")
+	generator.SetPackageName("accounts")
+
+	// Act
+	files, err := generator.GenerateFiles()
+
+	// Assert
+	require.NoError(t, err)
+	authModel := requireGeneratedContent(t, files, "models/auth_users.gen.go")
+	assert.Contains(t, authModel, "type AuthUsersDto struct")
+	billingModel := requireGeneratedContent(t, files, "models/billing_users.gen.go")
+	assert.Contains(t, billingModel, "type BillingUsersDto struct")
+
+	authQuery := requireGeneratedContent(t, files, "query/auth_users/auth_users.go")
+	assert.Contains(t, authQuery, "package auth_users")
+	assert.Contains(t, authQuery, "ast.NewTableSource(`\"auth\".\"users\"`)")
+
+	dbFile := requireGeneratedContent(t, files, "db.gen.go")
+	assert.Contains(t, dbFile, "func (db *DB) AuthUsers()")
+	assert.Contains(t, dbFile, "func (db *DB) BillingUsers()")
+}
+
+func TestGenerator_GenerateFilesRejectsUnknownConfiguredSchema(t *testing.T) {
+	// Arrange
+	p := parser.NewParser()
+	err := p.Parse(`CREATE TABLE public.users (id UUID PRIMARY KEY);`)
+	require.NoError(t, err)
+
+	generator := NewGenerator(p)
+	generator.SetSchemas([]string{"missing"})
+
+	// Act
+	_, err = generator.GenerateFiles()
+
+	// Assert
+	require.EqualError(t, err, `configured schema "missing" has no parsed tables`)
+}
+
 func requireGeneratedContent(t *testing.T, files map[string]string, filename string) string {
 	t.Helper()
 

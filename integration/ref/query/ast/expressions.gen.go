@@ -423,7 +423,7 @@ func (e *BytesColumnExpression) Name() string {
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	table string // Base table Name
+	table string      // Base table Name
 }
 
 func NewTableSource(name string) *TableSource {

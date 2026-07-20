@@ -269,3 +269,29 @@ func readGeneratedFile(t *testing.T, outputPath string, elem ...string) string {
 
 	return string(content)
 }
+
+func TestNewWithConfig_AppliesSchemas(t *testing.T) {
+	// Arrange
+	outputPath := t.TempDir()
+	gen := NewWithConfig(Config{
+		PackageName: "generated",
+		PackagePath: "example.local/app",
+		OutputPath:  outputPath,
+		Schemas:     []string{"audit"},
+	})
+	err := gen.Parse(`
+		CREATE TABLE public.users (id UUID PRIMARY KEY);
+		CREATE TABLE audit.events (id UUID PRIMARY KEY);
+	`)
+	require.NoError(t, err)
+
+	// Act
+	err = gen.GenerateFiles()
+
+	// Assert
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(outputPath, "generated", "models", "events.gen.go"))
+	require.NoError(t, err)
+	_, err = os.Stat(filepath.Join(outputPath, "generated", "models", "users.gen.go"))
+	assert.ErrorIs(t, err, os.ErrNotExist)
+}

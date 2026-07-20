@@ -9,7 +9,7 @@ import (
 	"{{ .PackagePath }}/query/ast"
 	"{{ .PackagePath }}/query/builder"
 	{{- range .Tables }}
-	"{{ $.PackagePath }}/query/{{ .TableName }}"
+	"{{ $.PackagePath }}/query/{{ .PackageName }}"
 	{{- end }}
 )
 
@@ -62,7 +62,7 @@ func (tx *Tx) {{ .MethodName }}() builder.KnownTableStartQuery[models.{{ .Struct
 
 // New{{ .BuilderName }} returns a query builder for {{ .TableName }}
 func New{{ .BuilderName }}(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.{{ .StructName }}] {
-	return {{ .TableName }}.NewQuery(pool)
+	return {{ .PackageName }}.NewQuery(pool)
 }
 {{- end }}
 

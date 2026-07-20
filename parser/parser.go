@@ -23,6 +23,7 @@ type Column struct {
 // ForeignKey represents a foreign key constraint
 type ForeignKey struct {
 	Column              string
+	ReferencedSchema    string
 	ReferencedTableName string
 	ReferencedColumn    string
 }
@@ -53,6 +54,7 @@ type JunctionTableInfo struct {
 
 // Table represents a database table
 type Table struct {
+	Schema               string
 	Name                 string
 	Columns              []Column
 	PrimaryKeys          []string
@@ -134,17 +136,73 @@ func (p *Parser) Parse(sql string) error {
 }
 
 func (p *Parser) GetTable(table string) (*Table, bool) {
-	ret, ok := p.tables[table]
-	return ret, ok
+	if strings.Contains(table, ".") {
+		ret, ok := p.tables[table]
+		return ret, ok
+	}
+
+	var match *Table
+	for _, candidate := range p.tables {
+		if candidate.Name != table {
+			continue
+		}
+		if match != nil {
+			return nil, false
+		}
+		match = candidate
+	}
+	return match, match != nil
 }
 
 // GetTables returns all parsed tables
 func (p *Parser) GetTables() map[string]*Table {
-	return p.tables
+	nameCounts := make(map[string]int, len(p.tables))
+	for _, table := range p.tables {
+		nameCounts[table.Name]++
+	}
+
+	tables := make(map[string]*Table, len(p.tables))
+	for _, table := range p.tables {
+		key := table.Name
+		if nameCounts[table.Name] > 1 {
+			key = tableKey(table.Schema, table.Name)
+		}
+		tables[key] = table
+	}
+	return tables
+}
+
+const defaultSchema = "public"
+
+func tableKey(schema, table string) string {
+	return schema + "." + table
+}
+
+func foreignKeyTableKey(fk ForeignKey) string {
+	schema := fk.ReferencedSchema
+	if schema == "" {
+		schema = defaultSchema
+	}
+	return tableKey(schema, fk.ReferencedTableName)
+}
+
+func (p *Parser) tableInSchema(schema, table string) (*Table, bool) {
+	if strings.Contains(table, ".") {
+		value, ok := p.tables[table]
+		return value, ok
+	}
+	value, ok := p.tables[tableKey(schema, table)]
+	return value, ok
 }
 
 // cleanSQL removes comments and normalizes whitespace
 func (p *Parser) cleanSQL(sql string) string {
+	// Normalize quoted identifiers that fit the parser's existing word-based
+	// identifier model. This includes identifiers that require quoting because
+	// they are PostgreSQL keywords.
+	quotedIdentifier := regexp.MustCompile(`"(\w+)"`)
+	sql = quotedIdentifier.ReplaceAllString(sql, "$1")
+
 	// Remove single-line comments but preserve special comments like @skip-rel
 	reComments := regexp.MustCompile(`(--[^']*)$`)
 	lines := strings.Split(sql, "\n")
@@ -184,10 +242,14 @@ func (p *Parser) parseSequences(sql string) {
 	matches = reAlterSeq.FindAllStringSubmatch(sql, -1)
 	for _, match := range matches {
 		seqName := match[2]
+		tableSchema := match[3]
+		if tableSchema == "" {
+			tableSchema = defaultSchema
+		}
 		tableName := match[4]
 		columnName := match[5]
 
-		p.sequences[fmt.Sprintf("%s.%s", tableName, columnName)] = seqName
+		p.sequences[fmt.Sprintf("%s.%s.%s", tableSchema, tableName, columnName)] = seqName
 	}
 }
 
@@ -199,9 +261,13 @@ func (p *Parser) extractCreateTableStatements(sql string) []string {
 
 	for _, match := range matches {
 		if len(match) >= 3 {
+			schemaName := strings.TrimSuffix(match[1], ".")
+			if schemaName == "" {
+				schemaName = defaultSchema
+			}
 			tableName := match[2]
 			tableBody := match[3]
-			statements = append(statements, fmt.Sprintf("CREATE TABLE %s (%s);", tableName, tableBody))
+			statements = append(statements, fmt.Sprintf("CREATE TABLE %s.%s (%s);", schemaName, tableName, tableBody))
 		}
 	}
 
@@ -211,7 +277,7 @@ func (p *Parser) extractCreateTableStatements(sql string) []string {
 // extractAlterTableStatements extracts ALTER TABLE statements
 func (p *Parser) extractAlterTableStatements(sql string) []string {
 	var statements []string
-	re := regexp.MustCompile(`(?i)ALTER\s+TABLE\s+(?:ONLY\s+)?(?:public\.)?(\w+)\s+(.*?);`)
+	re := regexp.MustCompile(`(?i)ALTER\s+TABLE\s+(?:ONLY\s+)?(?:(?:\w+)\.)?\w+\s+(.*?);`)
 	matches := re.FindAllString(sql, -1)
 	statements = append(statements, matches...)
 	return statements
@@ -220,14 +286,19 @@ func (p *Parser) extractAlterTableStatements(sql string) []string {
 // parseCreateTable parses a single CREATE TABLE statement
 func (p *Parser) parseCreateTable(stmt string) error {
 	// Extract table name
-	tableNameRe := regexp.MustCompile(`(?i)CREATE\s+TABLE\s+(?:(?:IF\s+NOT\s+EXISTS|public\.)\s+)?(\w+)`)
+	tableNameRe := regexp.MustCompile(`(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(\w+)\.)?(\w+)`)
 	nameMatch := tableNameRe.FindStringSubmatch(stmt)
-	if len(nameMatch) < 2 {
+	if len(nameMatch) < 3 {
 		return fmt.Errorf("could not extract table name from: %s", stmt)
 	}
 
-	tableName := nameMatch[1]
+	schemaName := nameMatch[1]
+	if schemaName == "" {
+		schemaName = defaultSchema
+	}
+	tableName := nameMatch[2]
 	table := &Table{
+		Schema:      schemaName,
 		Name:        tableName,
 		Columns:     []Column{},
 		PrimaryKeys: []string{},
@@ -288,7 +359,7 @@ func (p *Parser) parseCreateTable(stmt string) error {
 		}
 	}
 
-	p.tables[tableName] = table
+	p.tables[tableKey(schemaName, tableName)] = table
 	return nil
 }
 
@@ -346,7 +417,7 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 	}
 
 	// Check if column has an associated sequence
-	if _, ok := p.sequences[fmt.Sprintf("%s.%s", table.Name, col.Name)]; ok {
+	if _, ok := p.sequences[fmt.Sprintf("%s.%s.%s", table.Schema, table.Name, col.Name)]; ok {
 		col.IsSequence = true
 		col.HasDefault = true
 	}
@@ -361,7 +432,7 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 	col.GoType = p.mapSQLTypeToGo(parts[1])
 
 	// Check if column has an associated sequence or is of SERIAL or BIGSERIAL type
-	if _, ok := p.sequences[fmt.Sprintf("%s.%s", table.Name, col.Name)]; ok {
+	if _, ok := p.sequences[fmt.Sprintf("%s.%s.%s", table.Schema, table.Name, col.Name)]; ok {
 		col.IsSequence = true
 		col.HasDefault = true
 	} else if matched, _ := regexp.MatchString(`(?i)\b(SERIAL|BIGSERIAL)\b`, remainingDef); matched {
@@ -398,12 +469,13 @@ func (p *Parser) parseColumnDefinition(table *Table, def string) error {
 	}
 
 	// Check for inline REFERENCES (foreign key)
-	referencesRe := regexp.MustCompile(`(?i)\bREFERENCES\s+(\w+)\s*\((\w+)\)`)
-	if refMatch := referencesRe.FindStringSubmatch(remainingDef); len(refMatch) > 2 {
+	referencesRe := regexp.MustCompile(`(?i)\bREFERENCES\s+(?:(\w+)\.)?(\w+)\s*\((\w+)\)`)
+	if refMatch := referencesRe.FindStringSubmatch(remainingDef); len(refMatch) > 3 {
 		fk := ForeignKey{
 			Column:              col.Name,
-			ReferencedTableName: refMatch[1],
-			ReferencedColumn:    refMatch[2],
+			ReferencedSchema:    refMatch[1],
+			ReferencedTableName: refMatch[2],
+			ReferencedColumn:    refMatch[3],
 		}
 		table.ForeignKeys = append(table.ForeignKeys, fk)
 	}
@@ -458,13 +530,14 @@ func (p *Parser) parsePrimaryKeyConstraint(table *Table, constraint string) {
 // parseForeignKeyConstraint parses FOREIGN KEY constraint
 func (p *Parser) parseForeignKeyConstraint(table *Table, constraint string) {
 	// FOREIGN KEY (col) REFERENCES table(col)
-	fkRe := regexp.MustCompile(`(?i)FOREIGN\s+KEY\s*\((\w+)\)\s+REFERENCES\s+(?:public\.)?(\w+)\s*\((\w+)\)`)
+	fkRe := regexp.MustCompile(`(?i)FOREIGN\s+KEY\s*\((\w+)\)\s+REFERENCES\s+(?:(\w+)\.)?(\w+)\s*\((\w+)\)`)
 	match := fkRe.FindStringSubmatch(constraint)
-	if len(match) > 3 {
+	if len(match) > 4 {
 		fk := ForeignKey{
 			Column:              match[1],
-			ReferencedTableName: match[2],
-			ReferencedColumn:    match[3],
+			ReferencedSchema:    match[2],
+			ReferencedTableName: match[3],
+			ReferencedColumn:    match[4],
 		}
 		table.ForeignKeys = append(table.ForeignKeys, fk)
 	}
@@ -473,14 +546,18 @@ func (p *Parser) parseForeignKeyConstraint(table *Table, constraint string) {
 // parseAlterTable parses ALTER TABLE statements
 func (p *Parser) parseAlterTable(stmt string) error {
 	// Extract table name
-	tableRe := regexp.MustCompile(`(?i)ALTER\s+TABLE\s+(?:ONLY\s+)?(?:public\.)?(\w+)`)
+	tableRe := regexp.MustCompile(`(?i)ALTER\s+TABLE\s+(?:ONLY\s+)?(?:(\w+)\.)?(\w+)`)
 	match := tableRe.FindStringSubmatch(stmt)
-	if len(match) < 2 {
+	if len(match) < 3 {
 		return nil
 	}
 
-	tableName := match[1]
-	table, exists := p.tables[tableName]
+	schemaName := match[1]
+	if schemaName == "" {
+		schemaName = defaultSchema
+	}
+	tableName := match[2]
+	table, exists := p.tables[tableKey(schemaName, tableName)]
 	if !exists {
 		return nil // Table not found, skip
 	}
@@ -551,12 +628,12 @@ func (p *Parser) validateForeignKeys() error {
 			}
 
 			// Verify referenced table exists
-			refTable, ok := p.tables[fk.ReferencedTableName]
+			refTable, ok := p.tables[foreignKeyTableKey(*fk)]
 			if !ok {
 				return fmt.Errorf(
 					"foreign key in table '%s' references non-existent table '%s'",
 					tableName,
-					fk.ReferencedTableName,
+					foreignKeyTableKey(*fk),
 				)
 			}
 
@@ -587,7 +664,7 @@ func (p *Parser) validateForeignKeys() error {
 func (p *Parser) validateSkipRelConfigs() error {
 	for tableName, table := range p.tables {
 		for _, skipTable := range table.SkipRelConfigs {
-			if _, exists := p.tables[skipTable]; !exists {
+			if _, exists := p.tableInSchema(table.Schema, skipTable); !exists {
 				return fmt.Errorf(
 					"Table '%s' has @skip-rel for '%s', but table '%s' does not exist",
 					tableName, skipTable, skipTable,
@@ -647,9 +724,9 @@ func (p *Parser) detectJunctionTables() error {
 
 		// This is a junction table!
 		table.JunctionInfo = &JunctionTableInfo{
-			LeftTable:     p.tables[table.ForeignKeys[0].ReferencedTableName],
+			LeftTable:     p.tables[foreignKeyTableKey(table.ForeignKeys[0])],
 			LeftFKColumn:  table.ForeignKeys[0].Column,
-			RightTable:    p.tables[table.ForeignKeys[1].ReferencedTableName],
+			RightTable:    p.tables[foreignKeyTableKey(table.ForeignKeys[1])],
 			RightFKColumn: table.ForeignKeys[1].Column,
 		}
 	}
@@ -675,7 +752,7 @@ func (p *Parser) buildReverseRelationships() error {
 			// Check if otherTable is in skip list
 			skipTable := false
 			for _, skip := range table.SkipRelConfigs {
-				if skip == otherTableName {
+				if skip == otherTable.Name || skip == otherTableName {
 					skipTable = true
 					break
 				}
@@ -686,9 +763,9 @@ func (p *Parser) buildReverseRelationships() error {
 
 			// Check if otherTable has a FK pointing to this table
 			for _, fk := range otherTable.ForeignKeys {
-				if fk.ReferencedTableName == tableName {
+				if foreignKeyTableKey(fk) == tableName {
 					// Create reverse relationship
-					fieldName := p.reverseRelationFieldName(otherTableName, fk.Column)
+					fieldName := p.reverseRelationFieldName(otherTable.Name, fk.Column)
 
 					// Check for field name conflict
 					if p.fieldNameExists(table, fieldName) {
@@ -721,15 +798,15 @@ func (p *Parser) buildManyToManyRelationships() error {
 		info := junctionTable.JunctionInfo
 		// Add M2M relationship to left table
 		p.buildLeftOrRightRelation(junctionTable, relationConfig{
-			tableName:        info.LeftTable.Name,
-			relatedTableName: info.RightTable.Name,
+			tableName:        tableKey(info.LeftTable.Schema, info.LeftTable.Name),
+			relatedTableName: tableKey(info.RightTable.Schema, info.RightTable.Name),
 			fkColumn:         info.LeftFKColumn,
 			relatedFKColumn:  info.RightFKColumn,
 		})
 		// Add M2M relationship to right table
 		p.buildLeftOrRightRelation(junctionTable, relationConfig{
-			tableName:        info.RightTable.Name,
-			relatedTableName: info.LeftTable.Name,
+			tableName:        tableKey(info.RightTable.Schema, info.RightTable.Name),
+			relatedTableName: tableKey(info.LeftTable.Schema, info.LeftTable.Name),
 			fkColumn:         info.RightFKColumn,
 			relatedFKColumn:  info.LeftFKColumn,
 		})
@@ -750,14 +827,14 @@ func (p *Parser) buildLeftOrRightRelation(junctionTable *Table, cfg relationConf
 		// Check if other table is in skip list
 		skipRelation := false
 		for _, skip := range thisTable.SkipRelConfigs {
-			if skip == cfg.relatedTableName {
+			if skip == p.tables[cfg.relatedTableName].Name || skip == cfg.relatedTableName {
 				skipRelation = true
 				break
 			}
 		}
 
 		if !skipRelation {
-			fieldName := p.capitalizeTableName(cfg.relatedTableName)
+			fieldName := p.capitalizeTableName(p.tables[cfg.relatedTableName].Name)
 
 			// Check for field name conflict
 			if p.fieldNameExists(thisTable, fieldName) {

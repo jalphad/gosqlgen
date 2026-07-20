@@ -103,7 +103,7 @@ func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
 	return options, nil
 }
 
-// CommentsDtoSelectOne selects a single comments DTO by primary key
+// CommentsDtoSelectOne selects a single "public"."comments" DTO by primary key
 func CommentsDtoSelectOne(pool *pgxpool.Pool, dto *models.CommentsDto, opts ...SelectOption[models.CommentsDto]) (builder.SelectFinalizeQuery[models.CommentsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -118,7 +118,7 @@ func CommentsDtoSelectOne(pool *pgxpool.Pool, dto *models.CommentsDto, opts ...S
 		Where(comments.Id().Eq(Val(*dto.Id))), nil
 }
 
-// CommentsDtoSelectMany selects comments DTOs
+// CommentsDtoSelectMany selects "public"."comments" DTOs
 func CommentsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.CommentsDto]) (builder.SelectJoinQuery[models.CommentsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -132,14 +132,14 @@ func CommentsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.Comme
 		Select(columns...), nil
 }
 
-// CommentsDtoDeleteOne deletes a single comments DTO by primary key
+// CommentsDtoDeleteOne deletes a single "public"."comments" DTO by primary key
 func CommentsDtoDeleteOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.DeleteFinalizeQuery[models.CommentsDto] {
 	return comments.NewQuery(pool).
 		Delete().
 		Where(comments.Id().Eq(Val(*dto.Id)))
 }
 
-// CommentsDtoDeleteMany deletes comments DTOs by primary key
+// CommentsDtoDeleteMany deletes "public"."comments" DTOs by primary key
 func CommentsDtoDeleteMany(pool *pgxpool.Pool, dtos models.CommentsDtos) builder.DeleteFinalizeQuery[models.CommentsDto] {
 	v := comments.As("v", primaryKeyCommentsDtoDeleteValueColumns...)
 	return comments.NewQuery(pool).
@@ -182,7 +182,7 @@ func (p CommentsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, erro
 	}
 }
 
-// CommentsDtoInsertOne inserts a single comments DTO
+// CommentsDtoInsertOne inserts a single "public"."comments" DTO
 func CommentsDtoInsertOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto] {
 	return comments.NewQuery(pool).
 		Insert(
@@ -194,7 +194,7 @@ func CommentsDtoInsertOne(pool *pgxpool.Pool, dto *models.CommentsDto) builder.I
 		Returning(comments.Id())
 }
 
-// CommentsDtoInsertMany inserts multiple comments DTOs
+// CommentsDtoInsertMany inserts multiple "public"."comments" DTOs
 func CommentsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.CommentsDto) builder.InsertFinalizeQuery[models.CommentsDto] {
 	return comments.NewQuery(pool).
 		Insert(
@@ -461,7 +461,7 @@ func (p CommentsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, erro
 	return p.castTypes[column], nil
 }
 
-// PostTagsDtoSelectOne selects a single post_tags DTO by primary key
+// PostTagsDtoSelectOne selects a single "public"."post_tags" DTO by primary key
 func PostTagsDtoSelectOne(pool *pgxpool.Pool, dto *models.PostTagsDto, opts ...SelectOption[models.PostTagsDto]) (builder.SelectFinalizeQuery[models.PostTagsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -476,7 +476,7 @@ func PostTagsDtoSelectOne(pool *pgxpool.Pool, dto *models.PostTagsDto, opts ...S
 		Where(post_tags.PostId().Eq(Val(dto.PostId)).And(post_tags.TagId().Eq(Val(dto.TagId)))), nil
 }
 
-// PostTagsDtoSelectMany selects post_tags DTOs
+// PostTagsDtoSelectMany selects "public"."post_tags" DTOs
 func PostTagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostTagsDto]) (builder.SelectJoinQuery[models.PostTagsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -490,14 +490,14 @@ func PostTagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostT
 		Select(columns...), nil
 }
 
-// PostTagsDtoDeleteOne deletes a single post_tags DTO by primary key
+// PostTagsDtoDeleteOne deletes a single "public"."post_tags" DTO by primary key
 func PostTagsDtoDeleteOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.DeleteFinalizeQuery[models.PostTagsDto] {
 	return post_tags.NewQuery(pool).
 		Delete().
 		Where(post_tags.PostId().Eq(Val(dto.PostId)).And(post_tags.TagId().Eq(Val(dto.TagId))))
 }
 
-// PostTagsDtoDeleteMany deletes post_tags DTOs by primary key
+// PostTagsDtoDeleteMany deletes "public"."post_tags" DTOs by primary key
 func PostTagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostTagsDtos) builder.DeleteFinalizeQuery[models.PostTagsDto] {
 	v := post_tags.As("v", primaryKeyPostTagsDtoDeleteValueColumns...)
 	return post_tags.NewQuery(pool).
@@ -545,7 +545,7 @@ func (p PostTagsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, erro
 	}
 }
 
-// PostTagsDtoInsertOne inserts a single post_tags DTO
+// PostTagsDtoInsertOne inserts a single "public"."post_tags" DTO
 func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.InsertFinalizeQuery[models.PostTagsDto] {
 	return post_tags.NewQuery(pool).
 		Insert(
@@ -556,7 +556,7 @@ func PostTagsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostTagsDto) builder.I
 		Returning(post_tags.PostId(), post_tags.TagId())
 }
 
-// PostTagsDtoInsertMany inserts multiple post_tags DTOs
+// PostTagsDtoInsertMany inserts multiple "public"."post_tags" DTOs
 func PostTagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostTagsDto) builder.InsertFinalizeQuery[models.PostTagsDto] {
 	return post_tags.NewQuery(pool).
 		Insert(
@@ -567,7 +567,7 @@ func PostTagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostTagsDto) buil
 		Returning(post_tags.PostId(), post_tags.TagId())
 }
 
-// PostsDtoSelectOne selects a single posts DTO by primary key
+// PostsDtoSelectOne selects a single "public"."posts" DTO by primary key
 func PostsDtoSelectOne(pool *pgxpool.Pool, dto *models.PostsDto, opts ...SelectOption[models.PostsDto]) (builder.SelectFinalizeQuery[models.PostsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -582,7 +582,7 @@ func PostsDtoSelectOne(pool *pgxpool.Pool, dto *models.PostsDto, opts ...SelectO
 		Where(posts.Id().Eq(Val(*dto.Id))), nil
 }
 
-// PostsDtoSelectMany selects posts DTOs
+// PostsDtoSelectMany selects "public"."posts" DTOs
 func PostsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostsDto]) (builder.SelectJoinQuery[models.PostsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -596,14 +596,14 @@ func PostsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.PostsDto
 		Select(columns...), nil
 }
 
-// PostsDtoDeleteOne deletes a single posts DTO by primary key
+// PostsDtoDeleteOne deletes a single "public"."posts" DTO by primary key
 func PostsDtoDeleteOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.DeleteFinalizeQuery[models.PostsDto] {
 	return posts.NewQuery(pool).
 		Delete().
 		Where(posts.Id().Eq(Val(*dto.Id)))
 }
 
-// PostsDtoDeleteMany deletes posts DTOs by primary key
+// PostsDtoDeleteMany deletes "public"."posts" DTOs by primary key
 func PostsDtoDeleteMany(pool *pgxpool.Pool, dtos models.PostsDtos) builder.DeleteFinalizeQuery[models.PostsDto] {
 	v := posts.As("v", primaryKeyPostsDtoDeleteValueColumns...)
 	return posts.NewQuery(pool).
@@ -646,7 +646,7 @@ func (p PostsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) 
 	}
 }
 
-// PostsDtoInsertOne inserts a single posts DTO
+// PostsDtoInsertOne inserts a single "public"."posts" DTO
 func PostsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto] {
 	return posts.NewQuery(pool).
 		Insert(
@@ -659,7 +659,7 @@ func PostsDtoInsertOne(pool *pgxpool.Pool, dto *models.PostsDto) builder.InsertF
 		Returning(posts.Id())
 }
 
-// PostsDtoInsertMany inserts multiple posts DTOs
+// PostsDtoInsertMany inserts multiple "public"."posts" DTOs
 func PostsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.PostsDto) builder.InsertFinalizeQuery[models.PostsDto] {
 	return posts.NewQuery(pool).
 		Insert(
@@ -949,7 +949,7 @@ func (p PostsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, error) 
 	return p.castTypes[column], nil
 }
 
-// TagsDtoSelectOne selects a single tags DTO by primary key
+// TagsDtoSelectOne selects a single "public"."tags" DTO by primary key
 func TagsDtoSelectOne(pool *pgxpool.Pool, dto *models.TagsDto, opts ...SelectOption[models.TagsDto]) (builder.SelectFinalizeQuery[models.TagsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -964,7 +964,7 @@ func TagsDtoSelectOne(pool *pgxpool.Pool, dto *models.TagsDto, opts ...SelectOpt
 		Where(tags.Id().Eq(Val(*dto.Id))), nil
 }
 
-// TagsDtoSelectMany selects tags DTOs
+// TagsDtoSelectMany selects "public"."tags" DTOs
 func TagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.TagsDto]) (builder.SelectJoinQuery[models.TagsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -978,14 +978,14 @@ func TagsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.TagsDto])
 		Select(columns...), nil
 }
 
-// TagsDtoDeleteOne deletes a single tags DTO by primary key
+// TagsDtoDeleteOne deletes a single "public"."tags" DTO by primary key
 func TagsDtoDeleteOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.DeleteFinalizeQuery[models.TagsDto] {
 	return tags.NewQuery(pool).
 		Delete().
 		Where(tags.Id().Eq(Val(*dto.Id)))
 }
 
-// TagsDtoDeleteMany deletes tags DTOs by primary key
+// TagsDtoDeleteMany deletes "public"."tags" DTOs by primary key
 func TagsDtoDeleteMany(pool *pgxpool.Pool, dtos models.TagsDtos) builder.DeleteFinalizeQuery[models.TagsDto] {
 	v := tags.As("v", primaryKeyTagsDtoDeleteValueColumns...)
 	return tags.NewQuery(pool).
@@ -1028,7 +1028,7 @@ func (p TagsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) {
 	}
 }
 
-// TagsDtoInsertOne inserts a single tags DTO
+// TagsDtoInsertOne inserts a single "public"."tags" DTO
 func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFinalizeQuery[models.TagsDto] {
 	return tags.NewQuery(pool).
 		Insert(
@@ -1039,7 +1039,7 @@ func TagsDtoInsertOne(pool *pgxpool.Pool, dto *models.TagsDto) builder.InsertFin
 		Returning(tags.Id())
 }
 
-// TagsDtoInsertMany inserts multiple tags DTOs
+// TagsDtoInsertMany inserts multiple "public"."tags" DTOs
 func TagsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.TagsDto) builder.InsertFinalizeQuery[models.TagsDto] {
 	return tags.NewQuery(pool).
 		Insert(
@@ -1261,7 +1261,7 @@ func (p TagsDtoUpdateValuesProvider) ColumnSQLType(column int) (string, error) {
 	return p.castTypes[column], nil
 }
 
-// UsersDtoSelectOne selects a single users DTO by primary key
+// UsersDtoSelectOne selects a single "public"."users" DTO by primary key
 func UsersDtoSelectOne(pool *pgxpool.Pool, dto *models.UsersDto, opts ...SelectOption[models.UsersDto]) (builder.SelectFinalizeQuery[models.UsersDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -1276,7 +1276,7 @@ func UsersDtoSelectOne(pool *pgxpool.Pool, dto *models.UsersDto, opts ...SelectO
 		Where(users.Id().Eq(Val(*dto.Id))), nil
 }
 
-// UsersDtoSelectMany selects users DTOs
+// UsersDtoSelectMany selects "public"."users" DTOs
 func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto]) (builder.SelectJoinQuery[models.UsersDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -1290,14 +1290,14 @@ func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto
 		Select(columns...), nil
 }
 
-// UsersDtoDeleteOne deletes a single users DTO by primary key
+// UsersDtoDeleteOne deletes a single "public"."users" DTO by primary key
 func UsersDtoDeleteOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.DeleteFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
 		Delete().
 		Where(users.Id().Eq(Val(*dto.Id)))
 }
 
-// UsersDtoDeleteMany deletes users DTOs by primary key
+// UsersDtoDeleteMany deletes "public"."users" DTOs by primary key
 func UsersDtoDeleteMany(pool *pgxpool.Pool, dtos models.UsersDtos) builder.DeleteFinalizeQuery[models.UsersDto] {
 	v := users.As("v", primaryKeyUsersDtoDeleteValueColumns...)
 	return users.NewQuery(pool).
@@ -1340,7 +1340,7 @@ func (p UsersDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) 
 	}
 }
 
-// UsersDtoInsertOne inserts a single users DTO
+// UsersDtoInsertOne inserts a single "public"."users" DTO
 func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
 		Insert(
@@ -1353,7 +1353,7 @@ func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertF
 		Returning(users.Id())
 }
 
-// UsersDtoInsertMany inserts multiple users DTOs
+// UsersDtoInsertMany inserts multiple "public"."users" DTOs
 func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
 		Insert(

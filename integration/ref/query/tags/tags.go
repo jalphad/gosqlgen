@@ -12,7 +12,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
 )
 
-// NewQuery returns a query builder for tags
+// NewQuery returns a query builder for "public"."tags"
 func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.TagsDto] {
 	return builder.NewKnownTableBuilder[models.TagsDto](pool, Table())
 }
@@ -22,23 +22,23 @@ var Into = intoTagsDto{}
 type intoTagsDto struct{}
 
 func Table() *ast.TableSource {
-	return ast.NewTableSource("tags")
+	return ast.NewTableSource(`"public"."tags"`)
 }
 
 func Id() *ast.IntColumnProjection[models.TagsDto, **int64] {
-	return newId("tags", func(t *models.TagsDto) **int64 {
+	return newId(`"public"."tags"`, func(t *models.TagsDto) **int64 {
 		return &t.Id
 	})
 }
 
 func Name() *ast.StringColumnProjection[models.TagsDto, *string] {
-	return newName("tags", func(t *models.TagsDto) *string {
+	return newName(`"public"."tags"`, func(t *models.TagsDto) *string {
 		return &t.Name
 	})
 }
 
 func Slug() *ast.StringColumnProjection[models.TagsDto, *string] {
-	return newSlug("tags", func(t *models.TagsDto) *string {
+	return newSlug(`"public"."tags"`, func(t *models.TagsDto) *string {
 		return &t.Slug
 	})
 }
@@ -80,21 +80,21 @@ func For[T any](dest func(*T) *models.TagsDto) forTagsDto[T] {
 }
 
 func (f forTagsDto[T]) Id() *ast.IntColumnProjection[T, **int64] {
-	return newId("tags", func(t *T) **int64 {
+	return newId(`"public"."tags"`, func(t *T) **int64 {
 		dto := f.dest(t)
 		return &dto.Id
 	})
 }
 
 func (f forTagsDto[T]) Name() *ast.StringColumnProjection[T, *string] {
-	return newName("tags", func(t *T) *string {
+	return newName(`"public"."tags"`, func(t *T) *string {
 		dto := f.dest(t)
 		return &dto.Name
 	})
 }
 
 func (f forTagsDto[T]) Slug() *ast.StringColumnProjection[T, *string] {
-	return newSlug("tags", func(t *T) *string {
+	return newSlug(`"public"."tags"`, func(t *T) *string {
 		dto := f.dest(t)
 		return &dto.Slug
 	})
@@ -113,7 +113,7 @@ func (intoTagsDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.T
 		columns = defaultPostsColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression(`"public"."posts"`, "id")), columns...),
 		func(t *models.TagsDto) *[]models.PostsDto {
 			return &t.Posts
 		},
@@ -122,15 +122,15 @@ func (intoTagsDto) Posts(columns ...ast.NamedExpression) ast.Projection[models.T
 
 func defaultPostsColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
-		ast.NewIntColumnExpression("posts", "id"),
-		ast.NewUUIDColumnExpression("posts", "user_id"),
-		ast.NewStringColumnExpression("posts", "title"),
-		ast.NewStringColumnExpression("posts", "content"),
-		ast.NewStringColumnExpression("posts", "status"),
-		ast.NewTimestampColumnExpression("posts", "published_at"),
-		ast.NewIntColumnExpression("posts", "view_count"),
-		ast.NewTimestampColumnExpression("posts", "created_at"),
-		ast.NewTimestampColumnExpression("posts", "updated_at"),
+		ast.NewIntColumnExpression(`"public"."posts"`, "id"),
+		ast.NewUUIDColumnExpression(`"public"."posts"`, "user_id"),
+		ast.NewStringColumnExpression(`"public"."posts"`, "title"),
+		ast.NewStringColumnExpression(`"public"."posts"`, "content"),
+		ast.NewStringColumnExpression(`"public"."posts"`, "status"),
+		ast.NewTimestampColumnExpression(`"public"."posts"`, "published_at"),
+		ast.NewIntColumnExpression(`"public"."posts"`, "view_count"),
+		ast.NewTimestampColumnExpression(`"public"."posts"`, "created_at"),
+		ast.NewTimestampColumnExpression(`"public"."posts"`, "updated_at"),
 	}
 }
 
@@ -139,7 +139,7 @@ func (f forTagsDto[T]) Posts(columns ...ast.NamedExpression) ast.Projection[T] {
 		columns = defaultPostsColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		expr.JsonAggObject("posts", expr.IsNotNull(ast.NewIntColumnExpression(`"public"."posts"`, "id")), columns...),
 		func(t *T) *[]models.PostsDto {
 			dto := f.dest(t)
 			return &dto.Posts

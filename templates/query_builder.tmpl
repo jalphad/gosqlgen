@@ -199,7 +199,7 @@ func (q *{{ .BuilderName }}) buildQuery() (string, []any) {
     query.WriteString("SELECT ")
     if len(q.selectFields) == 0 {
         // Select all fields from main table
-        query.WriteString("{{ .TableName }}.*")
+        query.WriteString(`{{ .TableName }}.*`)
 
         // Select all fields from joined tables
         for tableName := range q.activeJoins {
@@ -215,7 +215,7 @@ func (q *{{ .BuilderName }}) buildQuery() (string, []any) {
         query.WriteString(strings.Join(fields, ", "))
     }
 
-    query.WriteString(" FROM {{ .TableName }}")
+    query.WriteString(` FROM {{ .TableName }}`)
 
     // JOIN clauses
     for _, join := range q.joins {
@@ -441,7 +441,7 @@ func (q *{{ .BuilderName }}) scanInto(rows pgx.Rows, dest *{{ .StructName }}) er
 
         // Add joined table columns if active
         {{- range $fk := .ForeignKeys }}
-        if q.activeJoins["{{ $fk.ReferencedTable }}"] {
+        if q.activeJoins[`{{ $fk.ReferencedTable }}`] {
             joined{{ $fk.JoinedFieldName }} := &{{ $fk.ReferencedStructName }}{}
             {{- range $fk.ReferencedColumns }}
             scanDest = append(scanDest, &joined{{ $fk.JoinedFieldName }}.{{ .FieldName }})
@@ -528,7 +528,7 @@ func (q *{{ .BuilderName }}) getScanDestForField(field *FieldRef, dest *{{ .Stru
     {{- end }}
 
     // Check if alias matches a regular table column
-    if field.Table == "{{ .TableName }}" {
+    if field.Table == `{{ .TableName }}` {
         {{- range .Columns }}
         {{ template "ifAliasLower" . }}
             return &dest.{{ .FieldName }}, nil
@@ -539,7 +539,7 @@ func (q *{{ .BuilderName }}) getScanDestForField(field *FieldRef, dest *{{ .Stru
     {{- if .ForeignKeys }}
     // Check if it matches a joined table column
     {{- range $fk := .ForeignKeys }}
-    if field.Table == "{{ $fk.ReferencedTable }}" && q.activeJoins["{{ $fk.ReferencedTable }}"] {
+    if field.Table == `{{ $fk.ReferencedTable }}` && q.activeJoins[`{{ $fk.ReferencedTable }}`] {
         if dest.{{ $fk.JoinedFieldName }} == nil {
             dest.{{ $fk.JoinedFieldName }} = &{{ $fk.ReferencedStructName }}{}
         }
@@ -595,7 +595,7 @@ func (q *{{ .BuilderName }}) Insert(ctx context.Context, record *{{ .StructName 
         return fmt.Errorf("no values provided for insert")
     }
 
-    query := fmt.Sprintf("INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}",
+    query := fmt.Sprintf(`INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}`,
         strings.Join(columns, ", "),
         strings.Join(placeholders, ", "))
 
@@ -651,7 +651,7 @@ func (q *{{ .BuilderName }}) InsertBatch(ctx context.Context, records []*{{ .Str
         {{- end }}
 
         if len(columns) > 0 {
-            query := fmt.Sprintf("INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}",
+            query := fmt.Sprintf(`INSERT INTO {{ .TableName }} (%s) VALUES (%s){{ if .PrimaryKey }} RETURNING {{ .PrimaryKey }}{{ end }}`,
                 strings.Join(columns, ", "),
                 strings.Join(placeholders, ", "))
             batch.Queue(query, args...)
@@ -689,9 +689,9 @@ func (q *{{ .BuilderName }}) InsertBatch(ctx context.Context, records []*{{ .Str
 // Update updates a record using its primary key
 func (q *{{ .BuilderName }}) Update(ctx context.Context, record *{{ .StructName }}) error {
     {{ if not .PrimaryKey -}}
-    return fmt.Errorf("table {{ .TableName }} has no primary key")
+    return fmt.Errorf(`table {{ .TableName }} has no primary key`)
     {{- else -}}
-    query := "UPDATE {{ .TableName }} SET " +
+    query := `UPDATE {{ .TableName }} SET ` +
         "{{- range $i, $col := .NonPrimaryColumns }}{{if $i}}, {{end}}{{ $col.ColumnName }} = ${{ add $i 2 }}{{- end }}" +
         " WHERE {{ .PrimaryKey }} = $1"
 
@@ -736,7 +736,7 @@ func (q *{{ .BuilderName }}) UpdateFields(ctx context.Context, updates map[*Fiel
     var args []any
     argIndex := 1
 
-    query.WriteString("UPDATE {{ .TableName }} SET ")
+    query.WriteString(`UPDATE {{ .TableName }} SET `)
 
     setClauses := make([]string, 0, len(updates))
     for field, value := range updates {
@@ -776,7 +776,7 @@ func (q *{{ .BuilderName }}) Delete(ctx context.Context) (int64, error) {
     var args []any
     argIndex := 1
 
-    query.WriteString("DELETE FROM {{ .TableName }}")
+    query.WriteString(`DELETE FROM {{ .TableName }}`)
 
     // Add WHERE conditions
     if len(q.conditions) > 0 {

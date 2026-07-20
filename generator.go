@@ -20,6 +20,16 @@ type Generator struct {
 	parser          *parser.Parser
 	packageName     string
 	packageRootPath string
+	schemas         []string
+	tables          []*parser.Table
+	tableInfo       map[*parser.Table]generatedTableInfo
+}
+
+type generatedTableInfo struct {
+	packageName string
+	baseName    string
+	plainName   string
+	sqlName     string
 }
 
 // NewGenerator creates a new code generator
@@ -41,6 +51,12 @@ func (g *Generator) SetPackagePath(path string) {
 	g.packageRootPath = path
 }
 
+// SetSchemas limits generation to tables in the provided schemas.
+// An empty list generates tables from every parsed schema.
+func (g *Generator) SetSchemas(schemas []string) {
+	g.schemas = append([]string(nil), schemas...)
+}
+
 func (g *Generator) generatedPackagePath() string {
 	if g.packageRootPath == "" {
 		return g.packageName
@@ -54,6 +70,10 @@ func (g *Generator) generatedPackagePath() string {
 // GenerateFiles generates Go code for all parsed tables as separate files
 // Returns a map of filename to file content
 func (g *Generator) GenerateFiles() (map[string]string, error) {
+	if err := g.prepareTables(); err != nil {
+		return nil, err
+	}
+
 	files := make(map[string]string)
 
 	// Generate common.gen.go with utility types
@@ -69,7 +89,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	files["models/common.gen.go"] = string(formatted)
 
 	// Generate a file for each table
-	for _, table := range g.parser.GetTables() {
+	for _, table := range g.tables {
 		tableBuf := bytes.Buffer{}
 		// Table struct
 		if err = g.generateTableStruct(&tableBuf, table); err != nil {
@@ -77,7 +97,7 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 		}
 
 		// Format to generated code
-		filename := fmt.Sprintf("models/%s.gen.go", table.Name)
+		filename := fmt.Sprintf("models/%s.gen.go", g.info(table).packageName)
 		formatted, err = g.format(filename, tableBuf.Bytes())
 		if err != nil {
 			return nil, err
@@ -132,6 +152,80 @@ func (g *Generator) GenerateFiles() (map[string]string, error) {
 	return files, nil
 }
 
+func (g *Generator) prepareTables() error {
+	requested := make(map[string]struct{}, len(g.schemas))
+	for _, schema := range g.schemas {
+		if schema != "" {
+			requested[schema] = struct{}{}
+		}
+	}
+
+	found := make(map[string]bool, len(requested))
+	tables := make([]*parser.Table, 0, len(g.parser.GetTables()))
+	for _, table := range g.parser.GetTables() {
+		if len(requested) > 0 {
+			if _, ok := requested[table.Schema]; !ok {
+				continue
+			}
+			found[table.Schema] = true
+		}
+		tables = append(tables, table)
+	}
+	for schema := range requested {
+		if !found[schema] {
+			return fmt.Errorf("configured schema %q has no parsed tables", schema)
+		}
+	}
+
+	sort.Slice(tables, func(i, j int) bool {
+		if tables[i].Schema == tables[j].Schema {
+			return tables[i].Name < tables[j].Name
+		}
+		return tables[i].Schema < tables[j].Schema
+	})
+	nameCounts := make(map[string]int, len(tables))
+	for _, table := range tables {
+		nameCounts[table.Name]++
+	}
+
+	g.tables = tables
+	g.tableInfo = make(map[*parser.Table]generatedTableInfo, len(tables))
+	for _, table := range tables {
+		apiName := table.Name
+		if nameCounts[table.Name] > 1 {
+			apiName = table.Schema + "_" + table.Name
+		}
+		g.tableInfo[table] = generatedTableInfo{
+			packageName: apiName,
+			baseName:    templates.ToPascalCase(apiName),
+			plainName:   table.Schema + "." + table.Name,
+			sqlName:     quoteIdentifier(table.Schema) + "." + quoteIdentifier(table.Name),
+		}
+	}
+	return nil
+}
+
+func (g *Generator) info(table *parser.Table) generatedTableInfo {
+	return g.tableInfo[table]
+}
+
+func (g *Generator) selectedReferencedTable(fk parser.ForeignKey) (*parser.Table, bool) {
+	schema := fk.ReferencedSchema
+	if schema == "" {
+		schema = "public"
+	}
+	table, ok := g.parser.GetTable(schema + "." + fk.ReferencedTableName)
+	if !ok {
+		return nil, false
+	}
+	_, selected := g.tableInfo[table]
+	return table, selected
+}
+
+func quoteIdentifier(identifier string) string {
+	return `"` + strings.ReplaceAll(identifier, `"`, `""`) + `"`
+}
+
 // generateQueryPackageHelpers generates functions.gen.go, grammar.gen.go, helpers.gen.go, queries.gen.go
 func (g *Generator) generateQueryPackageHelpers(files map[string]string) error {
 	// Generate functions.gen.go
@@ -179,12 +273,13 @@ func (g *Generator) generateQueryPackageHelpers(files map[string]string) error {
 
 // generateQueryFunctions generates InsertOne and InsertMany functions for each table
 func (g *Generator) generateQueryFunctions(files map[string]string) error {
-	tables := make([]templates.QueryTableData, 0, len(g.parser.GetTables()))
+	tables := make([]templates.QueryTableData, 0, len(g.tables))
 
-	for _, table := range g.parser.GetTables() {
-		baseName := templates.ToPascalCase(table.Name)
+	for _, table := range g.tables {
+		info := g.info(table)
+		baseName := info.baseName
 		structName := baseName + "Dto"
-		packageName := table.Name
+		packageName := info.packageName
 		receiverName := strings.ToLower(baseName[0:1])
 
 		// Collect ALL primary key columns (support composite PKs)
@@ -249,7 +344,7 @@ func (g *Generator) generateQueryFunctions(files map[string]string) error {
 
 		tables = append(tables, templates.QueryTableData{
 			PackageName:       packageName,
-			TableName:         table.Name,
+			TableName:         info.sqlName,
 			StructName:        structName,
 			ReceiverName:      receiverName,
 			InsertColumns:     insertColumns,
@@ -283,7 +378,7 @@ func (g *Generator) generateQueryFunctions(files map[string]string) error {
 
 // generateTableQueryPackages generates per-table query packages
 func (g *Generator) generateTableQueryPackages(files map[string]string) error {
-	for _, table := range g.parser.GetTables() {
+	for _, table := range g.tables {
 		// Prepare template data
 		fields := make([]templates.StructField, 0, len(table.Columns))
 		for _, col := range table.Columns {
@@ -302,12 +397,14 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 			})
 		}
 
-		baseName := templates.ToPascalCase(table.Name)
+		info := g.info(table)
+		baseName := info.baseName
 		reverseRelations := g.reverseRelations(table)
 		manyToManyRels := g.manyToManyRelations(table)
 		data := templates.TableStructData{
 			StructName:       baseName + "Dto",
-			TableName:        table.Name,
+			PackageName:      info.packageName,
+			TableName:        info.sqlName,
 			ReceiverName:     strings.ToLower(baseName[:1]),
 			Fields:           fields,
 			ReverseRelFields: reverseRelations,
@@ -322,7 +419,7 @@ func (g *Generator) generateTableQueryPackages(files map[string]string) error {
 		}
 
 		// Add to files map with query package path
-		filename := fmt.Sprintf("query/%s/%s.go", table.Name, table.Name)
+		filename := fmt.Sprintf("query/%s/%s.go", info.packageName, info.packageName)
 		formatted, err := g.format(filename, []byte(content))
 		if err != nil {
 			return fmt.Errorf("failed to format %s: %w", filename, err)
@@ -345,14 +442,16 @@ func (g *Generator) generateCommonTypes(buf *bytes.Buffer) error {
 
 // generateTableStruct generates a struct for a table
 func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) error {
-	baseName := templates.ToPascalCase(table.Name)
+	info := g.info(table)
+	baseName := info.baseName
 	structName := baseName + "Dto"
 	receiverName := strings.ToLower(baseName[0:1])
 
 	// Prepare template data
 	data := templates.TableStructData{
 		StructName:         structName,
-		TableName:          table.Name,
+		PackageName:        info.packageName,
+		TableName:          info.sqlName,
 		ReceiverName:       receiverName,
 		Fields:             make([]templates.StructField, 0, len(table.Columns)),
 		JoinedFields:       make([]templates.JoinedField, 0, len(table.ForeignKeys)),
@@ -406,12 +505,13 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 		joinedFieldName := templates.ToPascalCase(fk.Column) + "Ref"
 
 		// Get referenced table to build struct type
-		referencedTable, ok := g.parser.GetTable(fk.ReferencedTableName)
+		referencedTable, ok := g.selectedReferencedTable(fk)
 		if !ok {
 			continue // Skip if referenced table doesn't exist
 		}
 
-		referencedStructName := templates.ToPascalCase(referencedTable.Name) + "Dto"
+		referencedInfo := g.info(referencedTable)
+		referencedStructName := referencedInfo.baseName + "Dto"
 
 		var referencedColumns []templates.Column
 		for _, col := range referencedTable.Columns {
@@ -427,13 +527,14 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 		}
 
 		data.JoinedFields = append(data.JoinedFields, templates.JoinedField{
-			FieldName:         joinedFieldName,
-			GoType:            "*" + referencedStructName,
-			StructName:        referencedStructName,
-			ReferencedTable:   fk.ReferencedTableName,
-			FKColumn:          fk.Column,
-			ReferencedColumn:  fk.ReferencedColumn,
-			ReferencedColumns: referencedColumns,
+			FieldName:          joinedFieldName,
+			GoType:             "*" + referencedStructName,
+			StructName:         referencedStructName,
+			ReferencedTable:    referencedInfo.sqlName,
+			ReferencedTableTag: referencedInfo.plainName,
+			FKColumn:           fk.Column,
+			ReferencedColumn:   fk.ReferencedColumn,
+			ReferencedColumns:  referencedColumns,
 		})
 	}
 
@@ -453,14 +554,15 @@ func (g *Generator) generateTableStruct(buf *bytes.Buffer, table *parser.Table) 
 func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 	// Prepare template data
 	data := templates.DBWrapperData{
-		Tables:      make([]templates.TableMethod, 0, len(g.parser.GetTables())),
+		Tables:      make([]templates.TableMethod, 0, len(g.tables)),
 		PackagePath: g.generatedPackagePath(),
 		PackageName: g.packageName,
 	}
 
 	// Generate methods for each table
-	for _, table := range g.parser.GetTables() {
-		tableName := templates.ToPascalCase(table.Name)
+	for _, table := range g.tables {
+		info := g.info(table)
+		tableName := info.baseName
 		methodName := tableName
 		builderName := tableName + "Query"
 		structName := tableName + "Dto"
@@ -468,7 +570,8 @@ func (g *Generator) generateDatabaseWrapper(buf *bytes.Buffer) error {
 		data.Tables = append(data.Tables, templates.TableMethod{
 			MethodName:  methodName,
 			BuilderName: builderName,
-			TableName:   table.Name,
+			PackageName: info.packageName,
+			TableName:   info.sqlName,
 			StructName:  structName,
 		})
 	}
@@ -530,8 +633,16 @@ func (g *Generator) format(fileName string, in []byte) ([]byte, error) {
 func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRelField {
 	ret := make([]templates.ReverseRelField, 0, len(table.ReverseRelationships))
 	for _, reverseRel := range table.ReverseRelationships {
-		fromTableBaseName := templates.ToPascalCase(reverseRel.FromTable.Name)
+		fromInfo, selected := g.tableInfo[reverseRel.FromTable]
+		if !selected {
+			continue
+		}
+		fromTableBaseName := fromInfo.baseName
 		fromStructName := fromTableBaseName + "Dto"
+		fieldName := reverseRel.FieldName
+		if fromInfo.baseName != templates.ToPascalCase(reverseRel.FromTable.Name) {
+			fieldName = fromInfo.baseName + "By" + templates.ToPascalCase(reverseRel.FKColumn)
+		}
 
 		var fromPKField string
 		fromColumns := make([]templates.Column, len(reverseRel.FromTable.Columns))
@@ -551,13 +662,14 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 		}
 
 		ret = append(ret, templates.ReverseRelField{
-			FieldName:   reverseRel.FieldName,
-			GoType:      "[]" + fromStructName,
-			StructName:  fromStructName,
-			FromTable:   reverseRel.FromTable.Name,
-			FKColumn:    reverseRel.FKColumn,
-			FromPKField: fromPKField,
-			FromColumns: fromColumns,
+			FieldName:    fieldName,
+			GoType:       "[]" + fromStructName,
+			StructName:   fromStructName,
+			FromTable:    fromInfo.sqlName,
+			FromTableTag: fromInfo.plainName,
+			FKColumn:     reverseRel.FKColumn,
+			FromPKField:  fromPKField,
+			FromColumns:  fromColumns,
 		})
 	}
 
@@ -571,8 +683,17 @@ func (g *Generator) reverseRelations(table *parser.Table) []templates.ReverseRel
 func (g *Generator) manyToManyRelations(table *parser.Table) []templates.ManyToManyField {
 	ret := make([]templates.ManyToManyField, 0, len(table.ManyToManyRels))
 	for _, m2m := range table.ManyToManyRels {
-		refTableBaseName := templates.ToPascalCase(m2m.ReferencedTable.Name)
+		refInfo, refSelected := g.tableInfo[m2m.ReferencedTable]
+		junctionInfo, junctionSelected := g.tableInfo[m2m.JunctionTable]
+		if !refSelected || !junctionSelected {
+			continue
+		}
+		refTableBaseName := refInfo.baseName
 		refStructName := refTableBaseName + "Dto"
+		fieldName := m2m.FieldName
+		if refInfo.baseName != templates.ToPascalCase(m2m.ReferencedTable.Name) {
+			fieldName = refInfo.baseName
+		}
 
 		var refPKField string
 		referencedColumns := make([]templates.Column, len(m2m.ReferencedTable.Columns))
@@ -592,13 +713,14 @@ func (g *Generator) manyToManyRelations(table *parser.Table) []templates.ManyToM
 		}
 
 		ret = append(ret, templates.ManyToManyField{
-			FieldName:         m2m.FieldName,
+			FieldName:         fieldName,
 			GoType:            "[]" + refStructName,
 			StructName:        refStructName,
-			JunctionTable:     m2m.JunctionTable.Name,
+			JunctionTable:     junctionInfo.sqlName,
+			JunctionTableTag:  junctionInfo.plainName,
 			LeftFKColumn:      m2m.LeftFKColumn,
 			RightFKColumn:     m2m.RightFKColumn,
-			ReferencedTable:   m2m.ReferencedTable.Name,
+			ReferencedTable:   refInfo.sqlName,
 			ReferencedPKField: refPKField,
 			ReferencedColumns: referencedColumns,
 		})

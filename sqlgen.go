@@ -51,6 +51,13 @@ func (s *SQLGen) WithPackagePath(path string) *SQLGen {
 	return s
 }
 
+// WithSchemas limits generation to the provided PostgreSQL schemas.
+// With no schemas configured, all parsed tables are generated.
+func (s *SQLGen) WithSchemas(schemas ...string) *SQLGen {
+	s.generator.SetSchemas(schemas)
+	return s
+}
+
 // ParseFile parses SQL from a file
 func (s *SQLGen) ParseFile(filename string) error {
 	content, err := os.ReadFile(filename)
@@ -106,6 +113,7 @@ type Config struct {
 	PackageName    string
 	PackagePath    string
 	OutputPath     string
+	Schemas        []string
 	UseNullTypes   bool
 	UseGORM        bool
 	UseSquirrel    bool
@@ -126,6 +134,10 @@ func NewWithConfig(config Config) *SQLGen {
 
 	if config.OutputPath != "" {
 		gen.WithOutputPath(config.OutputPath)
+	}
+
+	if len(config.Schemas) > 0 {
+		gen.WithSchemas(config.Schemas...)
 	}
 
 	// Additional configuration can be applied here

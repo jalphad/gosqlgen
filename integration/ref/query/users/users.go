@@ -15,7 +15,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/expr"
 )
 
-// NewQuery returns a query builder for users
+// NewQuery returns a query builder for "public"."users"
 func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto] {
 	return builder.NewKnownTableBuilder[models.UsersDto](pool, Table())
 }
@@ -25,53 +25,53 @@ var Into = intoUsersDto{}
 type intoUsersDto struct{}
 
 func Table() *ast.TableSource {
-	return ast.NewTableSource("users")
+	return ast.NewTableSource(`"public"."users"`)
 }
 
 func Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
-	return newId("users", func(u *models.UsersDto) **uuid.UUID {
+	return newId(`"public"."users"`, func(u *models.UsersDto) **uuid.UUID {
 		return &u.Id
 	})
 }
 
 func Username() *ast.StringColumnProjection[models.UsersDto, *string] {
-	return newUsername("users", func(u *models.UsersDto) *string {
+	return newUsername(`"public"."users"`, func(u *models.UsersDto) *string {
 		return &u.Username
 	})
 }
 
 func Email() *ast.StringColumnProjection[models.UsersDto, *string] {
-	return newEmail("users", func(u *models.UsersDto) *string {
+	return newEmail(`"public"."users"`, func(u *models.UsersDto) *string {
 		return &u.Email
 	})
 }
 
 func FullName() *ast.StringColumnProjection[models.UsersDto, **string] {
-	return newFullName("users", func(u *models.UsersDto) **string {
+	return newFullName(`"public"."users"`, func(u *models.UsersDto) **string {
 		return &u.FullName
 	})
 }
 
 func CreatedAt() *ast.TimestampColumnProjection[models.UsersDto, **time.Time] {
-	return newCreatedAt("users", func(u *models.UsersDto) **time.Time {
+	return newCreatedAt(`"public"."users"`, func(u *models.UsersDto) **time.Time {
 		return &u.CreatedAt
 	})
 }
 
 func UpdatedAt() *ast.TimestampColumnProjection[models.UsersDto, **time.Time] {
-	return newUpdatedAt("users", func(u *models.UsersDto) **time.Time {
+	return newUpdatedAt(`"public"."users"`, func(u *models.UsersDto) **time.Time {
 		return &u.UpdatedAt
 	})
 }
 
 func IsActive() *ast.BoolColumnProjection[models.UsersDto, **bool] {
-	return newIsActive("users", func(u *models.UsersDto) **bool {
+	return newIsActive(`"public"."users"`, func(u *models.UsersDto) **bool {
 		return &u.IsActive
 	})
 }
 
 func Attributes() *ast.JsonColumnProjection[models.UsersDto, **json.RawMessage] {
-	return newAttributes("users", func(u *models.UsersDto) **json.RawMessage {
+	return newAttributes(`"public"."users"`, func(u *models.UsersDto) **json.RawMessage {
 		return &u.Attributes
 	})
 }
@@ -143,56 +143,56 @@ func For[T any](dest func(*T) *models.UsersDto) forUsersDto[T] {
 }
 
 func (f forUsersDto[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
-	return newId("users", func(t *T) **uuid.UUID {
+	return newId(`"public"."users"`, func(t *T) **uuid.UUID {
 		dto := f.dest(t)
 		return &dto.Id
 	})
 }
 
 func (f forUsersDto[T]) Username() *ast.StringColumnProjection[T, *string] {
-	return newUsername("users", func(t *T) *string {
+	return newUsername(`"public"."users"`, func(t *T) *string {
 		dto := f.dest(t)
 		return &dto.Username
 	})
 }
 
 func (f forUsersDto[T]) Email() *ast.StringColumnProjection[T, *string] {
-	return newEmail("users", func(t *T) *string {
+	return newEmail(`"public"."users"`, func(t *T) *string {
 		dto := f.dest(t)
 		return &dto.Email
 	})
 }
 
 func (f forUsersDto[T]) FullName() *ast.StringColumnProjection[T, **string] {
-	return newFullName("users", func(t *T) **string {
+	return newFullName(`"public"."users"`, func(t *T) **string {
 		dto := f.dest(t)
 		return &dto.FullName
 	})
 }
 
 func (f forUsersDto[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	return newCreatedAt("users", func(t *T) **time.Time {
+	return newCreatedAt(`"public"."users"`, func(t *T) **time.Time {
 		dto := f.dest(t)
 		return &dto.CreatedAt
 	})
 }
 
 func (f forUsersDto[T]) UpdatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	return newUpdatedAt("users", func(t *T) **time.Time {
+	return newUpdatedAt(`"public"."users"`, func(t *T) **time.Time {
 		dto := f.dest(t)
 		return &dto.UpdatedAt
 	})
 }
 
 func (f forUsersDto[T]) IsActive() *ast.BoolColumnProjection[T, **bool] {
-	return newIsActive("users", func(t *T) **bool {
+	return newIsActive(`"public"."users"`, func(t *T) **bool {
 		dto := f.dest(t)
 		return &dto.IsActive
 	})
 }
 
 func (f forUsersDto[T]) Attributes() *ast.JsonColumnProjection[T, **json.RawMessage] {
-	return newAttributes("users", func(t *T) **json.RawMessage {
+	return newAttributes(`"public"."users"`, func(t *T) **json.RawMessage {
 		dto := f.dest(t)
 		return &dto.Attributes
 	})
@@ -216,7 +216,7 @@ func (intoUsersDto) CommentsByUserId(columns ...ast.NamedExpression) ast.Project
 		columns = defaultCommentsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("commentsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		expr.JsonAggObject("commentsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression(`"public"."comments"`, "id")), columns...),
 		func(u *models.UsersDto) *[]models.CommentsDto {
 			return &u.CommentsByUserId
 		},
@@ -225,13 +225,13 @@ func (intoUsersDto) CommentsByUserId(columns ...ast.NamedExpression) ast.Project
 
 func defaultCommentsByUserIdColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
-		ast.NewIntColumnExpression("comments", "id"),
-		ast.NewIntColumnExpression("comments", "post_id"),
-		ast.NewUUIDColumnExpression("comments", "user_id"),
-		ast.NewStringColumnExpression("comments", "content"),
-		ast.NewBoolColumnExpression("comments", "is_approved"),
-		ast.NewTimestampColumnExpression("comments", "created_at"),
-		ast.NewDateColumnExpression("comments", "test_date"),
+		ast.NewIntColumnExpression(`"public"."comments"`, "id"),
+		ast.NewIntColumnExpression(`"public"."comments"`, "post_id"),
+		ast.NewUUIDColumnExpression(`"public"."comments"`, "user_id"),
+		ast.NewStringColumnExpression(`"public"."comments"`, "content"),
+		ast.NewBoolColumnExpression(`"public"."comments"`, "is_approved"),
+		ast.NewTimestampColumnExpression(`"public"."comments"`, "created_at"),
+		ast.NewDateColumnExpression(`"public"."comments"`, "test_date"),
 	}
 }
 
@@ -240,7 +240,7 @@ func (intoUsersDto) PostsByUserId(columns ...ast.NamedExpression) ast.Projection
 		columns = defaultPostsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("postsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		expr.JsonAggObject("postsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression(`"public"."posts"`, "id")), columns...),
 		func(u *models.UsersDto) *[]models.PostsDto {
 			return &u.PostsByUserId
 		},
@@ -249,15 +249,15 @@ func (intoUsersDto) PostsByUserId(columns ...ast.NamedExpression) ast.Projection
 
 func defaultPostsByUserIdColumns() []ast.NamedExpression {
 	return []ast.NamedExpression{
-		ast.NewIntColumnExpression("posts", "id"),
-		ast.NewUUIDColumnExpression("posts", "user_id"),
-		ast.NewStringColumnExpression("posts", "title"),
-		ast.NewStringColumnExpression("posts", "content"),
-		ast.NewStringColumnExpression("posts", "status"),
-		ast.NewTimestampColumnExpression("posts", "published_at"),
-		ast.NewIntColumnExpression("posts", "view_count"),
-		ast.NewTimestampColumnExpression("posts", "created_at"),
-		ast.NewTimestampColumnExpression("posts", "updated_at"),
+		ast.NewIntColumnExpression(`"public"."posts"`, "id"),
+		ast.NewUUIDColumnExpression(`"public"."posts"`, "user_id"),
+		ast.NewStringColumnExpression(`"public"."posts"`, "title"),
+		ast.NewStringColumnExpression(`"public"."posts"`, "content"),
+		ast.NewStringColumnExpression(`"public"."posts"`, "status"),
+		ast.NewTimestampColumnExpression(`"public"."posts"`, "published_at"),
+		ast.NewIntColumnExpression(`"public"."posts"`, "view_count"),
+		ast.NewTimestampColumnExpression(`"public"."posts"`, "created_at"),
+		ast.NewTimestampColumnExpression(`"public"."posts"`, "updated_at"),
 	}
 }
 
@@ -266,7 +266,7 @@ func (f forUsersDto[T]) CommentsByUserId(columns ...ast.NamedExpression) ast.Pro
 		columns = defaultCommentsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("commentsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("comments", "id")), columns...),
+		expr.JsonAggObject("commentsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression(`"public"."comments"`, "id")), columns...),
 		func(t *T) *[]models.CommentsDto {
 			dto := f.dest(t)
 			return &dto.CommentsByUserId
@@ -279,7 +279,7 @@ func (f forUsersDto[T]) PostsByUserId(columns ...ast.NamedExpression) ast.Projec
 		columns = defaultPostsByUserIdColumns()
 	}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("postsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression("posts", "id")), columns...),
+		expr.JsonAggObject("postsbyuserid", expr.IsNotNull(ast.NewIntColumnExpression(`"public"."posts"`, "id")), columns...),
 		func(t *T) *[]models.PostsDto {
 			dto := f.dest(t)
 			return &dto.PostsByUserId

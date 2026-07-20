@@ -800,7 +800,7 @@ func TestIntegration_ManyToMany(t *testing.T) {
 	tag3 := &models.TagsDto{Name: "golang", Slug: "golang"}
 	insertTags(t, tag1, tag2, tag3)
 
-	_, err := pgxPool.Exec(context.Background(), "INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2), ($3, $4), ($5, $6), ($7, $8)", *post1.Id, *tag1.Id, *post1.Id, *tag3.Id, *post2.Id, *tag1.Id, *post2.Id, *tag2.Id)
+	_, err := pgxPool.Exec(context.Background(), "INSERT INTO \"public\".\"post_tags\" (post_id, tag_id) VALUES ($1, $2), ($3, $4), ($5, $6), ($7, $8)", *post1.Id, *tag1.Id, *post1.Id, *tag3.Id, *post2.Id, *tag1.Id, *post2.Id, *tag2.Id)
 	require.NoError(t, err)
 
 	t.Run("Load Tags for Post", func(t *testing.T) {
@@ -886,27 +886,27 @@ func TestIntegration_ExpressionHelpers(t *testing.T) {
 func TestContextTracking(t *testing.T) {
 	t.Run("Simple select without joins", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Id(), users.Username()}, From: users.Table()}
-		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
 		require.NoError(t, err)
 		assert.Contains(t, sql, "SELECT")
-		assert.Contains(t, sql, "FROM users")
-		assert.Equal(t, "users", ctx.PrimaryTable)
+		assert.Contains(t, sql, "FROM \"public\".\"users\"")
+		assert.Equal(t, `"public"."users"`, ctx.PrimaryTable)
 		assert.Nil(t, ctx.JoinedTables)
-		assert.Equal(t, []string{"users"}, ctx.AllTables)
+		assert.Equal(t, []string{`"public"."users"`}, ctx.AllTables)
 		assert.Len(t, ctx.ColumnReferences, 2)
 	})
 
 	t.Run("Select with LEFT JOIN", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title()}, From: users.Table()}
 		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
-		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
 		require.NoError(t, err)
-		assert.Contains(t, sql, "LEFT JOIN posts")
-		assert.Equal(t, ast.JoinLeft, ctx.JoinedTables["posts"])
+		assert.Contains(t, sql, "LEFT JOIN \"public\".\"posts\"")
+		assert.Equal(t, ast.JoinLeft, ctx.JoinedTables[`"public"."posts"`])
 		assert.Len(t, ctx.AllTables, 2)
 	})
 
@@ -914,12 +914,12 @@ func TestContextTracking(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title(), comments.Content()}, From: users.Table()}
 		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, posts.Table(), posts.UserId().Eq(users.Id()))
 		selectStmt.From = selectStmt.From.Join(ast.JoinLeft, comments.Table(), comments.UserId().Eq(users.Id()))
-		ctx := &ast.QueryContext{PrimaryTable: "users"}
+		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
 		require.NoError(t, err)
-		assert.Contains(t, sql, "LEFT JOIN posts")
-		assert.Contains(t, sql, "LEFT JOIN comments")
+		assert.Contains(t, sql, "LEFT JOIN \"public\".\"posts\"")
+		assert.Contains(t, sql, "LEFT JOIN \"public\".\"comments\"")
 		assert.Len(t, ctx.JoinedTables, 2)
 	})
 }
@@ -993,7 +993,7 @@ func TestIntegration_CTEs(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		assert.Equal(t, "WITH inserted_post(id) AS (INSERT INTO posts(user_id, title) VALUES ($1, $2) RETURNING posts.id), inserted_tags(id) AS (INSERT INTO tags(name, slug) VALUES ($3, $4), ($5, $6) RETURNING tags.id), inserted_post_tags(post_id, tag_id) AS (INSERT INTO post_tags(post_id, tag_id) SELECT inserted_post.id, inserted_tags.id FROM inserted_post INNER JOIN inserted_tags ON $7 RETURNING post_tags.post_id, post_tags.tag_id) SELECT inserted_post_tags.post_id, inserted_post_tags.tag_id FROM inserted_post_tags ORDER BY inserted_post_tags.tag_id ASC", sql)
+		assert.Equal(t, "WITH inserted_post(id) AS (INSERT INTO \"public\".\"posts\"(user_id, title) VALUES ($1, $2) RETURNING \"public\".\"posts\".id), inserted_tags(id) AS (INSERT INTO \"public\".\"tags\"(name, slug) VALUES ($3, $4), ($5, $6) RETURNING \"public\".\"tags\".id), inserted_post_tags(post_id, tag_id) AS (INSERT INTO \"public\".\"post_tags\"(post_id, tag_id) SELECT inserted_post.id, inserted_tags.id FROM inserted_post INNER JOIN inserted_tags ON $7 RETURNING \"public\".\"post_tags\".post_id, \"public\".\"post_tags\".tag_id) SELECT inserted_post_tags.post_id, inserted_post_tags.tag_id FROM inserted_post_tags ORDER BY inserted_post_tags.tag_id ASC", sql)
 		assert.Equal(t, []any{post.UserId, post.Title, tagRows[0].Name, tagRows[0].Slug, tagRows[1].Name, tagRows[1].Slug, true}, args)
 		require.Len(t, results, 2)
 		assert.Equal(t, results[0].PostID, results[1].PostID)
@@ -1021,7 +1021,7 @@ func TestIntegration_CTEs(t *testing.T) {
 
 		sql, args, err := queryBuilder.ToSql()
 		require.NoError(t, err)
-		assert.Equal(t, "WITH active_users(id, email) AS (SELECT users.id, users.email FROM users WHERE users.email LIKE $1) SELECT active_users.email FROM active_users WHERE active_users.id = $2", sql)
+		assert.Equal(t, "WITH active_users(id, email) AS (SELECT \"public\".\"users\".id, \"public\".\"users\".email FROM \"public\".\"users\" WHERE \"public\".\"users\".email LIKE $1) SELECT active_users.email FROM active_users WHERE active_users.id = $2", sql)
 		assert.Equal(t, []any{"%@example.com", *corpUser.Id}, args)
 
 		results, err := queryBuilder.Find(context.Background())
@@ -1058,7 +1058,7 @@ func TestIntegration_CTEs(t *testing.T) {
 
 		sql, args, err := queryBuilder.ToSql()
 		require.NoError(t, err)
-		assert.Equal(t, "WITH updated_users(id, email, full_name) AS (UPDATE users SET email = $1, full_name = $2 WHERE users.id = $3 RETURNING users.id, users.email, users.full_name) SELECT updated_users.email, updated_users.full_name FROM updated_users", sql)
+		assert.Equal(t, "WITH updated_users(id, email, full_name) AS (UPDATE \"public\".\"users\" SET email = $1, full_name = $2 WHERE \"public\".\"users\".id = $3 RETURNING \"public\".\"users\".id, \"public\".\"users\".email, \"public\".\"users\".full_name) SELECT updated_users.email, updated_users.full_name FROM updated_users", sql)
 		assert.Equal(t, []any{"new@example.com", &newName, *user.Id}, args)
 
 		results, err := queryBuilder.Find(context.Background())
@@ -1112,7 +1112,7 @@ func TestIntegration_CTEs(t *testing.T) {
 
 		sql, args, err := queryBuilder.ToSql()
 		require.NoError(t, err)
-		assert.Equal(t, "WITH active_users(id, email, count) AS (SELECT users.id, users.email, count(users.id) AS count FROM users WHERE users.email = $1 GROUP BY users.id, users.email) SELECT active_users.id, active_users.email, active_users.count FROM active_users", sql)
+		assert.Equal(t, "WITH active_users(id, email, count) AS (SELECT \"public\".\"users\".id, \"public\".\"users\".email, count(\"public\".\"users\".id) AS count FROM \"public\".\"users\" WHERE \"public\".\"users\".email = $1 GROUP BY \"public\".\"users\".id, \"public\".\"users\".email) SELECT active_users.id, active_users.email, active_users.count FROM active_users", sql)
 		assert.Equal(t, []any{corpUser.Email}, args)
 
 		results, err := queryBuilder.Find(context.Background())

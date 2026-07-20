@@ -74,7 +74,7 @@ func (u UsersDtos) Attributes() ast.OfType[[]json.RawMessage] {
 	return ast.SetType[[]json.RawMessage](ast.NewLiteralExpression(out))
 }
 
-// UsersDto represents the users table
+// UsersDto represents the "public"."users" table
 type UsersDto struct {
 	Id         *uuid.UUID       `db:"id" json:"id"`
 	Username   string           `db:"username" json:"username"`
@@ -86,8 +86,8 @@ type UsersDto struct {
 	Attributes *json.RawMessage `db:"attributes" json:"attributes"`
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
-	CommentsByUserId []CommentsDto `reverse:"comments" fk:"user_id"`
-	PostsByUserId    []PostsDto    `reverse:"posts" fk:"user_id"`
+	CommentsByUserId []CommentsDto `reverse:"public.comments" fk:"user_id"`
+	PostsByUserId    []PostsDto    `reverse:"public.posts" fk:"user_id"`
 }
 
 func (u *UsersDto) UnmarshalJSON(bts []byte) error {

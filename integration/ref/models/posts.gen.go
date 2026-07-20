@@ -82,7 +82,7 @@ func (p PostsDtos) UpdatedAt() ast.OfType[[]time.Time] {
 	return ast.SetType[[]time.Time](ast.NewLiteralExpression(out))
 }
 
-// PostsDto represents the posts table
+// PostsDto represents the "public"."posts" table
 type PostsDto struct {
 	Id          *int64     `db:"id" json:"id"`
 	UserId      uuid.UUID  `db:"user_id" json:"user_id"`
@@ -95,13 +95,13 @@ type PostsDto struct {
 	UpdatedAt   *time.Time `db:"updated_at" json:"updated_at"`
 
 	// Joined relationships (populated when corresponding Join method is called)
-	UserIdRef *UsersDto `joined:"users" fk:"user_id"`
+	UserIdRef *UsersDto `joined:"public.users" fk:"user_id"`
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
-	CommentsByPostId []CommentsDto `reverse:"comments" fk:"post_id"`
+	CommentsByPostId []CommentsDto `reverse:"public.comments" fk:"post_id"`
 
 	// Many-to-many relationships (populated via LoadXxx methods)
-	Tags []TagsDto `manytomany:"post_tags"`
+	Tags []TagsDto `manytomany:"public.post_tags"`
 }
 
 func (p *PostsDto) UnmarshalJSON(bts []byte) error {

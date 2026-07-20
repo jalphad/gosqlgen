@@ -25,27 +25,27 @@ func NewDB(pool *pgxpool.Pool) *DB {
 	return &DB{pool: pool}
 }
 
-// Comments returns a query builder for comments
+// Comments returns a query builder for "public"."comments"
 func (db *DB) Comments() *builder.KnownTableBuilder[models.CommentsDto] {
 	return NewCommentsQuery(db.pool)
 }
 
-// PostTags returns a query builder for post_tags
+// PostTags returns a query builder for "public"."post_tags"
 func (db *DB) PostTags() *builder.KnownTableBuilder[models.PostTagsDto] {
 	return NewPostTagsQuery(db.pool)
 }
 
-// Posts returns a query builder for posts
+// Posts returns a query builder for "public"."posts"
 func (db *DB) Posts() *builder.KnownTableBuilder[models.PostsDto] {
 	return NewPostsQuery(db.pool)
 }
 
-// Tags returns a query builder for tags
+// Tags returns a query builder for "public"."tags"
 func (db *DB) Tags() *builder.KnownTableBuilder[models.TagsDto] {
 	return NewTagsQuery(db.pool)
 }
 
-// Users returns a query builder for users
+// Users returns a query builder for "public"."users"
 func (db *DB) Users() *builder.KnownTableBuilder[models.UsersDto] {
 	return NewUsersQuery(db.pool)
 }
@@ -98,27 +98,27 @@ func (tx *Tx) Users() builder.KnownTableStartQuery[models.UsersDto] {
 	return q.WithTx(tx.tx)
 }
 
-// NewCommentsQuery returns a query builder for comments
+// NewCommentsQuery returns a query builder for "public"."comments"
 func NewCommentsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.CommentsDto] {
 	return comments.NewQuery(pool)
 }
 
-// NewPostTagsQuery returns a query builder for post_tags
+// NewPostTagsQuery returns a query builder for "public"."post_tags"
 func NewPostTagsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostTagsDto] {
 	return post_tags.NewQuery(pool)
 }
 
-// NewPostsQuery returns a query builder for posts
+// NewPostsQuery returns a query builder for "public"."posts"
 func NewPostsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostsDto] {
 	return posts.NewQuery(pool)
 }
 
-// NewTagsQuery returns a query builder for tags
+// NewTagsQuery returns a query builder for "public"."tags"
 func NewTagsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.TagsDto] {
 	return tags.NewQuery(pool)
 }
 
-// NewUsersQuery returns a query builder for users
+// NewUsersQuery returns a query builder for "public"."users"
 func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto] {
 	return users.NewQuery(pool)
 }

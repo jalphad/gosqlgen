@@ -42,21 +42,21 @@ type {{ .StructName }} struct {
 
 	// Joined relationships (populated when corresponding Join method is called)
 {{- range .JoinedFields }}
-	{{ .FieldName }} {{ .GoType }} `joined:"{{ .ReferencedTable }}" fk:"{{ .FKColumn }}"`
+	{{ .FieldName }} {{ .GoType }} `joined:"{{ .ReferencedTableTag }}" fk:"{{ .FKColumn }}"`
 {{- end }}
 {{- end }}
 {{- if .ReverseRelFields }}
 
 	// One-to-many reverse relationships (populated via LoadXxx methods)
 {{- range .ReverseRelFields }}
-	{{ .FieldName }} {{ .GoType }} `reverse:"{{ .FromTable }}" fk:"{{ .FKColumn }}"`
+	{{ .FieldName }} {{ .GoType }} `reverse:"{{ .FromTableTag }}" fk:"{{ .FKColumn }}"`
 {{- end }}
 {{- end }}
 {{- if .ManyToManyFields }}
 
 	// Many-to-many relationships (populated via LoadXxx methods)
 {{- range .ManyToManyFields }}
-	{{ .FieldName }} {{ .GoType }} `manytomany:"{{ .JunctionTable }}"`
+	{{ .FieldName }} {{ .GoType }} `manytomany:"{{ .JunctionTableTag }}"`
 {{- end }}
 {{- end }}
 }

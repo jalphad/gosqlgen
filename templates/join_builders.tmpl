@@ -3,11 +3,11 @@
 func (q *{{ $.BuilderName }}) {{ .JoinMethodName }}() *{{ $.BuilderName }} {
 	q.joins = append(q.joins, JoinClause{
 		Type:       InnerJoin,
-		Table:      "{{ .ReferencedTableName }}",
+		Table:      `{{ .ReferencedTableName }}`,
 		LeftField:  {{ $.BaseName }}Table.{{ .LeftFieldName }}(),
 		RightField: {{ .ReferencedBaseName }}Table.{{ .RightFieldName }}(),
 	})
-	q.activeJoins["{{ .ReferencedTableName }}"] = true
+	q.activeJoins[`{{ .ReferencedTableName }}`] = true
 	return q
 }
 
@@ -15,11 +15,11 @@ func (q *{{ $.BuilderName }}) {{ .JoinMethodName }}() *{{ $.BuilderName }} {
 func (q *{{ $.BuilderName }}) {{ .LeftJoinMethodName }}() *{{ $.BuilderName }} {
 	q.joins = append(q.joins, JoinClause{
 		Type:       LeftJoin,
-		Table:      "{{ .ReferencedTableName }}",
+		Table:      `{{ .ReferencedTableName }}`,
 		LeftField:  {{ $.BaseName }}Table.{{ .LeftFieldName }}(),
 		RightField: {{ .ReferencedBaseName }}Table.{{ .RightFieldName }}(),
 	})
-	q.activeJoins["{{ .ReferencedTableName }}"] = true
+	q.activeJoins[`{{ .ReferencedTableName }}`] = true
 	return q
 }
 

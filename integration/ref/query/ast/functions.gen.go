@@ -99,7 +99,7 @@ type WindowFunction[T MappedTypes] interface {
 }
 
 type windowFunction[T MappedTypes] struct {
-	function  function[T]
+	function   function[T]
 	partition []Expression
 	orderBy   []*OrderByItem
 }

@@ -1,4 +1,4 @@
-package {{ .TableName }}
+package {{ .PackageName }}
 
 import (
 	{{- if usesType .Fields "json.RawMessage" }}
@@ -36,12 +36,12 @@ var Into = into{{ .StructName }}{}
 type into{{ .StructName }} struct{}
 
 func Table() *ast.TableSource {
-	return ast.NewTableSource("{{ .TableName }}")
+	return ast.NewTableSource(`{{ .TableName }}`)
 }
 
 {{ range .Fields }}
 func {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[models.{{ $.StructName }}, {{ scanDestType .GoType }}] {
-	return new{{ .FieldName }}("{{ $.TableName }}", func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
+	return new{{ .FieldName }}(`{{ $.TableName }}`, func({{ $.ReceiverName }} *models.{{ $.StructName }}) {{ scanDestType .GoType }} {
 		return &{{ $.ReceiverName }}.{{ .FieldName }}
 	})
 }
@@ -79,7 +79,7 @@ func For[T any](dest func(*T) *models.{{ .StructName }}) for{{ .StructName }}[T]
 
 {{ range .Fields }}
 func (f for{{ $.StructName }}[T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
-	return new{{ .FieldName }}("{{ $.TableName }}", func(t *T) {{ scanDestType .GoType }} {
+	return new{{ .FieldName }}(`{{ $.TableName }}`, func(t *T) {{ scanDestType .GoType }} {
 		dto := f.dest(t)
 		return &dto.{{ .FieldName }}
 	})
@@ -102,7 +102,7 @@ func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) a
 	}
 	{{- $filter := filterColumn .FromColumns .FromPKField .FKColumn }}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}(`{{ .FromTable }}`, "{{ $filter.ColumnName }}")), columns...),
 		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ modelType .GoType }} {
 			return &{{ $.ReceiverName }}.{{ .FieldName }}
 		},
@@ -112,7 +112,7 @@ func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) a
 func default{{ .FieldName }}Columns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 	{{- range .FromColumns }}
-		ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $rel.FromTable }}", "{{ .ColumnName }}"),
+		ast.New{{ toTypeExpression .GoType .SQLType }}(`{{ $rel.FromTable }}`, "{{ .ColumnName }}"),
 	{{- end }}
 	}
 }
@@ -126,7 +126,7 @@ func (f for{{ $.StructName }}[T]) {{ .FieldName }}(columns ...ast.NamedExpressio
 	}
 	{{- $filter := filterColumn .FromColumns .FromPKField .FKColumn }}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .FromTable }}", "{{ $filter.ColumnName }}")), columns...),
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}(`{{ .FromTable }}`, "{{ $filter.ColumnName }}")), columns...),
 		func(t *T) *{{ modelType .GoType }} {
 			dto := f.dest(t)
 			return &dto.{{ .FieldName }}
@@ -143,7 +143,7 @@ func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) a
 	}
 	{{- $filter := filterColumn .ReferencedColumns .ReferencedPKField .RightFKColumn }}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}(`{{ .ReferencedTable }}`, "{{ $filter.ColumnName }}")), columns...),
 		func({{ $.ReceiverName }} *models.{{ $.StructName }}) *{{ modelType .GoType }} {
 			return &{{ $.ReceiverName }}.{{ .FieldName }}
 		},
@@ -153,7 +153,7 @@ func (into{{ $.StructName }}) {{ .FieldName }}(columns ...ast.NamedExpression) a
 func default{{ .FieldName }}Columns() []ast.NamedExpression {
 	return []ast.NamedExpression{
 	{{- range .ReferencedColumns }}
-		ast.New{{ toTypeExpression .GoType .SQLType }}("{{ $rel.ReferencedTable }}", "{{ .ColumnName }}"),
+		ast.New{{ toTypeExpression .GoType .SQLType }}(`{{ $rel.ReferencedTable }}`, "{{ .ColumnName }}"),
 	{{- end }}
 	}
 }
@@ -167,7 +167,7 @@ func (f for{{ $.StructName }}[T]) {{ .FieldName }}(columns ...ast.NamedExpressio
 	}
 	{{- $filter := filterColumn .ReferencedColumns .ReferencedPKField .RightFKColumn }}
 	return ast.NewJSONProjection(
-		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}("{{ .ReferencedTable }}", "{{ $filter.ColumnName }}")), columns...),
+		expr.JsonAggObject("{{ .FieldName | toLower }}", expr.IsNotNull(ast.New{{ toTypeExpression $filter.GoType $filter.SQLType }}(`{{ .ReferencedTable }}`, "{{ $filter.ColumnName }}")), columns...),
 		func(t *T) *{{ modelType .GoType }} {
 			dto := f.dest(t)
 			return &dto.{{ .FieldName }}

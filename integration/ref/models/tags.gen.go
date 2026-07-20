@@ -30,12 +30,12 @@ func (t TagsDtos) Slug() ast.OfType[[]string] {
 	return ast.NewSQLType(out)
 }
 
-// TagsDto represents the tags table
+// TagsDto represents the "public"."tags" table
 type TagsDto struct {
 	Id   *int64 `db:"id" json:"id"`
 	Name string `db:"name" json:"name"`
 	Slug string `db:"slug" json:"slug"`
 
 	// Many-to-many relationships (populated via LoadXxx methods)
-	Posts []PostsDto `manytomany:"post_tags"`
+	Posts []PostsDto `manytomany:"public.post_tags"`
 }

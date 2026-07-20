@@ -156,6 +156,7 @@ type ForeignKeyData struct {
 // TableStructData contains data for rendering to table struct template
 type TableStructData struct {
 	StructName         string
+	PackageName        string
 	TableName          string
 	ReceiverName       string
 	Fields             []StructField
@@ -180,13 +181,14 @@ type StructField struct {
 
 // JoinedField represents a joined relationship field
 type JoinedField struct {
-	FieldName         string   // e.g., "UserIdRef", "CreatedByRef"
-	GoType            string   // e.g., "*UsersDto"
-	StructName        string   // e.g., "UsersDto"
-	ReferencedTable   string   // e.g., "users"
-	FKColumn          string   // e.g., "user_id"
-	ReferencedColumn  string   // e.g., "id"
-	ReferencedColumns []Column // columns in the referenced table
+	FieldName          string // e.g., "UserIdRef", "CreatedByRef"
+	GoType             string // e.g., "*UsersDto"
+	StructName         string // e.g., "UsersDto"
+	ReferencedTable    string // e.g., "users"
+	ReferencedTableTag string
+	FKColumn           string   // e.g., "user_id"
+	ReferencedColumn   string   // e.g., "id"
+	ReferencedColumns  []Column // columns in the referenced table
 }
 
 // ReverseRelLoaderField contains data for reverse relationship loader
@@ -200,21 +202,23 @@ type ReverseRelLoaderField struct {
 
 // ReverseRelField represents a reverse one-to-many relationship field
 type ReverseRelField struct {
-	FieldName   string   // e.g., "PostsByUserId"
-	GoType      string   // e.g., "[]*PostsDto"
-	StructName  string   // "PostsDto"
-	FromTable   string   // e.g., "posts"
-	FKColumn    string   // e.g., "user_id"
-	FromPKField string   // e.g., "Id"
-	FromColumns []Column //columns in the other table
+	FieldName    string // e.g., "PostsByUserId"
+	GoType       string // e.g., "[]*PostsDto"
+	StructName   string // "PostsDto"
+	FromTable    string // e.g., "posts"
+	FromTableTag string
+	FKColumn     string   // e.g., "user_id"
+	FromPKField  string   // e.g., "Id"
+	FromColumns  []Column //columns in the other table
 }
 
 // ManyToManyField represents a many-to-many relationship field
 type ManyToManyField struct {
-	FieldName         string   // e.g., "Tags"
-	GoType            string   // e.g., "[]*TagsDto"
-	StructName        string   // "PostsDto"
-	JunctionTable     string   // e.g., "post_tags"
+	FieldName         string // e.g., "Tags"
+	GoType            string // e.g., "[]*TagsDto"
+	StructName        string // "PostsDto"
+	JunctionTable     string // e.g., "post_tags"
+	JunctionTableTag  string
 	LeftFKColumn      string   // e.g., "post_id"
 	RightFKColumn     string   // e.g., "tag_id"
 	ReferencedTable   string   // e.g., "tags"
@@ -273,6 +277,7 @@ type DBWrapperData struct {
 type TableMethod struct {
 	MethodName  string
 	BuilderName string
+	PackageName string
 	TableName   string
 	StructName  string // "TagsDto
 }

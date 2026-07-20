@@ -39,7 +39,8 @@ func main() {
 	gen := gosqlgen.New().
 		WithPackageName("db").
 		WithOutputPath(".").
-		WithPackagePath("example.com/myapp")
+		WithPackagePath("example.com/myapp").
+		WithSchemas("public")
 
 	if err := gen.ParseFile("schema.sql"); err != nil {
 		log.Fatalf("parse schema: %v", err)
@@ -49,6 +50,16 @@ func main() {
 	}
 }
 ```
+
+`WithSchemas` limits generation to the named Postgres schemas. Omit it, or
+pass no schema names, to generate every parsed table from every schema. The
+same setting is available as `Schemas []string` when using
+`gosqlgen.NewWithConfig`.
+
+Generated table names are always schema-qualified and quoted, such as
+`"public"."users"`. If selected schemas contain tables with the same name,
+their Go APIs are schema-prefixed (for example, `AuthUsersDto` and
+`BillingUsersDto`).
 
 Run it:
 
@@ -79,7 +90,7 @@ sql, params, err := qry.ToSql()
 It renders:
 
 ```sql
-SELECT users.id, users.email FROM users WHERE users.email LIKE $1 AND users.is_active = $2 ORDER BY users.email ASC LIMIT 10
+SELECT "public"."users".id, "public"."users".email FROM "public"."users" WHERE "public"."users".email LIKE $1 AND "public"."users".is_active = $2 ORDER BY "public"."users".email ASC LIMIT 10
 ```
 
 with params:

@@ -9,7 +9,7 @@ var {{ .BaseName }}Table = {{ .FieldsTypeName }}{}
 // {{ .FieldName }} returns a field reference for {{ $.StructName }}.{{ .FieldName }}
 func ({{ $.ReceiverName }} {{ $.FieldsTypeName }}) {{ .FieldName }}() *FieldRef {
 	return &FieldRef{
-		Table:      "{{ $.TableName }}",
+		Table:      `{{ $.TableName }}`,
 		Expression: "{{ .ColumnName }}",
 	}
 }

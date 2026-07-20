@@ -10,7 +10,7 @@ import (
 	"{{ $.PackagePath }}/query/ast"
 	"{{ $.PackagePath }}/query/builder"
 	{{- range .Tables }}
-	"{{ $.PackagePath }}/query/{{ .TableName }}"
+	"{{ $.PackagePath }}/query/{{ .PackageName }}"
 	{{- end }}
 )
 

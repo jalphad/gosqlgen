@@ -47,7 +47,7 @@ func TestUsersDtoSelectOneDefaultsToAllColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active, users.attributes FROM users WHERE users.id = $1", sql)
+	assert.Equal(t, "SELECT \"public\".\"users\".id, \"public\".\"users\".username, \"public\".\"users\".email, \"public\".\"users\".full_name, \"public\".\"users\".created_at, \"public\".\"users\".updated_at, \"public\".\"users\".is_active, \"public\".\"users\".attributes FROM \"public\".\"users\" WHERE \"public\".\"users\".id = $1", sql)
 }
 
 func TestUsersSelfJoinUsesAliasScopedDestinations(t *testing.T) {
@@ -63,7 +63,7 @@ func TestUsersSelfJoinUsesAliasScopedDestinations(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT manager.id, manager.email, subordinate.id, subordinate.email FROM users AS manager LEFT JOIN users AS subordinate ON subordinate.is_active = manager.is_active", sql)
+	assert.Equal(t, "SELECT manager.id, manager.email, subordinate.id, subordinate.email FROM \"public\".\"users\" AS manager LEFT JOIN \"public\".\"users\" AS subordinate ON subordinate.is_active = manager.is_active", sql)
 }
 
 func TestCTEAliasJoinDoesNotRenderColumnList(t *testing.T) {
@@ -82,7 +82,7 @@ func TestCTEAliasJoinDoesNotRenderColumnList(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "WITH active_users(id, email) AS (SELECT users.id, users.email FROM users) SELECT posts.id FROM posts LEFT JOIN active_users ON posts.user_id = active_users.id", sql)
+	assert.Equal(t, "WITH active_users(id, email) AS (SELECT \"public\".\"users\".id, \"public\".\"users\".email FROM \"public\".\"users\") SELECT \"public\".\"posts\".id FROM \"public\".\"posts\" LEFT JOIN active_users ON \"public\".\"posts\".user_id = active_users.id", sql)
 }
 
 func TestSelectWindowFunctionProjection(t *testing.T) {
@@ -106,7 +106,7 @@ func TestSelectWindowFunctionProjection(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT posts.id, row_number() OVER (PARTITION BY posts.user_id ORDER BY posts.created_at DESC) AS row_rank FROM posts", sql)
+	assert.Equal(t, "SELECT \"public\".\"posts\".id, row_number() OVER (PARTITION BY \"public\".\"posts\".user_id ORDER BY \"public\".\"posts\".created_at DESC) AS row_rank FROM \"public\".\"posts\"", sql)
 }
 
 func TestAggregateFunctionHelpers(t *testing.T) {
@@ -136,7 +136,7 @@ func TestAggregateFunctionHelpers(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT sum(posts.view_count) AS sum_views, avg(posts.view_count) AS avg_views, min(posts.view_count) AS min_views, max(posts.view_count) AS max_views FROM posts", sql)
+	assert.Equal(t, "SELECT sum(\"public\".\"posts\".view_count) AS sum_views, avg(\"public\".\"posts\".view_count) AS avg_views, min(\"public\".\"posts\".view_count) AS min_views, max(\"public\".\"posts\".view_count) AS max_views FROM \"public\".\"posts\"", sql)
 }
 
 func TestStatementOnlySelectSupportsNamedExpressions(t *testing.T) {
@@ -156,7 +156,7 @@ func TestStatementOnlySelectSupportsNamedExpressions(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT posts.user_id, count(posts.id) AS post_count FROM posts WHERE posts.status = $1 GROUP BY posts.user_id ORDER BY posts.user_id ASC LIMIT 10", sql)
+	assert.Equal(t, "SELECT \"public\".\"posts\".user_id, count(\"public\".\"posts\".id) AS post_count FROM \"public\".\"posts\" WHERE \"public\".\"posts\".status = $1 GROUP BY \"public\".\"posts\".user_id ORDER BY \"public\".\"posts\".user_id ASC LIMIT 10", sql)
 	assert.Equal(t, []any{"published"}, params)
 }
 
@@ -175,7 +175,7 @@ func TestStatementOnlyUpdateSupportsNamedReturning(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "UPDATE users SET email = $1 WHERE users.id = $2 RETURNING users.id, users.email", sql)
+	assert.Equal(t, "UPDATE \"public\".\"users\" SET email = $1 WHERE \"public\".\"users\".id = $2 RETURNING \"public\".\"users\".id, \"public\".\"users\".email", sql)
 	assert.Equal(t, []any{"updated@example.com", id}, params)
 }
 
@@ -193,7 +193,7 @@ func TestStatementOnlyDeleteSupportsNamedReturning(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "DELETE FROM users WHERE users.email = $1 RETURNING users.id", sql)
+	assert.Equal(t, "DELETE FROM \"public\".\"users\" WHERE \"public\".\"users\".email = $1 RETURNING \"public\".\"users\".id", sql)
 	assert.Equal(t, []any{"deleted@example.com"}, params)
 }
 
@@ -212,7 +212,7 @@ func TestInsertFromStatementSelectRendersInSQLOrder(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "INSERT INTO tags(name, slug) SELECT users.username, users.email FROM users WHERE users.email = $1 RETURNING tags.id", sql)
+	assert.Equal(t, "INSERT INTO \"public\".\"tags\"(name, slug) SELECT \"public\".\"users\".username, \"public\".\"users\".email FROM \"public\".\"users\" WHERE \"public\".\"users\".email = $1 RETURNING \"public\".\"tags\".id", sql)
 	assert.Equal(t, []any{"source@example.com"}, params)
 }
 
@@ -291,7 +291,7 @@ func TestUsersDtoSelectOneUsesSelectedColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT users.id, users.email FROM users WHERE users.id = $1", sql)
+	assert.Equal(t, "SELECT \"public\".\"users\".id, \"public\".\"users\".email FROM \"public\".\"users\" WHERE \"public\".\"users\".id = $1", sql)
 }
 
 func TestUsersDtoSelectManyDefaultsToAllColumns(t *testing.T) {
@@ -304,7 +304,7 @@ func TestUsersDtoSelectManyDefaultsToAllColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT users.id, users.username, users.email, users.full_name, users.created_at, users.updated_at, users.is_active, users.attributes FROM users", sql)
+	assert.Equal(t, "SELECT \"public\".\"users\".id, \"public\".\"users\".username, \"public\".\"users\".email, \"public\".\"users\".full_name, \"public\".\"users\".created_at, \"public\".\"users\".updated_at, \"public\".\"users\".is_active, \"public\".\"users\".attributes FROM \"public\".\"users\"", sql)
 }
 
 func TestUsersDtoSelectManyUsesSelectedColumnsAndCanChainWhere(t *testing.T) {
@@ -318,7 +318,7 @@ func TestUsersDtoSelectManyUsesSelectedColumnsAndCanChainWhere(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "SELECT users.id, users.email FROM users WHERE users.id = $1", sql)
+	assert.Equal(t, "SELECT \"public\".\"users\".id, \"public\".\"users\".email FROM \"public\".\"users\" WHERE \"public\".\"users\".id = $1", sql)
 }
 
 func TestUsersDtoSelectManyErrorsForEmptySelectedColumns(t *testing.T) {
@@ -355,7 +355,7 @@ func TestUsersDtoDeleteOneUsesPrimaryKey(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "DELETE FROM users WHERE users.id = $1", sql)
+	assert.Equal(t, "DELETE FROM \"public\".\"users\" WHERE \"public\".\"users\".id = $1", sql)
 }
 
 func TestUsersDtoDeleteManyUsesPrimaryKeyValues(t *testing.T) {
@@ -372,7 +372,7 @@ func TestUsersDtoDeleteManyUsesPrimaryKeyValues(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "DELETE FROM users USING (VALUES (CAST($1 AS uuid)), ($2)) AS v(id) WHERE users.id = v.id", sql)
+	assert.Equal(t, "DELETE FROM \"public\".\"users\" USING (VALUES (CAST($1 AS uuid)), ($2)) AS v(id) WHERE \"public\".\"users\".id = v.id", sql)
 }
 
 func TestPostTagsDtoDeleteOneUsesCompositePrimaryKey(t *testing.T) {
@@ -387,7 +387,7 @@ func TestPostTagsDtoDeleteOneUsesCompositePrimaryKey(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "DELETE FROM post_tags WHERE post_tags.post_id = $1 AND post_tags.tag_id = $2", sql)
+	assert.Equal(t, "DELETE FROM \"public\".\"post_tags\" WHERE \"public\".\"post_tags\".post_id = $1 AND \"public\".\"post_tags\".tag_id = $2", sql)
 }
 
 func TestPostTagsDtoDeleteManyUsesCompositePrimaryKeyValues(t *testing.T) {
@@ -402,7 +402,7 @@ func TestPostTagsDtoDeleteManyUsesCompositePrimaryKeyValues(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "DELETE FROM post_tags USING (VALUES (CAST($1 AS integer), CAST($2 AS integer)), ($3, $4)) AS v(post_id, tag_id) WHERE post_tags.post_id = v.post_id AND post_tags.tag_id = v.tag_id", sql)
+	assert.Equal(t, "DELETE FROM \"public\".\"post_tags\" USING (VALUES (CAST($1 AS integer), CAST($2 AS integer)), ($3, $4)) AS v(post_id, tag_id) WHERE \"public\".\"post_tags\".post_id = v.post_id AND \"public\".\"post_tags\".tag_id = v.tag_id", sql)
 }
 
 func TestPostTagsDtoDeleteManyErrorsForEmptyList(t *testing.T) {
@@ -451,7 +451,7 @@ func TestUsersDtoUpdateOneDefaultsToAllNonPrimaryKeyColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "UPDATE users SET attributes = $1, created_at = $2, email = $3, full_name = $4, is_active = $5, updated_at = $6, username = $7 WHERE users.id = $8", sql)
+	assert.Equal(t, "UPDATE \"public\".\"users\" SET attributes = $1, created_at = $2, email = $3, full_name = $4, is_active = $5, updated_at = $6, username = $7 WHERE \"public\".\"users\".id = $8", sql)
 }
 
 func TestUsersDtoUpdateOneUsesSelectedColumns(t *testing.T) {
@@ -469,7 +469,7 @@ func TestUsersDtoUpdateOneUsesSelectedColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "UPDATE users SET email = $1 WHERE users.id = $2", sql)
+	assert.Equal(t, "UPDATE \"public\".\"users\" SET email = $1 WHERE \"public\".\"users\".id = $2", sql)
 }
 
 func TestUsersDtoUpdateOneErrorsForEmptySelectedColumns(t *testing.T) {
@@ -514,7 +514,7 @@ func TestUsersDtoUpdateManyDefaultsToValuesWithSelectedColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "UPDATE users SET email = v.email, full_name = v.full_name FROM (VALUES (CAST($1 AS uuid), CAST($2 AS text), CAST($3 AS text)), ($4, $5, $6)) AS v(id, email, full_name) WHERE users.id = v.id", sql)
+	assert.Equal(t, "UPDATE \"public\".\"users\" SET email = v.email, full_name = v.full_name FROM (VALUES (CAST($1 AS uuid), CAST($2 AS text), CAST($3 AS text)), ($4, $5, $6)) AS v(id, email, full_name) WHERE \"public\".\"users\".id = v.id", sql)
 }
 
 func TestUsersDtoUpdateManyCanUseUnnestWithSelectedColumns(t *testing.T) {
@@ -543,7 +543,7 @@ func TestUsersDtoUpdateManyCanUseUnnestWithSelectedColumns(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, "UPDATE users SET email = v.email, full_name = v.full_name FROM unnest(CAST($1 AS uuid[]), CAST($2 AS text[]), CAST($3 AS text[])) AS v(id, email, full_name) WHERE users.id = v.id", sql)
+	assert.Equal(t, "UPDATE \"public\".\"users\" SET email = v.email, full_name = v.full_name FROM unnest(CAST($1 AS uuid[]), CAST($2 AS text[]), CAST($3 AS text[])) AS v(id, email, full_name) WHERE \"public\".\"users\".id = v.id", sql)
 }
 
 func TestUsersDtoUpdateManyErrorsForEmptySelectedColumns(t *testing.T) {

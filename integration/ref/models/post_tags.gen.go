@@ -22,12 +22,12 @@ func (p PostTagsDtos) TagId() ast.OfType[[]int64] {
 	return ast.NewSQLType(out)
 }
 
-// PostTagsDto represents the post_tags table
+// PostTagsDto represents the "public"."post_tags" table
 type PostTagsDto struct {
 	PostId int64 `db:"post_id" json:"post_id"`
 	TagId  int64 `db:"tag_id" json:"tag_id"`
 
 	// Joined relationships (populated when corresponding Join method is called)
-	PostIdRef *PostsDto `joined:"posts" fk:"post_id"`
-	TagIdRef  *TagsDto  `joined:"tags" fk:"tag_id"`
+	PostIdRef *PostsDto `joined:"public.posts" fk:"post_id"`
+	TagIdRef  *TagsDto  `joined:"public.tags" fk:"tag_id"`
 }

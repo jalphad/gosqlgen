@@ -66,7 +66,7 @@ func (c CommentsDtos) TestDate() ast.OfType[[]time.Time] {
 	return ast.SetType[[]time.Time](ast.NewLiteralExpression(out))
 }
 
-// CommentsDto represents the comments table
+// CommentsDto represents the "public"."comments" table
 type CommentsDto struct {
 	Id         *int64     `db:"id" json:"id"`
 	PostId     int64      `db:"post_id" json:"post_id"`
@@ -77,8 +77,8 @@ type CommentsDto struct {
 	TestDate   *time.Time `db:"test_date" json:"test_date"`
 
 	// Joined relationships (populated when corresponding Join method is called)
-	PostIdRef *PostsDto `joined:"posts" fk:"post_id"`
-	UserIdRef *UsersDto `joined:"users" fk:"user_id"`
+	PostIdRef *PostsDto `joined:"public.posts" fk:"post_id"`
+	UserIdRef *UsersDto `joined:"public.users" fk:"user_id"`
 }
 
 func (c *CommentsDto) UnmarshalJSON(bts []byte) error {

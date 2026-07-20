@@ -13,7 +13,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 )
 
-// NewQuery returns a query builder for comments
+// NewQuery returns a query builder for "public"."comments"
 func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.CommentsDto] {
 	return builder.NewKnownTableBuilder[models.CommentsDto](pool, Table())
 }
@@ -23,47 +23,47 @@ var Into = intoCommentsDto{}
 type intoCommentsDto struct{}
 
 func Table() *ast.TableSource {
-	return ast.NewTableSource("comments")
+	return ast.NewTableSource(`"public"."comments"`)
 }
 
 func Id() *ast.IntColumnProjection[models.CommentsDto, **int64] {
-	return newId("comments", func(c *models.CommentsDto) **int64 {
+	return newId(`"public"."comments"`, func(c *models.CommentsDto) **int64 {
 		return &c.Id
 	})
 }
 
 func PostId() *ast.IntColumnProjection[models.CommentsDto, *int64] {
-	return newPostId("comments", func(c *models.CommentsDto) *int64 {
+	return newPostId(`"public"."comments"`, func(c *models.CommentsDto) *int64 {
 		return &c.PostId
 	})
 }
 
 func UserId() *ast.UUIDColumnProjection[models.CommentsDto, *uuid.UUID] {
-	return newUserId("comments", func(c *models.CommentsDto) *uuid.UUID {
+	return newUserId(`"public"."comments"`, func(c *models.CommentsDto) *uuid.UUID {
 		return &c.UserId
 	})
 }
 
 func Content() *ast.StringColumnProjection[models.CommentsDto, *string] {
-	return newContent("comments", func(c *models.CommentsDto) *string {
+	return newContent(`"public"."comments"`, func(c *models.CommentsDto) *string {
 		return &c.Content
 	})
 }
 
 func IsApproved() *ast.BoolColumnProjection[models.CommentsDto, **bool] {
-	return newIsApproved("comments", func(c *models.CommentsDto) **bool {
+	return newIsApproved(`"public"."comments"`, func(c *models.CommentsDto) **bool {
 		return &c.IsApproved
 	})
 }
 
 func CreatedAt() *ast.TimestampColumnProjection[models.CommentsDto, **time.Time] {
-	return newCreatedAt("comments", func(c *models.CommentsDto) **time.Time {
+	return newCreatedAt(`"public"."comments"`, func(c *models.CommentsDto) **time.Time {
 		return &c.CreatedAt
 	})
 }
 
 func TestDate() *ast.DateColumnProjection[models.CommentsDto, **time.Time] {
-	return newTestDate("comments", func(c *models.CommentsDto) **time.Time {
+	return newTestDate(`"public"."comments"`, func(c *models.CommentsDto) **time.Time {
 		return &c.TestDate
 	})
 }
@@ -129,49 +129,49 @@ func For[T any](dest func(*T) *models.CommentsDto) forCommentsDto[T] {
 }
 
 func (f forCommentsDto[T]) Id() *ast.IntColumnProjection[T, **int64] {
-	return newId("comments", func(t *T) **int64 {
+	return newId(`"public"."comments"`, func(t *T) **int64 {
 		dto := f.dest(t)
 		return &dto.Id
 	})
 }
 
 func (f forCommentsDto[T]) PostId() *ast.IntColumnProjection[T, *int64] {
-	return newPostId("comments", func(t *T) *int64 {
+	return newPostId(`"public"."comments"`, func(t *T) *int64 {
 		dto := f.dest(t)
 		return &dto.PostId
 	})
 }
 
 func (f forCommentsDto[T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
-	return newUserId("comments", func(t *T) *uuid.UUID {
+	return newUserId(`"public"."comments"`, func(t *T) *uuid.UUID {
 		dto := f.dest(t)
 		return &dto.UserId
 	})
 }
 
 func (f forCommentsDto[T]) Content() *ast.StringColumnProjection[T, *string] {
-	return newContent("comments", func(t *T) *string {
+	return newContent(`"public"."comments"`, func(t *T) *string {
 		dto := f.dest(t)
 		return &dto.Content
 	})
 }
 
 func (f forCommentsDto[T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
-	return newIsApproved("comments", func(t *T) **bool {
+	return newIsApproved(`"public"."comments"`, func(t *T) **bool {
 		dto := f.dest(t)
 		return &dto.IsApproved
 	})
 }
 
 func (f forCommentsDto[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	return newCreatedAt("comments", func(t *T) **time.Time {
+	return newCreatedAt(`"public"."comments"`, func(t *T) **time.Time {
 		dto := f.dest(t)
 		return &dto.CreatedAt
 	})
 }
 
 func (f forCommentsDto[T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
-	return newTestDate("comments", func(t *T) **time.Time {
+	return newTestDate(`"public"."comments"`, func(t *T) **time.Time {
 		dto := f.dest(t)
 		return &dto.TestDate
 	})

@@ -11,7 +11,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/ref/query/builder"
 )
 
-// NewQuery returns a query builder for post_tags
+// NewQuery returns a query builder for "public"."post_tags"
 func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.PostTagsDto] {
 	return builder.NewKnownTableBuilder[models.PostTagsDto](pool, Table())
 }
@@ -21,17 +21,17 @@ var Into = intoPostTagsDto{}
 type intoPostTagsDto struct{}
 
 func Table() *ast.TableSource {
-	return ast.NewTableSource("post_tags")
+	return ast.NewTableSource(`"public"."post_tags"`)
 }
 
 func PostId() *ast.IntColumnProjection[models.PostTagsDto, *int64] {
-	return newPostId("post_tags", func(p *models.PostTagsDto) *int64 {
+	return newPostId(`"public"."post_tags"`, func(p *models.PostTagsDto) *int64 {
 		return &p.PostId
 	})
 }
 
 func TagId() *ast.IntColumnProjection[models.PostTagsDto, *int64] {
-	return newTagId("post_tags", func(p *models.PostTagsDto) *int64 {
+	return newTagId(`"public"."post_tags"`, func(p *models.PostTagsDto) *int64 {
 		return &p.TagId
 	})
 }
@@ -67,14 +67,14 @@ func For[T any](dest func(*T) *models.PostTagsDto) forPostTagsDto[T] {
 }
 
 func (f forPostTagsDto[T]) PostId() *ast.IntColumnProjection[T, *int64] {
-	return newPostId("post_tags", func(t *T) *int64 {
+	return newPostId(`"public"."post_tags"`, func(t *T) *int64 {
 		dto := f.dest(t)
 		return &dto.PostId
 	})
 }
 
 func (f forPostTagsDto[T]) TagId() *ast.IntColumnProjection[T, *int64] {
-	return newTagId("post_tags", func(t *T) *int64 {
+	return newTagId(`"public"."post_tags"`, func(t *T) *int64 {
 		dto := f.dest(t)
 		return &dto.TagId
 	})
