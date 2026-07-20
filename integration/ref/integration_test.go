@@ -925,6 +925,81 @@ func TestContextTracking(t *testing.T) {
 }
 
 func TestIntegration_CTEs(t *testing.T) {
+	t.Run("Insert post with two tags in one query", func(t *testing.T) {
+		cleanupTables(t)
+
+		// Arrange
+		user := &models.UsersDto{Username: "cte-insert-user", Email: "cte-insert@example.com"}
+		insertUsers(t, user)
+
+		post := &models.PostsDto{UserId: *user.Id, Title: "Post with tags"}
+		tagRows := []*models.TagsDto{
+			{Name: "First tag", Slug: "first-tag"},
+			{Name: "Second tag", Slug: "second-tag"},
+		}
+
+		insertedPost := posts.As("inserted_post", posts.Id())
+		insertPost := NewPostsQuery(nil).
+			Insert(posts.UserId(), posts.Title()).
+			Values(post).
+			Returning(posts.Id()).
+			Statement()
+
+		insertedTags := tags.As("inserted_tags", tags.Id())
+		insertTags := NewTagsQuery(nil).
+			Insert(tags.Name(), tags.Slug()).
+			Values(tagRows...).
+			Returning(tags.Id()).
+			Statement()
+
+		linkSource := NewStatementQuery(insertedPost.TableAlias).
+			Select(insertedPost.Id(), insertedTags.Id()).
+			Join(ast.JoinInner, insertedTags.TableAlias, q.Val(true))
+		insertedPostTags := post_tags.As(
+			"inserted_post_tags",
+			post_tags.PostId(),
+			post_tags.TagId(),
+		)
+		insertPostTags := NewPostTagsQuery(nil).
+			Insert(post_tags.PostId(), post_tags.TagId()).
+			Select(linkSource).
+			Returning(post_tags.PostId(), post_tags.TagId()).
+			Statement()
+
+		type insertedIDs struct {
+			PostID int64
+			TagID  int64
+		}
+		queryBuilder := NewQuery[insertedIDs](pgxPool, insertedPostTags.TableAlias).
+			With(
+				q.CTE(insertedPost.TableAlias, insertPost),
+				q.CTE(insertedTags.TableAlias, insertTags),
+				q.CTE(insertedPostTags.TableAlias, insertPostTags),
+			).
+			Select(
+				q.Into(insertedPostTags.PostId(), func(row *insertedIDs) *int64 {
+					return &row.PostID
+				}),
+				q.Into(insertedPostTags.TagId(), func(row *insertedIDs) *int64 {
+					return &row.TagID
+				}),
+			).
+			OrderBy(q.Asc(insertedPostTags.TagId()))
+
+		// Act
+		sql, args, err := queryBuilder.ToSql()
+		require.NoError(t, err)
+		results, err := queryBuilder.Find(context.Background())
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, "WITH inserted_post(id) AS (INSERT INTO posts(user_id, title) VALUES ($1, $2) RETURNING posts.id), inserted_tags(id) AS (INSERT INTO tags(name, slug) VALUES ($3, $4), ($5, $6) RETURNING tags.id), inserted_post_tags(post_id, tag_id) AS (INSERT INTO post_tags(post_id, tag_id) SELECT inserted_post.id, inserted_tags.id FROM inserted_post INNER JOIN inserted_tags ON $7 RETURNING post_tags.post_id, post_tags.tag_id) SELECT inserted_post_tags.post_id, inserted_post_tags.tag_id FROM inserted_post_tags ORDER BY inserted_post_tags.tag_id ASC", sql)
+		assert.Equal(t, []any{&post.UserId, &post.Title, &tagRows[0].Name, &tagRows[0].Slug, &tagRows[1].Name, &tagRows[1].Slug, true}, args)
+		require.Len(t, results, 2)
+		assert.Equal(t, results[0].PostID, results[1].PostID)
+		assert.NotEqual(t, results[0].TagID, results[1].TagID)
+	})
+
 	t.Run("Select CTE preserves parameter order and executes", func(t *testing.T) {
 		cleanupTables(t)
 
