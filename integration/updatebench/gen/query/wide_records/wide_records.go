@@ -2075,7 +2075,7 @@ type Alias[T any] struct {
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.WideRecordsDto] {
 	return Alias[models.WideRecordsDto]{
-		TableAlias: ast.NewTableAlias(name, columns...),
+		TableAlias: Table().As(name, columns...),
 		forWideRecordsDto: forWideRecordsDto[models.WideRecordsDto]{
 			dest: func(w *models.WideRecordsDto) *models.WideRecordsDto {
 				return w

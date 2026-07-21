@@ -78,16 +78,10 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 			return
 		}
 		builder.WriteString(" ")
-		savedType := QueryType("")
-		savedPart := QueryPart("")
+		child := newChildQueryContext(ctx, false)
+		s.Select.toSQL(builder, params, child)
 		if ctx != nil {
-			savedType = ctx.Type
-			savedPart = ctx.CurrentPart
-		}
-		s.Select.toSQL(builder, params, ctx)
-		if ctx != nil {
-			ctx.Type = savedType
-			ctx.CurrentPart = savedPart
+			ctx.finishChild(child)
 		}
 	default:
 		if ctx != nil && ctx.Error == nil {

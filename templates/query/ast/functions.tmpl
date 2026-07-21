@@ -207,7 +207,10 @@ func (f *NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]an
 		return
 	}
 	builder.WriteString(" AS ")
-	f.alias.toSQL(builder, params, ctx)
+	f.alias.renderDefinition(builder)
+	if ctx != nil {
+		ctx.registerRangeVariable(f.alias)
+	}
 }
 
 func (f *NamedSetReturningFunction) isTableExpression() {}
@@ -277,6 +280,10 @@ func (r *TableAlias) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCo
 	if ctx != nil && ctx.Error != nil {
 		return
 	}
+	if ctx != nil && ctx.lookupNamedRelation(r) {
+		builder.WriteString(r.name)
+		return
+	}
 	if r.source != nil {
 		r.source.toSQL(builder, params, ctx)
 		if ctx != nil && ctx.Error != nil {
@@ -284,8 +291,15 @@ func (r *TableAlias) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCo
 		}
 		builder.WriteString(" AS ")
 		builder.WriteString(r.name)
+		if ctx != nil {
+			ctx.registerRangeVariable(r)
+		}
 		return
 	}
+	builder.WriteString(r.name)
+}
+
+func (r *TableAlias) renderDefinition(builder *strings.Builder) {
 	builder.WriteString(r.name)
 	if len(r.columns) == 0 {
 		return

@@ -154,7 +154,7 @@ type Alias[T any] struct {
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.TagsDto] {
 	return Alias[models.TagsDto]{
-		TableAlias: ast.NewTableAlias(name, columns...),
+		TableAlias: Table().As(name, columns...),
 		forTagsDto: forTagsDto[models.TagsDto]{
 			dest: func(t *models.TagsDto) *models.TagsDto {
 				return t

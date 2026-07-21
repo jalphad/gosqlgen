@@ -56,7 +56,7 @@ func (s *UpdateStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 			ctx.CurrentPart = QueryPartFrom
 		}
 		builder.WriteString(" FROM ")
-		s.From.toSQL(builder, params, ctx)
+		renderTableExpression(s.From, builder, params, ctx)
 	}
 
 	// Add WHERE conditions

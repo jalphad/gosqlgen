@@ -183,7 +183,7 @@ type Alias[T any] struct {
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.{{ .StructName }}] {
 	return Alias[models.{{ .StructName }}]{
-		TableAlias: ast.NewTableAlias(name, columns...),
+		TableAlias: Table().As(name, columns...),
 		for{{ $.StructName }}: for{{ $.StructName }}[models.{{ .StructName }}]{
 			dest: func({{ $.ReceiverName }} *models.{{ .StructName }}) *models.{{ .StructName }} {
 				return {{ $.ReceiverName }}

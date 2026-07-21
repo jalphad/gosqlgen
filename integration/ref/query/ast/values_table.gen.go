@@ -156,5 +156,8 @@ func (v *NamedValuesTable) toSQL(builder *strings.Builder, params *[]any, ctx *Q
 		return
 	}
 	builder.WriteString(" AS ")
-	v.alias.toSQL(builder, params, ctx)
+	v.alias.renderDefinition(builder)
+	if ctx != nil {
+		ctx.registerRangeVariable(v.alias)
+	}
 }

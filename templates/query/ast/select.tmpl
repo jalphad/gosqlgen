@@ -227,18 +227,15 @@ func (c *CTE) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) 
 		return
 	}
 
-	c.Alias.toSQL(builder, params, ctx)
+	c.Alias.renderDefinition(builder)
 	builder.WriteString(" AS (")
-	savedType := QueryType("")
-	savedPart := QueryPart("")
+	child := newChildQueryContext(ctx, false)
+	c.Query.toSQL(builder, params, child)
 	if ctx != nil {
-		savedType = ctx.Type
-		savedPart = ctx.CurrentPart
-	}
-	c.Query.toSQL(builder, params, ctx)
-	if ctx != nil {
-		ctx.Type = savedType
-		ctx.CurrentPart = savedPart
+		ctx.finishChild(child)
 	}
 	builder.WriteString(")")
+	if ctx != nil && ctx.Error == nil {
+		ctx.registerNamedRelation(c.Alias)
+	}
 }

@@ -52,8 +52,10 @@ func TestUsersDtoSelectOneDefaultsToAllColumns(t *testing.T) {
 
 func TestUsersSelfJoinUsesAliasScopedDestinations(t *testing.T) {
 	// Arrange
-	manager := users.AliasFor(users.Table().As("manager"), (*usersSelfJoinRow).ManagerDto)
-	subordinate := users.AliasFor(users.Table().As("subordinate"), (*usersSelfJoinRow).SubordinateDto)
+	managerAlias := users.As("manager")
+	subordinateAlias := users.As("subordinate")
+	manager := users.AliasFor(managerAlias.TableAlias, (*usersSelfJoinRow).ManagerDto)
+	subordinate := users.AliasFor(subordinateAlias.TableAlias, (*usersSelfJoinRow).SubordinateDto)
 
 	// Act
 	sql, _, err := builder.NewKnownTableBuilder[usersSelfJoinRow](nil, manager.TableAlias).

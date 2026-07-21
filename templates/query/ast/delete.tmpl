@@ -44,10 +44,10 @@ func (s *DeleteStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		}
 		builder.WriteString(" USING ")
 		for i := 0; i < len(s.Using)-1; i++ {
-			s.Using[i].toSQL(builder, params, ctx)
+			renderRelationExpression(s.Using[i], builder, params, ctx)
 			builder.WriteString(", ")
 		}
-		s.Using[len(s.Using)-1].toSQL(builder, params, ctx)
+		renderRelationExpression(s.Using[len(s.Using)-1], builder, params, ctx)
 	}
 
 	// Add WHERE conditions

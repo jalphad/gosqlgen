@@ -432,10 +432,11 @@ func NewTableSource(name string) *TableSource {
 	}
 }
 
-func (s *TableSource) As(alias string) *TableAlias {
+func (s *TableSource) As(alias string, columns ...NamedExpression) *TableAlias {
 	return &TableAlias{
-		name:   alias,
-		source: s,
+		name:    alias,
+		columns: columns,
+		source:  s,
 	}
 }
 
@@ -470,18 +471,15 @@ func (s *TableSource) Join(join *JoinExpr) TableExpression {
 }
 
 func renderTableExpression(table TableExpression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
-	if alias, ok := table.(*TableAlias); ok && alias.source == nil {
-		builder.WriteString(alias.GetName())
-		return
-	}
-	if alias, ok := table.(interface {
-		GetName() string
-		Columns() []NamedExpression
-	}); ok && len(alias.Columns()) > 0 {
-		builder.WriteString(alias.GetName())
-		return
-	}
 	table.toSQL(builder, params, ctx)
+}
+
+func renderRelationExpression(relation NamedExpression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if table, ok := relation.(TableExpression); ok {
+		renderTableExpression(table, builder, params, ctx)
+		return
+	}
+	relation.toSQL(builder, params, ctx)
 }
 
 func TableExpressionName(table TableExpression) string {

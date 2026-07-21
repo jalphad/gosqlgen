@@ -1,5 +1,7 @@
 package ast
 
+import "fmt"
+
 // QueryType represents the type of SQL query being generated
 type QueryType string
 
@@ -50,6 +52,77 @@ type QueryContext struct {
 
 	// CurrentPart indicates which part of the query is currently being generated
 	CurrentPart QueryPart
+
+	parent              *QueryContext
+	inheritParentRanges bool
+	namedRelations      map[string]*TableAlias
+	rangeVariables      map[string]*TableAlias
+}
+
+func newChildQueryContext(parent *QueryContext, inheritParentRanges bool) *QueryContext {
+	return &QueryContext{
+		parent:              parent,
+		inheritParentRanges: inheritParentRanges,
+	}
+}
+
+func (c *QueryContext) finishChild(child *QueryContext) {
+	if c != nil && child != nil && c.Error == nil {
+		c.Error = child.Error
+	}
+}
+
+func (c *QueryContext) registerNamedRelation(alias *TableAlias) {
+	if c == nil || alias == nil || c.Error != nil {
+		return
+	}
+	if c.namedRelations == nil {
+		c.namedRelations = make(map[string]*TableAlias)
+	}
+	if _, ok := c.namedRelations[alias.GetName()]; ok {
+		c.Error = fmt.Errorf("relation %q is already declared in this query scope", alias.GetName())
+		return
+	}
+	c.namedRelations[alias.GetName()] = alias
+}
+
+func (c *QueryContext) lookupNamedRelation(alias *TableAlias) bool {
+	if c == nil || alias == nil {
+		return false
+	}
+	for scope := c; scope != nil; scope = scope.parent {
+		if declared, ok := scope.namedRelations[alias.GetName()]; ok {
+			return declared == alias
+		}
+	}
+	return false
+}
+
+func (c *QueryContext) registerRangeVariable(alias *TableAlias) {
+	if c == nil || alias == nil || c.Error != nil {
+		return
+	}
+	if c.rangeVariables == nil {
+		c.rangeVariables = make(map[string]*TableAlias)
+	}
+	if _, ok := c.rangeVariables[alias.GetName()]; ok {
+		c.Error = fmt.Errorf("table alias %q is already declared in this query scope", alias.GetName())
+		return
+	}
+	c.rangeVariables[alias.GetName()] = alias
+}
+
+func (c *QueryContext) lookupRangeVariable(alias *TableAlias) bool {
+	if c == nil || alias == nil {
+		return false
+	}
+	if declared, ok := c.rangeVariables[alias.GetName()]; ok {
+		return declared == alias
+	}
+	if c.inheritParentRanges {
+		return c.parent.lookupRangeVariable(alias)
+	}
+	return false
 }
 
 type ColumnReference struct {

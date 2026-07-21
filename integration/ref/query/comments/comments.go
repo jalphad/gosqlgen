@@ -196,7 +196,7 @@ type Alias[T any] struct {
 
 func As(name string, columns ...ast.NamedExpression) Alias[models.CommentsDto] {
 	return Alias[models.CommentsDto]{
-		TableAlias: ast.NewTableAlias(name, columns...),
+		TableAlias: Table().As(name, columns...),
 		forCommentsDto: forCommentsDto[models.CommentsDto]{
 			dest: func(c *models.CommentsDto) *models.CommentsDto {
 				return c
