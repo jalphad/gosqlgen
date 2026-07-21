@@ -54,7 +54,7 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 			}
 			return
 		}
-		columns = append(columns, column.Name())
+		columns = append(columns, column.GetName())
 	}
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
 
@@ -124,7 +124,7 @@ func (c *Conflict) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 	}
 	columns := make([]string, 0, len(c.Columns))
 	for _, column := range c.Columns {
-		columns = append(columns, column.Name())
+		columns = append(columns, column.GetName())
 	}
 	builder.WriteString(" ON CONFLICT (" + strings.Join(columns, ", ") + ") DO")
 	if c.Action == nil {

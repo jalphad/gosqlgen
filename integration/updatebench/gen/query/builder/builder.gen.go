@@ -14,11 +14,11 @@ import (
 type KnownTableBuilder[T any] struct {
 	pool  *pgxpool.Pool
 	tx    pgx.Tx
-	table *ast.TableSource
+	table ast.NamedTableExpression
 	with  []*ast.CTE
 }
 
-func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *KnownTableBuilder[T] {
+func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table ast.NamedTableExpression) *KnownTableBuilder[T] {
 	return &KnownTableBuilder[T]{
 		pool:  pool,
 		table: table,
@@ -26,11 +26,11 @@ func NewKnownTableBuilder[T any](pool *pgxpool.Pool, table *ast.TableSource) *Kn
 }
 
 type StatementBuilder struct {
-	table *ast.TableSource
+	table ast.NamedTableExpression
 	with  []*ast.CTE
 }
 
-func NewStatementBuilder(table *ast.TableSource) *StatementBuilder {
+func NewStatementBuilder(table ast.NamedTableExpression) *StatementBuilder {
 	return &StatementBuilder{table: table}
 }
 
@@ -53,7 +53,7 @@ func (b *StatementBuilder) Update(toSet ...ast.UpdateSetExpr) StatementUpdateFro
 	return &StatementUpdateBuilder{
 		stmt: &ast.UpdateStatement{
 			With:    b.with,
-			Table:   b.table.Name(),
+			Table:   b.table.GetName(),
 			SetList: toSet,
 		},
 	}
@@ -63,7 +63,7 @@ func (b *StatementBuilder) Delete() StatementDeleteUsingQuery {
 	return &StatementDeleteBuilder{
 		stmt: &ast.DeleteStatement{
 			With:  b.with,
-			Table: b.table.Name(),
+			Table: b.table.GetName(),
 		},
 	}
 }
@@ -78,13 +78,13 @@ func (b *KnownTableBuilder[T]) With(ctes ...*ast.CTE) KnownTableStartQuery[T] {
 	return b
 }
 
-func (b *KnownTableBuilder[T]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T] {
+func (b *KnownTableBuilder[T]) Insert(columns ...ast.NamedExpression) InsertSourceQuery[T] {
 	return &InsertBuilder[T]{
 		pool: b.pool,
 		tx:   b.tx,
 		stmt: &ast.InsertStatement{
 			With:  b.with,
-			Table: b.table.Name(),
+			Table: b.table.GetName(),
 			Into:  columns,
 		},
 	}
@@ -113,7 +113,7 @@ func (b *KnownTableBuilder[T]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuer
 		tx:   b.tx,
 		stmt: &ast.UpdateStatement{
 			With:    b.with,
-			Table:   b.table.Name(),
+			Table:   b.table.GetName(),
 			SetList: toSet,
 		},
 	}
@@ -125,7 +125,7 @@ func (b *KnownTableBuilder[T]) Delete() DeleteUsingQuery[T] {
 		tx:   b.tx,
 		stmt: &ast.DeleteStatement{
 			With:  b.with,
-			Table: b.table.Name(),
+			Table: b.table.GetName(),
 		},
 	}
 }
@@ -147,13 +147,13 @@ func (b *SelectBuilder[T]) With(ctes ...*ast.CTE) SelectJoinQuery[T] {
 	return b
 }
 
-func (b *SelectBuilder[T]) From(table *ast.TableSource) SelectWhereQuery[T] {
+func (b *SelectBuilder[T]) From(table ast.TableExpression) SelectWhereQuery[T] {
 	selectFrom(b.stmt, table)
 	return b
 }
 
-func (b *SelectBuilder[T]) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) SelectJoinQuery[T] {
-	selectJoin(b.stmt, joinType, table, expr)
+func (b *SelectBuilder[T]) Join(join *ast.JoinExpr) SelectJoinQuery[T] {
+	selectJoin(b.stmt, join)
 	return b
 }
 
@@ -189,7 +189,7 @@ func (b *SelectBuilder[T]) Offset(offset int) SelectPagingQuery[T] {
 
 func (b *SelectBuilder[T]) ToSql() (string, []any, error) {
 	params := make([]any, 0)
-	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: b.stmt.From.Name()})
+	sql, err := ast.RenderWithContext(b.stmt, &params, &ast.QueryContext{PrimaryTable: ast.TableExpressionName(b.stmt.From)})
 	return sql, params, err
 }
 
@@ -197,9 +197,13 @@ func (b *SelectBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
 }
 
+func (b *SelectBuilder[T]) SelectStatement() *ast.SelectStatement {
+	return b.stmt
+}
+
 func (b *SelectBuilder[T]) Find(ctx context.Context) ([]T, error) {
 	queryCtx := &ast.QueryContext{
-		PrimaryTable: b.stmt.From.Name(),
+		PrimaryTable: ast.TableExpressionName(b.stmt.From),
 	}
 
 	args := make([]any, 0)
@@ -258,13 +262,13 @@ func (b *StatementSelectBuilder) With(ctes ...*ast.CTE) StatementSelectJoinQuery
 	return b
 }
 
-func (b *StatementSelectBuilder) From(table *ast.TableSource) StatementSelectWhereQuery {
+func (b *StatementSelectBuilder) From(table ast.TableExpression) StatementSelectWhereQuery {
 	selectFrom(b.stmt, table)
 	return b
 }
 
-func (b *StatementSelectBuilder) Join(joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) StatementSelectJoinQuery {
-	selectJoin(b.stmt, joinType, table, expr)
+func (b *StatementSelectBuilder) Join(join *ast.JoinExpr) StatementSelectJoinQuery {
+	selectJoin(b.stmt, join)
 	return b
 }
 
@@ -302,16 +306,20 @@ func (b *StatementSelectBuilder) Statement() ast.SqlStatement {
 	return b.stmt
 }
 
+func (b *StatementSelectBuilder) SelectStatement() *ast.SelectStatement {
+	return b.stmt
+}
+
 func selectWith(stmt *ast.SelectStatement, ctes ...*ast.CTE) {
 	stmt.With = append(stmt.With, ctes...)
 }
 
-func selectFrom(stmt *ast.SelectStatement, table *ast.TableSource) {
+func selectFrom(stmt *ast.SelectStatement, table ast.TableExpression) {
 	stmt.From = table
 }
 
-func selectJoin(stmt *ast.SelectStatement, joinType ast.JoinType, table ast.NamedTableExpression, expr ast.OfType[bool]) {
-	stmt.From.Join(joinType, table, expr)
+func selectJoin(stmt *ast.SelectStatement, join *ast.JoinExpr) {
+	stmt.From = stmt.From.Join(join)
 }
 
 func selectWhere(stmt *ast.SelectStatement, expr ast.OfType[bool]) {
@@ -390,10 +398,9 @@ type InsertBuilder[T any] struct {
 	tx        pgx.Tx
 	stmt      *ast.InsertStatement
 	returning []ast.Projection[T]
-	execFn    func(ctx context.Context) (int64, error)
 }
 
-func (b *InsertBuilder[T]) Insert(columns ...ast.NamedExpression) InsertOnConflictQuery[T] {
+func (b *InsertBuilder[T]) Insert(columns ...ast.NamedExpression) InsertSourceQuery[T] {
 	b.stmt.Into = append(b.stmt.Into, columns...)
 	return b
 }
@@ -415,127 +422,118 @@ func (b *InsertBuilder[T]) Do(expr ast.OnConflictDoExpression) InsertReturningQu
 	return b
 }
 
-func (b *InsertBuilder[T]) Returning(projections ...ast.Projection[T]) InsertValuesQuery[T] {
+func (b *InsertBuilder[T]) Returning(projections ...ast.Projection[T]) InsertFinalizeQuery[T] {
 	b.returning = projections
 	b.stmt.Returning = projectionsToNamedExpressions(projections)
 	return b
 }
 
-func (b *InsertBuilder[T]) Values(values ...*T) InsertFinalizeQuery[T] {
+func (b *InsertBuilder[T]) Values(values ...*T) InsertOnConflictQuery[T] {
 	columns := b.stmt.Into
-	projections := make([]ast.Projection[T], 0, len(columns))
-	for _, column := range columns {
+	provider := &insertValuesProvider[T]{
+		rows:        values,
+		projections: make([]ast.Projection[T], len(columns)),
+	}
+	for i, column := range columns {
 		if projection, ok := column.(ast.Projection[T]); ok {
-			projections = append(projections, projection)
+			provider.projections[i] = projection
+			continue
+		}
+		if provider.err == nil {
+			if column == nil {
+				provider.err = fmt.Errorf("INSERT column %d is nil", i)
+			} else {
+				provider.err = fmt.Errorf("INSERT column %q is not a projection for the inserted type", column.GetName())
+			}
 		}
 	}
-	toAdd := make([]ast.Expression, len(values))
-	for i, value := range values {
-		fieldValues := make([]ast.Expression, len(projections))
-		for j, projection := range projections {
-			dest := projection.BindScan(value).Destination()
-			fieldValues[j] = ast.NewLiteralExpression(dest)
-		}
-		toAdd[i] = ast.NewGroupedExpression(fieldValues...)
-	}
-	b.stmt.Values = append(b.stmt.Values, toAdd...)
-
-	switch {
-	case len(b.stmt.Returning) == 0:
-		b.execFn = b.exec()
-	case len(values) == 1:
-		b.execFn = b.queryRow(values[0])
-	default:
-		b.execFn = b.query(values)
-	}
+	b.stmt.Values = ast.NewValuesTable(provider)
 
 	return b
 }
 
-// Exec inserts a new record
-func (b *InsertBuilder[T]) Exec(ctx context.Context) error {
-	_, err := b.execFn(ctx)
-	return err
+type insertValuesProvider[T any] struct {
+	rows        []*T
+	projections []ast.Projection[T]
+	err         error
 }
 
-func (b *InsertBuilder[T]) exec() func(ctx context.Context) (int64, error) {
-	return func(ctx context.Context) (int64, error) {
-		args := make([]any, 0)
-		qry := ast.Render(b.stmt, &args)
+func (p *insertValuesProvider[T]) RowCount() int {
+	return len(p.rows)
+}
 
+func (p *insertValuesProvider[T]) ColumnCount() int {
+	return len(p.projections)
+}
+
+func (p *insertValuesProvider[T]) Value(row int, column int) (any, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
+	if row < 0 || row >= len(p.rows) {
+		return nil, fmt.Errorf("INSERT VALUES row %d is out of range", row)
+	}
+	if p.rows[row] == nil {
+		return nil, fmt.Errorf("INSERT VALUES row %d is nil", row)
+	}
+	if column < 0 || column >= len(p.projections) {
+		return nil, fmt.Errorf("INSERT VALUES column %d is out of range", column)
+	}
+	return p.projections[column].Value(p.rows[row])
+}
+
+func (b *InsertBuilder[T]) Select(query StatementSelectFinalizeQuery) InsertOnConflictQuery[T] {
+	if query != nil {
+		b.stmt.Select = query.SelectStatement()
+	}
+	return b
+}
+
+// Exec executes the insert and returns its affected-row count and any RETURNING rows.
+func (b *InsertBuilder[T]) Exec(ctx context.Context) (int64, []T, error) {
+	args := make([]any, 0)
+	queryCtx := &ast.QueryContext{
+		PrimaryTable: b.stmt.Table,
+	}
+	qry, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if len(b.stmt.Returning) == 0 {
 		var tag pgconn.CommandTag
-		var err error
 		if b.tx != nil {
 			tag, err = b.tx.Exec(ctx, qry, args...)
 		} else {
 			tag, err = b.pool.Exec(ctx, qry, args...)
 		}
-
-		return tag.RowsAffected(), err
-	}
-}
-
-func (b *InsertBuilder[T]) queryRow(record *T) func(ctx context.Context) (int64, error) {
-	return func(ctx context.Context) (int64, error) {
-		args := make([]any, 0)
-		queryCtx := &ast.QueryContext{
-			PrimaryTable: b.stmt.Table,
-		}
-		qry, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
 		if err != nil {
-			return -1, err
+			return 0, nil, err
 		}
-
-		var row pgx.Row
-		if b.tx != nil {
-			row = b.tx.QueryRow(ctx, qry, args...)
-		} else {
-			row = b.pool.QueryRow(ctx, qry, args...)
-		}
-
-		if len(b.stmt.Returning) > 0 {
-			if err = scanProjections((*T)(record), b.returning, row); err != nil {
-				return -1, err
-			}
-		}
-
-		return 1, nil
+		return tag.RowsAffected(), nil, nil
 	}
-}
 
-func (b *InsertBuilder[T]) query(records []*T) func(ctx context.Context) (int64, error) {
-	return func(ctx context.Context) (int64, error) {
-		args := make([]any, 0)
-		queryCtx := &ast.QueryContext{
-			PrimaryTable: b.stmt.Table,
-		}
-		qry, err := ast.RenderWithContext(b.stmt, &args, queryCtx)
-		if err != nil {
-			return -1, err
-		}
-
-		var rows pgx.Rows
-		if b.tx != nil {
-			rows, err = b.tx.Query(ctx, qry, args...)
-		} else {
-			rows, err = b.pool.Query(ctx, qry, args...)
-		}
-
-		if err != nil {
-			return -1, err
-		}
-		defer rows.Close()
-
-		for _, record := range records {
-			rows.Next()
-			err = scanProjections((*T)(record), b.returning, rows)
-			if err != nil {
-				return int64(len(records)), err
-			}
-		}
-
-		return int64(len(records)), nil
+	var rows pgx.Rows
+	if b.tx != nil {
+		rows, err = b.tx.Query(ctx, qry, args...)
+	} else {
+		rows, err = b.pool.Query(ctx, qry, args...)
 	}
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	var results []T
+	for rows.Next() {
+		var result T
+		if err = scanProjections(&result, b.returning, rows); err != nil {
+			return rows.CommandTag().RowsAffected(), results, err
+		}
+		results = append(results, result)
+	}
+
+	return rows.CommandTag().RowsAffected(), results, rows.Err()
 }
 
 func (b *InsertBuilder[T]) ToSql() (string, []any, error) {
@@ -546,50 +544,6 @@ func (b *InsertBuilder[T]) ToSql() (string, []any, error) {
 
 func (b *InsertBuilder[T]) Statement() ast.SqlStatement {
 	return b.stmt
-}
-
-// ExecBatch inserts multiple records efficiently using pgx batch
-func (b *InsertBuilder[T]) ExecBatch(ctx context.Context, records []T) error {
-	if len(records) == 0 {
-		return nil
-	}
-	columns := b.stmt.Into
-	projections := make([]ast.Projection[T], 0, len(columns))
-	for _, column := range columns {
-		if projection, ok := column.(ast.Projection[T]); ok {
-			projections = append(projections, projection)
-		}
-	}
-
-	batch := &pgx.Batch{}
-	for _, record := range records {
-		for _, projection := range projections {
-			value := projection.BindScan(&record).Destination()
-			b.stmt.Values = append(b.stmt.Values, ast.NewLiteralExpression(value))
-		}
-		args := []any{}
-		query := ast.Render(b.stmt, &args)
-		batch.Queue(query, args...)
-	}
-
-	var br pgx.BatchResults
-	if b.tx != nil {
-		br = b.tx.SendBatch(ctx, batch)
-	} else {
-		br = b.pool.SendBatch(ctx, batch)
-	}
-	defer br.Close()
-
-	// Scan returned PKs (if any) back into records
-	if len(b.stmt.Returning) > 0 {
-		for _, record := range records {
-			if err := scanProjections(&record, b.returning, br.QueryRow()); err != nil {
-				return fmt.Errorf("failed to scan batch result %+v: %w", record, err)
-			}
-		}
-	}
-
-	return br.Close()
 }
 
 type UpdateBuilder[T any] struct {

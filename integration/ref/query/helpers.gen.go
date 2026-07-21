@@ -37,11 +37,11 @@ func CTE(alias *ast.TableAlias, stmt ast.SqlStatement) *ast.CTE {
 }
 
 func Table(alias *ast.TableAlias) *ast.TableSource {
-	return ast.NewTableSource(alias.Name())
+	return ast.NewTableSource(alias.GetName())
 }
 
 func Rel[T ast.MappedTypes](r *ast.TableAlias, c ast.NamedAndTyped[T]) ast.OfType[T] {
-	return ast.SetType[T](ast.NewColumnNode(r.Name(), c.Name()))
+	return ast.SetType[T](ast.NewColumnNode(r.GetName(), c.GetName()))
 }
 
 func Set[T ast.MappedTypes](field ast.NamedAndTyped[T]) *SetPart[T] {
@@ -63,7 +63,7 @@ func SetTo[T any](dto *T, fields ...ast.Projection[T]) ast.UpdateSetExpr {
 		}
 		value, err := field.Value(dto)
 		if err != nil {
-			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.Name(), err))
+			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.GetName(), err))
 		}
 		set := ast.UpdateSet{
 			Key:   field,

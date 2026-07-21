@@ -83,14 +83,14 @@ func JsonbBuildObject(expressions ...ast.NamedExpression) ast.Function[json.RawM
 		func(node ast.ExpressionNode, builder *strings.Builder, params *[]any, ctx *ast.QueryContext) {
 			builder.WriteString(node.Op + "(")
 			for i := 0; i < len(expressions)-1; i++ {
-				builder.WriteString("'" + expressions[i].Name() + "', ")
+				builder.WriteString("'" + expressions[i].GetName() + "', ")
 				ast.BuildQueryWithContext(expressions[i], builder, params, ctx)
 				if ctx != nil && ctx.Error != nil {
 					return
 				}
 				builder.WriteString(", ")
 			}
-			builder.WriteString("'" + expressions[len(expressions)-1].Name() + "', ")
+			builder.WriteString("'" + expressions[len(expressions)-1].GetName() + "', ")
 			ast.BuildQueryWithContext(expressions[len(expressions)-1], builder, params, ctx)
 			if ctx != nil && ctx.Error != nil {
 				return

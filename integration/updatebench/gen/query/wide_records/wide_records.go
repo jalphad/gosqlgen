@@ -12,7 +12,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/builder"
 )
 
-// NewQuery returns a query builder for wide_records
+// NewQuery returns a query builder for "public"."wide_records"
 func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.WideRecordsDto] {
 	return builder.NewKnownTableBuilder[models.WideRecordsDto](pool, Table())
 }
@@ -21,1039 +21,614 @@ var Into = intoWideRecordsDto{}
 
 type intoWideRecordsDto struct{}
 
-type forWideRecordsDto[E models.ExportsWideRecordsDto[T], T any] struct {
-	alias *Alias
-	err   error
-}
-
-// TODO(go1.27): if type parameters on methods are available, consider
-// supporting alias.For[*resultRow]() as the primary alias API.
-func For[E models.ExportsWideRecordsDto[T], T any](alias ...*Alias) forWideRecordsDto[E, T] {
-	switch len(alias) {
-	case 0:
-		return forWideRecordsDto[E, T]{}
-	case 1:
-		if alias[0] == nil || alias[0].Alias == nil {
-			return forWideRecordsDto[E, T]{err: fmt.Errorf("wide_records.For requires a non-nil alias")}
-		}
-		return forWideRecordsDto[E, T]{alias: alias[0]}
-	default:
-		return forWideRecordsDto[E, T]{err: fmt.Errorf("wide_records.For accepts at most one alias")}
-	}
-}
-
 func Table() *ast.TableSource {
-	return ast.NewTableSource("wide_records")
+	return ast.NewTableSource(`"public"."wide_records"`)
 }
 
 func Id() *ast.UUIDColumnProjection[models.WideRecordsDto, **uuid.UUID] {
-	return ast.NewUUIDColumnProjection(
-		"wide_records",
-		"id",
-		func(w *models.WideRecordsDto) **uuid.UUID {
-			return &w.Id
-		},
-	)
+	return newId(`"public"."wide_records"`, func(w *models.WideRecordsDto) **uuid.UUID {
+		return &w.Id
+	})
 }
 
 func Col001() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_001",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col001
-		},
-	)
+	return newCol001(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col001
+	})
 }
 
 func Col002() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_002",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col002
-		},
-	)
+	return newCol002(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col002
+	})
 }
 
 func Col003() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_003",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col003
-		},
-	)
+	return newCol003(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col003
+	})
 }
 
 func Col004() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_004",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col004
-		},
-	)
+	return newCol004(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col004
+	})
 }
 
 func Col005() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_005",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col005
-		},
-	)
+	return newCol005(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col005
+	})
 }
 
 func Col006() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_006",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col006
-		},
-	)
+	return newCol006(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col006
+	})
 }
 
 func Col007() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_007",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col007
-		},
-	)
+	return newCol007(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col007
+	})
 }
 
 func Col008() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_008",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col008
-		},
-	)
+	return newCol008(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col008
+	})
 }
 
 func Col009() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_009",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col009
-		},
-	)
+	return newCol009(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col009
+	})
 }
 
 func Col010() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_010",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col010
-		},
-	)
+	return newCol010(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col010
+	})
 }
 
 func Col011() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_011",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col011
-		},
-	)
+	return newCol011(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col011
+	})
 }
 
 func Col012() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_012",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col012
-		},
-	)
+	return newCol012(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col012
+	})
 }
 
 func Col013() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_013",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col013
-		},
-	)
+	return newCol013(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col013
+	})
 }
 
 func Col014() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_014",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col014
-		},
-	)
+	return newCol014(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col014
+	})
 }
 
 func Col015() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_015",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col015
-		},
-	)
+	return newCol015(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col015
+	})
 }
 
 func Col016() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_016",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col016
-		},
-	)
+	return newCol016(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col016
+	})
 }
 
 func Col017() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_017",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col017
-		},
-	)
+	return newCol017(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col017
+	})
 }
 
 func Col018() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_018",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col018
-		},
-	)
+	return newCol018(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col018
+	})
 }
 
 func Col019() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_019",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col019
-		},
-	)
+	return newCol019(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col019
+	})
 }
 
 func Col020() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_020",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col020
-		},
-	)
+	return newCol020(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col020
+	})
 }
 
 func Col021() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_021",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col021
-		},
-	)
+	return newCol021(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col021
+	})
 }
 
 func Col022() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_022",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col022
-		},
-	)
+	return newCol022(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col022
+	})
 }
 
 func Col023() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_023",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col023
-		},
-	)
+	return newCol023(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col023
+	})
 }
 
 func Col024() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_024",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col024
-		},
-	)
+	return newCol024(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col024
+	})
 }
 
 func Col025() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_025",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col025
-		},
-	)
+	return newCol025(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col025
+	})
 }
 
 func Col026() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_026",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col026
-		},
-	)
+	return newCol026(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col026
+	})
 }
 
 func Col027() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_027",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col027
-		},
-	)
+	return newCol027(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col027
+	})
 }
 
 func Col028() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_028",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col028
-		},
-	)
+	return newCol028(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col028
+	})
 }
 
 func Col029() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_029",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col029
-		},
-	)
+	return newCol029(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col029
+	})
 }
 
 func Col030() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_030",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col030
-		},
-	)
+	return newCol030(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col030
+	})
 }
 
 func Col031() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_031",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col031
-		},
-	)
+	return newCol031(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col031
+	})
 }
 
 func Col032() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_032",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col032
-		},
-	)
+	return newCol032(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col032
+	})
 }
 
 func Col033() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_033",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col033
-		},
-	)
+	return newCol033(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col033
+	})
 }
 
 func Col034() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_034",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col034
-		},
-	)
+	return newCol034(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col034
+	})
 }
 
 func Col035() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_035",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col035
-		},
-	)
+	return newCol035(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col035
+	})
 }
 
 func Col036() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_036",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col036
-		},
-	)
+	return newCol036(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col036
+	})
 }
 
 func Col037() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_037",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col037
-		},
-	)
+	return newCol037(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col037
+	})
 }
 
 func Col038() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_038",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col038
-		},
-	)
+	return newCol038(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col038
+	})
 }
 
 func Col039() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_039",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col039
-		},
-	)
+	return newCol039(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col039
+	})
 }
 
 func Col040() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_040",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col040
-		},
-	)
+	return newCol040(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col040
+	})
 }
 
 func Col041() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_041",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col041
-		},
-	)
+	return newCol041(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col041
+	})
 }
 
 func Col042() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_042",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col042
-		},
-	)
+	return newCol042(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col042
+	})
 }
 
 func Col043() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_043",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col043
-		},
-	)
+	return newCol043(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col043
+	})
 }
 
 func Col044() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_044",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col044
-		},
-	)
+	return newCol044(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col044
+	})
 }
 
 func Col045() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_045",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col045
-		},
-	)
+	return newCol045(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col045
+	})
 }
 
 func Col046() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_046",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col046
-		},
-	)
+	return newCol046(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col046
+	})
 }
 
 func Col047() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_047",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col047
-		},
-	)
+	return newCol047(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col047
+	})
 }
 
 func Col048() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_048",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col048
-		},
-	)
+	return newCol048(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col048
+	})
 }
 
 func Col049() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_049",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col049
-		},
-	)
+	return newCol049(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col049
+	})
 }
 
 func Col050() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_050",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col050
-		},
-	)
+	return newCol050(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col050
+	})
 }
 
 func Col051() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_051",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col051
-		},
-	)
+	return newCol051(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col051
+	})
 }
 
 func Col052() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_052",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col052
-		},
-	)
+	return newCol052(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col052
+	})
 }
 
 func Col053() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_053",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col053
-		},
-	)
+	return newCol053(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col053
+	})
 }
 
 func Col054() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_054",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col054
-		},
-	)
+	return newCol054(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col054
+	})
 }
 
 func Col055() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_055",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col055
-		},
-	)
+	return newCol055(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col055
+	})
 }
 
 func Col056() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_056",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col056
-		},
-	)
+	return newCol056(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col056
+	})
 }
 
 func Col057() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_057",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col057
-		},
-	)
+	return newCol057(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col057
+	})
 }
 
 func Col058() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_058",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col058
-		},
-	)
+	return newCol058(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col058
+	})
 }
 
 func Col059() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_059",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col059
-		},
-	)
+	return newCol059(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col059
+	})
 }
 
 func Col060() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_060",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col060
-		},
-	)
+	return newCol060(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col060
+	})
 }
 
 func Col061() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_061",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col061
-		},
-	)
+	return newCol061(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col061
+	})
 }
 
 func Col062() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_062",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col062
-		},
-	)
+	return newCol062(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col062
+	})
 }
 
 func Col063() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_063",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col063
-		},
-	)
+	return newCol063(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col063
+	})
 }
 
 func Col064() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_064",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col064
-		},
-	)
+	return newCol064(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col064
+	})
 }
 
 func Col065() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_065",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col065
-		},
-	)
+	return newCol065(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col065
+	})
 }
 
 func Col066() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_066",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col066
-		},
-	)
+	return newCol066(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col066
+	})
 }
 
 func Col067() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_067",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col067
-		},
-	)
+	return newCol067(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col067
+	})
 }
 
 func Col068() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_068",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col068
-		},
-	)
+	return newCol068(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col068
+	})
 }
 
 func Col069() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_069",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col069
-		},
-	)
+	return newCol069(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col069
+	})
 }
 
 func Col070() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_070",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col070
-		},
-	)
+	return newCol070(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col070
+	})
 }
 
 func Col071() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_071",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col071
-		},
-	)
+	return newCol071(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col071
+	})
 }
 
 func Col072() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_072",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col072
-		},
-	)
+	return newCol072(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col072
+	})
 }
 
 func Col073() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_073",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col073
-		},
-	)
+	return newCol073(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col073
+	})
 }
 
 func Col074() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_074",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col074
-		},
-	)
+	return newCol074(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col074
+	})
 }
 
 func Col075() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_075",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col075
-		},
-	)
+	return newCol075(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col075
+	})
 }
 
 func Col076() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_076",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col076
-		},
-	)
+	return newCol076(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col076
+	})
 }
 
 func Col077() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_077",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col077
-		},
-	)
+	return newCol077(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col077
+	})
 }
 
 func Col078() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_078",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col078
-		},
-	)
+	return newCol078(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col078
+	})
 }
 
 func Col079() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_079",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col079
-		},
-	)
+	return newCol079(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col079
+	})
 }
 
 func Col080() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_080",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col080
-		},
-	)
+	return newCol080(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col080
+	})
 }
 
 func Col081() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_081",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col081
-		},
-	)
+	return newCol081(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col081
+	})
 }
 
 func Col082() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_082",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col082
-		},
-	)
+	return newCol082(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col082
+	})
 }
 
 func Col083() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_083",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col083
-		},
-	)
+	return newCol083(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col083
+	})
 }
 
 func Col084() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_084",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col084
-		},
-	)
+	return newCol084(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col084
+	})
 }
 
 func Col085() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_085",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col085
-		},
-	)
+	return newCol085(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col085
+	})
 }
 
 func Col086() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_086",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col086
-		},
-	)
+	return newCol086(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col086
+	})
 }
 
 func Col087() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_087",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col087
-		},
-	)
+	return newCol087(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col087
+	})
 }
 
 func Col088() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_088",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col088
-		},
-	)
+	return newCol088(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col088
+	})
 }
 
 func Col089() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_089",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col089
-		},
-	)
+	return newCol089(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col089
+	})
 }
 
 func Col090() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_090",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col090
-		},
-	)
+	return newCol090(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col090
+	})
 }
 
 func Col091() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_091",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col091
-		},
-	)
+	return newCol091(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col091
+	})
 }
 
 func Col092() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_092",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col092
-		},
-	)
+	return newCol092(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col092
+	})
 }
 
 func Col093() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_093",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col093
-		},
-	)
+	return newCol093(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col093
+	})
 }
 
 func Col094() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_094",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col094
-		},
-	)
+	return newCol094(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col094
+	})
 }
 
 func Col095() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_095",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col095
-		},
-	)
+	return newCol095(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col095
+	})
 }
 
 func Col096() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_096",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col096
-		},
-	)
+	return newCol096(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col096
+	})
 }
 
 func Col097() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_097",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col097
-		},
-	)
+	return newCol097(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col097
+	})
 }
 
 func Col098() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_098",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col098
-		},
-	)
+	return newCol098(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col098
+	})
 }
 
 func Col099() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_099",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col099
-		},
-	)
+	return newCol099(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col099
+	})
 }
 
 func Col100() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	return ast.NewStringColumnProjection(
-		"wide_records",
-		"col_100",
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col100
-		},
-	)
+	return newCol100(`"public"."wide_records"`, func(w *models.WideRecordsDto) *string {
+		return &w.Col100
+	})
 }
 
 func AllColumns() []ast.NamedExpression {
@@ -1672,2640 +1247,722 @@ func (intoWideRecordsDto) AllColumns() []ast.Projection[models.WideRecordsDto] {
 	}
 }
 
-func (f forWideRecordsDto[E, T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
-	column := Id()
-	projection := ast.NewUUIDColumnProjection[T, **uuid.UUID](
-		f.tableName(),
-		column.Name(),
-		func(t *T) **uuid.UUID {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Id
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", f.alias.Alias.Name()))
-	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col001() *ast.StringColumnProjection[T, *string] {
-	column := Col001()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col001
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_001' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col002() *ast.StringColumnProjection[T, *string] {
-	column := Col002()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col002
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_002' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col003() *ast.StringColumnProjection[T, *string] {
-	column := Col003()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col003
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_003' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col004() *ast.StringColumnProjection[T, *string] {
-	column := Col004()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col004
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_004' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col005() *ast.StringColumnProjection[T, *string] {
-	column := Col005()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col005
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_005' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col006() *ast.StringColumnProjection[T, *string] {
-	column := Col006()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col006
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_006' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col007() *ast.StringColumnProjection[T, *string] {
-	column := Col007()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col007
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_007' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col008() *ast.StringColumnProjection[T, *string] {
-	column := Col008()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col008
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_008' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col009() *ast.StringColumnProjection[T, *string] {
-	column := Col009()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col009
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_009' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col010() *ast.StringColumnProjection[T, *string] {
-	column := Col010()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col010
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_010' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col011() *ast.StringColumnProjection[T, *string] {
-	column := Col011()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col011
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_011' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col012() *ast.StringColumnProjection[T, *string] {
-	column := Col012()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col012
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_012' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col013() *ast.StringColumnProjection[T, *string] {
-	column := Col013()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col013
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_013' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col014() *ast.StringColumnProjection[T, *string] {
-	column := Col014()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col014
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_014' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col015() *ast.StringColumnProjection[T, *string] {
-	column := Col015()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col015
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_015' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col016() *ast.StringColumnProjection[T, *string] {
-	column := Col016()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col016
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_016' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col017() *ast.StringColumnProjection[T, *string] {
-	column := Col017()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col017
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_017' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col018() *ast.StringColumnProjection[T, *string] {
-	column := Col018()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col018
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_018' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col019() *ast.StringColumnProjection[T, *string] {
-	column := Col019()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col019
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_019' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col020() *ast.StringColumnProjection[T, *string] {
-	column := Col020()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col020
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_020' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col021() *ast.StringColumnProjection[T, *string] {
-	column := Col021()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col021
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_021' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col022() *ast.StringColumnProjection[T, *string] {
-	column := Col022()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col022
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_022' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col023() *ast.StringColumnProjection[T, *string] {
-	column := Col023()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col023
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_023' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col024() *ast.StringColumnProjection[T, *string] {
-	column := Col024()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col024
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_024' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col025() *ast.StringColumnProjection[T, *string] {
-	column := Col025()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col025
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_025' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col026() *ast.StringColumnProjection[T, *string] {
-	column := Col026()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col026
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_026' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col027() *ast.StringColumnProjection[T, *string] {
-	column := Col027()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col027
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_027' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col028() *ast.StringColumnProjection[T, *string] {
-	column := Col028()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col028
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_028' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col029() *ast.StringColumnProjection[T, *string] {
-	column := Col029()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col029
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_029' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col030() *ast.StringColumnProjection[T, *string] {
-	column := Col030()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col030
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_030' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col031() *ast.StringColumnProjection[T, *string] {
-	column := Col031()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col031
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_031' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col032() *ast.StringColumnProjection[T, *string] {
-	column := Col032()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col032
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_032' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col033() *ast.StringColumnProjection[T, *string] {
-	column := Col033()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col033
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_033' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col034() *ast.StringColumnProjection[T, *string] {
-	column := Col034()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col034
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_034' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col035() *ast.StringColumnProjection[T, *string] {
-	column := Col035()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col035
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_035' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col036() *ast.StringColumnProjection[T, *string] {
-	column := Col036()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col036
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_036' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col037() *ast.StringColumnProjection[T, *string] {
-	column := Col037()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col037
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_037' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col038() *ast.StringColumnProjection[T, *string] {
-	column := Col038()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col038
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_038' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col039() *ast.StringColumnProjection[T, *string] {
-	column := Col039()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col039
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_039' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col040() *ast.StringColumnProjection[T, *string] {
-	column := Col040()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col040
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_040' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col041() *ast.StringColumnProjection[T, *string] {
-	column := Col041()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col041
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_041' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col042() *ast.StringColumnProjection[T, *string] {
-	column := Col042()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col042
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_042' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col043() *ast.StringColumnProjection[T, *string] {
-	column := Col043()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col043
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_043' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col044() *ast.StringColumnProjection[T, *string] {
-	column := Col044()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col044
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_044' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col045() *ast.StringColumnProjection[T, *string] {
-	column := Col045()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col045
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_045' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col046() *ast.StringColumnProjection[T, *string] {
-	column := Col046()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col046
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_046' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col047() *ast.StringColumnProjection[T, *string] {
-	column := Col047()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col047
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_047' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col048() *ast.StringColumnProjection[T, *string] {
-	column := Col048()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col048
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_048' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col049() *ast.StringColumnProjection[T, *string] {
-	column := Col049()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col049
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_049' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col050() *ast.StringColumnProjection[T, *string] {
-	column := Col050()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col050
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_050' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col051() *ast.StringColumnProjection[T, *string] {
-	column := Col051()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col051
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_051' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col052() *ast.StringColumnProjection[T, *string] {
-	column := Col052()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col052
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_052' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col053() *ast.StringColumnProjection[T, *string] {
-	column := Col053()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col053
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_053' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col054() *ast.StringColumnProjection[T, *string] {
-	column := Col054()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col054
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_054' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col055() *ast.StringColumnProjection[T, *string] {
-	column := Col055()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col055
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_055' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col056() *ast.StringColumnProjection[T, *string] {
-	column := Col056()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col056
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_056' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col057() *ast.StringColumnProjection[T, *string] {
-	column := Col057()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col057
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_057' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col058() *ast.StringColumnProjection[T, *string] {
-	column := Col058()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col058
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_058' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col059() *ast.StringColumnProjection[T, *string] {
-	column := Col059()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col059
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_059' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col060() *ast.StringColumnProjection[T, *string] {
-	column := Col060()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col060
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_060' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col061() *ast.StringColumnProjection[T, *string] {
-	column := Col061()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col061
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_061' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col062() *ast.StringColumnProjection[T, *string] {
-	column := Col062()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col062
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_062' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col063() *ast.StringColumnProjection[T, *string] {
-	column := Col063()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col063
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_063' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col064() *ast.StringColumnProjection[T, *string] {
-	column := Col064()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col064
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_064' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col065() *ast.StringColumnProjection[T, *string] {
-	column := Col065()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col065
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_065' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col066() *ast.StringColumnProjection[T, *string] {
-	column := Col066()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col066
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_066' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col067() *ast.StringColumnProjection[T, *string] {
-	column := Col067()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col067
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_067' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col068() *ast.StringColumnProjection[T, *string] {
-	column := Col068()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col068
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_068' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col069() *ast.StringColumnProjection[T, *string] {
-	column := Col069()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col069
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_069' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col070() *ast.StringColumnProjection[T, *string] {
-	column := Col070()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col070
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_070' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col071() *ast.StringColumnProjection[T, *string] {
-	column := Col071()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col071
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_071' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col072() *ast.StringColumnProjection[T, *string] {
-	column := Col072()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col072
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_072' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col073() *ast.StringColumnProjection[T, *string] {
-	column := Col073()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col073
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_073' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col074() *ast.StringColumnProjection[T, *string] {
-	column := Col074()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col074
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_074' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col075() *ast.StringColumnProjection[T, *string] {
-	column := Col075()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col075
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_075' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col076() *ast.StringColumnProjection[T, *string] {
-	column := Col076()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col076
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_076' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col077() *ast.StringColumnProjection[T, *string] {
-	column := Col077()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col077
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_077' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col078() *ast.StringColumnProjection[T, *string] {
-	column := Col078()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col078
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_078' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col079() *ast.StringColumnProjection[T, *string] {
-	column := Col079()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col079
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_079' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col080() *ast.StringColumnProjection[T, *string] {
-	column := Col080()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col080
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_080' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col081() *ast.StringColumnProjection[T, *string] {
-	column := Col081()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col081
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_081' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col082() *ast.StringColumnProjection[T, *string] {
-	column := Col082()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col082
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_082' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col083() *ast.StringColumnProjection[T, *string] {
-	column := Col083()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col083
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_083' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col084() *ast.StringColumnProjection[T, *string] {
-	column := Col084()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col084
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_084' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col085() *ast.StringColumnProjection[T, *string] {
-	column := Col085()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col085
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_085' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col086() *ast.StringColumnProjection[T, *string] {
-	column := Col086()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col086
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_086' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col087() *ast.StringColumnProjection[T, *string] {
-	column := Col087()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col087
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_087' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col088() *ast.StringColumnProjection[T, *string] {
-	column := Col088()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col088
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_088' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col089() *ast.StringColumnProjection[T, *string] {
-	column := Col089()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col089
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_089' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col090() *ast.StringColumnProjection[T, *string] {
-	column := Col090()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col090
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_090' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col091() *ast.StringColumnProjection[T, *string] {
-	column := Col091()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col091
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_091' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col092() *ast.StringColumnProjection[T, *string] {
-	column := Col092()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col092
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_092' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col093() *ast.StringColumnProjection[T, *string] {
-	column := Col093()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col093
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_093' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col094() *ast.StringColumnProjection[T, *string] {
-	column := Col094()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col094
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_094' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col095() *ast.StringColumnProjection[T, *string] {
-	column := Col095()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col095
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_095' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col096() *ast.StringColumnProjection[T, *string] {
-	column := Col096()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col096
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_096' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col097() *ast.StringColumnProjection[T, *string] {
-	column := Col097()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col097
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_097' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col098() *ast.StringColumnProjection[T, *string] {
-	column := Col098()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col098
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_098' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col099() *ast.StringColumnProjection[T, *string] {
-	column := Col099()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col099
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_099' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) Col100() *ast.StringColumnProjection[T, *string] {
-	column := Col100()
-	projection := ast.NewStringColumnProjection[T, *string](
-		f.tableName(),
-		column.Name(),
-		func(t *T) *string {
-			e := E(t)
-			dto := e.GetWideRecordsDto()
-			return &dto.Col100
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_100' in alias %s", f.alias.Alias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
-}
-
-func (f forWideRecordsDto[E, T]) tableName() string {
-	if f.alias == nil || f.alias.Alias == nil {
-		return "wide_records"
-	}
-	return f.alias.Alias.Name()
-}
-
-func (f forWideRecordsDto[E, T]) AllColumns() []ast.Projection[T] {
+type forWideRecordsDto[T any] struct {
+	dest func(*T) *models.WideRecordsDto
+}
+
+func For[T any](dest func(*T) *models.WideRecordsDto) forWideRecordsDto[T] {
+	return forWideRecordsDto[T]{dest: dest}
+}
+
+func (f forWideRecordsDto[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	return newId(`"public"."wide_records"`, func(t *T) **uuid.UUID {
+		dto := f.dest(t)
+		return &dto.Id
+	})
+}
+
+func (f forWideRecordsDto[T]) Col001() *ast.StringColumnProjection[T, *string] {
+	return newCol001(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col001
+	})
+}
+
+func (f forWideRecordsDto[T]) Col002() *ast.StringColumnProjection[T, *string] {
+	return newCol002(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col002
+	})
+}
+
+func (f forWideRecordsDto[T]) Col003() *ast.StringColumnProjection[T, *string] {
+	return newCol003(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col003
+	})
+}
+
+func (f forWideRecordsDto[T]) Col004() *ast.StringColumnProjection[T, *string] {
+	return newCol004(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col004
+	})
+}
+
+func (f forWideRecordsDto[T]) Col005() *ast.StringColumnProjection[T, *string] {
+	return newCol005(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col005
+	})
+}
+
+func (f forWideRecordsDto[T]) Col006() *ast.StringColumnProjection[T, *string] {
+	return newCol006(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col006
+	})
+}
+
+func (f forWideRecordsDto[T]) Col007() *ast.StringColumnProjection[T, *string] {
+	return newCol007(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col007
+	})
+}
+
+func (f forWideRecordsDto[T]) Col008() *ast.StringColumnProjection[T, *string] {
+	return newCol008(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col008
+	})
+}
+
+func (f forWideRecordsDto[T]) Col009() *ast.StringColumnProjection[T, *string] {
+	return newCol009(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col009
+	})
+}
+
+func (f forWideRecordsDto[T]) Col010() *ast.StringColumnProjection[T, *string] {
+	return newCol010(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col010
+	})
+}
+
+func (f forWideRecordsDto[T]) Col011() *ast.StringColumnProjection[T, *string] {
+	return newCol011(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col011
+	})
+}
+
+func (f forWideRecordsDto[T]) Col012() *ast.StringColumnProjection[T, *string] {
+	return newCol012(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col012
+	})
+}
+
+func (f forWideRecordsDto[T]) Col013() *ast.StringColumnProjection[T, *string] {
+	return newCol013(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col013
+	})
+}
+
+func (f forWideRecordsDto[T]) Col014() *ast.StringColumnProjection[T, *string] {
+	return newCol014(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col014
+	})
+}
+
+func (f forWideRecordsDto[T]) Col015() *ast.StringColumnProjection[T, *string] {
+	return newCol015(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col015
+	})
+}
+
+func (f forWideRecordsDto[T]) Col016() *ast.StringColumnProjection[T, *string] {
+	return newCol016(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col016
+	})
+}
+
+func (f forWideRecordsDto[T]) Col017() *ast.StringColumnProjection[T, *string] {
+	return newCol017(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col017
+	})
+}
+
+func (f forWideRecordsDto[T]) Col018() *ast.StringColumnProjection[T, *string] {
+	return newCol018(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col018
+	})
+}
+
+func (f forWideRecordsDto[T]) Col019() *ast.StringColumnProjection[T, *string] {
+	return newCol019(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col019
+	})
+}
+
+func (f forWideRecordsDto[T]) Col020() *ast.StringColumnProjection[T, *string] {
+	return newCol020(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col020
+	})
+}
+
+func (f forWideRecordsDto[T]) Col021() *ast.StringColumnProjection[T, *string] {
+	return newCol021(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col021
+	})
+}
+
+func (f forWideRecordsDto[T]) Col022() *ast.StringColumnProjection[T, *string] {
+	return newCol022(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col022
+	})
+}
+
+func (f forWideRecordsDto[T]) Col023() *ast.StringColumnProjection[T, *string] {
+	return newCol023(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col023
+	})
+}
+
+func (f forWideRecordsDto[T]) Col024() *ast.StringColumnProjection[T, *string] {
+	return newCol024(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col024
+	})
+}
+
+func (f forWideRecordsDto[T]) Col025() *ast.StringColumnProjection[T, *string] {
+	return newCol025(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col025
+	})
+}
+
+func (f forWideRecordsDto[T]) Col026() *ast.StringColumnProjection[T, *string] {
+	return newCol026(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col026
+	})
+}
+
+func (f forWideRecordsDto[T]) Col027() *ast.StringColumnProjection[T, *string] {
+	return newCol027(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col027
+	})
+}
+
+func (f forWideRecordsDto[T]) Col028() *ast.StringColumnProjection[T, *string] {
+	return newCol028(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col028
+	})
+}
+
+func (f forWideRecordsDto[T]) Col029() *ast.StringColumnProjection[T, *string] {
+	return newCol029(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col029
+	})
+}
+
+func (f forWideRecordsDto[T]) Col030() *ast.StringColumnProjection[T, *string] {
+	return newCol030(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col030
+	})
+}
+
+func (f forWideRecordsDto[T]) Col031() *ast.StringColumnProjection[T, *string] {
+	return newCol031(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col031
+	})
+}
+
+func (f forWideRecordsDto[T]) Col032() *ast.StringColumnProjection[T, *string] {
+	return newCol032(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col032
+	})
+}
+
+func (f forWideRecordsDto[T]) Col033() *ast.StringColumnProjection[T, *string] {
+	return newCol033(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col033
+	})
+}
+
+func (f forWideRecordsDto[T]) Col034() *ast.StringColumnProjection[T, *string] {
+	return newCol034(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col034
+	})
+}
+
+func (f forWideRecordsDto[T]) Col035() *ast.StringColumnProjection[T, *string] {
+	return newCol035(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col035
+	})
+}
+
+func (f forWideRecordsDto[T]) Col036() *ast.StringColumnProjection[T, *string] {
+	return newCol036(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col036
+	})
+}
+
+func (f forWideRecordsDto[T]) Col037() *ast.StringColumnProjection[T, *string] {
+	return newCol037(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col037
+	})
+}
+
+func (f forWideRecordsDto[T]) Col038() *ast.StringColumnProjection[T, *string] {
+	return newCol038(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col038
+	})
+}
+
+func (f forWideRecordsDto[T]) Col039() *ast.StringColumnProjection[T, *string] {
+	return newCol039(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col039
+	})
+}
+
+func (f forWideRecordsDto[T]) Col040() *ast.StringColumnProjection[T, *string] {
+	return newCol040(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col040
+	})
+}
+
+func (f forWideRecordsDto[T]) Col041() *ast.StringColumnProjection[T, *string] {
+	return newCol041(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col041
+	})
+}
+
+func (f forWideRecordsDto[T]) Col042() *ast.StringColumnProjection[T, *string] {
+	return newCol042(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col042
+	})
+}
+
+func (f forWideRecordsDto[T]) Col043() *ast.StringColumnProjection[T, *string] {
+	return newCol043(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col043
+	})
+}
+
+func (f forWideRecordsDto[T]) Col044() *ast.StringColumnProjection[T, *string] {
+	return newCol044(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col044
+	})
+}
+
+func (f forWideRecordsDto[T]) Col045() *ast.StringColumnProjection[T, *string] {
+	return newCol045(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col045
+	})
+}
+
+func (f forWideRecordsDto[T]) Col046() *ast.StringColumnProjection[T, *string] {
+	return newCol046(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col046
+	})
+}
+
+func (f forWideRecordsDto[T]) Col047() *ast.StringColumnProjection[T, *string] {
+	return newCol047(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col047
+	})
+}
+
+func (f forWideRecordsDto[T]) Col048() *ast.StringColumnProjection[T, *string] {
+	return newCol048(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col048
+	})
+}
+
+func (f forWideRecordsDto[T]) Col049() *ast.StringColumnProjection[T, *string] {
+	return newCol049(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col049
+	})
+}
+
+func (f forWideRecordsDto[T]) Col050() *ast.StringColumnProjection[T, *string] {
+	return newCol050(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col050
+	})
+}
+
+func (f forWideRecordsDto[T]) Col051() *ast.StringColumnProjection[T, *string] {
+	return newCol051(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col051
+	})
+}
+
+func (f forWideRecordsDto[T]) Col052() *ast.StringColumnProjection[T, *string] {
+	return newCol052(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col052
+	})
+}
+
+func (f forWideRecordsDto[T]) Col053() *ast.StringColumnProjection[T, *string] {
+	return newCol053(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col053
+	})
+}
+
+func (f forWideRecordsDto[T]) Col054() *ast.StringColumnProjection[T, *string] {
+	return newCol054(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col054
+	})
+}
+
+func (f forWideRecordsDto[T]) Col055() *ast.StringColumnProjection[T, *string] {
+	return newCol055(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col055
+	})
+}
+
+func (f forWideRecordsDto[T]) Col056() *ast.StringColumnProjection[T, *string] {
+	return newCol056(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col056
+	})
+}
+
+func (f forWideRecordsDto[T]) Col057() *ast.StringColumnProjection[T, *string] {
+	return newCol057(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col057
+	})
+}
+
+func (f forWideRecordsDto[T]) Col058() *ast.StringColumnProjection[T, *string] {
+	return newCol058(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col058
+	})
+}
+
+func (f forWideRecordsDto[T]) Col059() *ast.StringColumnProjection[T, *string] {
+	return newCol059(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col059
+	})
+}
+
+func (f forWideRecordsDto[T]) Col060() *ast.StringColumnProjection[T, *string] {
+	return newCol060(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col060
+	})
+}
+
+func (f forWideRecordsDto[T]) Col061() *ast.StringColumnProjection[T, *string] {
+	return newCol061(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col061
+	})
+}
+
+func (f forWideRecordsDto[T]) Col062() *ast.StringColumnProjection[T, *string] {
+	return newCol062(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col062
+	})
+}
+
+func (f forWideRecordsDto[T]) Col063() *ast.StringColumnProjection[T, *string] {
+	return newCol063(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col063
+	})
+}
+
+func (f forWideRecordsDto[T]) Col064() *ast.StringColumnProjection[T, *string] {
+	return newCol064(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col064
+	})
+}
+
+func (f forWideRecordsDto[T]) Col065() *ast.StringColumnProjection[T, *string] {
+	return newCol065(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col065
+	})
+}
+
+func (f forWideRecordsDto[T]) Col066() *ast.StringColumnProjection[T, *string] {
+	return newCol066(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col066
+	})
+}
+
+func (f forWideRecordsDto[T]) Col067() *ast.StringColumnProjection[T, *string] {
+	return newCol067(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col067
+	})
+}
+
+func (f forWideRecordsDto[T]) Col068() *ast.StringColumnProjection[T, *string] {
+	return newCol068(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col068
+	})
+}
+
+func (f forWideRecordsDto[T]) Col069() *ast.StringColumnProjection[T, *string] {
+	return newCol069(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col069
+	})
+}
+
+func (f forWideRecordsDto[T]) Col070() *ast.StringColumnProjection[T, *string] {
+	return newCol070(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col070
+	})
+}
+
+func (f forWideRecordsDto[T]) Col071() *ast.StringColumnProjection[T, *string] {
+	return newCol071(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col071
+	})
+}
+
+func (f forWideRecordsDto[T]) Col072() *ast.StringColumnProjection[T, *string] {
+	return newCol072(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col072
+	})
+}
+
+func (f forWideRecordsDto[T]) Col073() *ast.StringColumnProjection[T, *string] {
+	return newCol073(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col073
+	})
+}
+
+func (f forWideRecordsDto[T]) Col074() *ast.StringColumnProjection[T, *string] {
+	return newCol074(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col074
+	})
+}
+
+func (f forWideRecordsDto[T]) Col075() *ast.StringColumnProjection[T, *string] {
+	return newCol075(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col075
+	})
+}
+
+func (f forWideRecordsDto[T]) Col076() *ast.StringColumnProjection[T, *string] {
+	return newCol076(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col076
+	})
+}
+
+func (f forWideRecordsDto[T]) Col077() *ast.StringColumnProjection[T, *string] {
+	return newCol077(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col077
+	})
+}
+
+func (f forWideRecordsDto[T]) Col078() *ast.StringColumnProjection[T, *string] {
+	return newCol078(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col078
+	})
+}
+
+func (f forWideRecordsDto[T]) Col079() *ast.StringColumnProjection[T, *string] {
+	return newCol079(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col079
+	})
+}
+
+func (f forWideRecordsDto[T]) Col080() *ast.StringColumnProjection[T, *string] {
+	return newCol080(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col080
+	})
+}
+
+func (f forWideRecordsDto[T]) Col081() *ast.StringColumnProjection[T, *string] {
+	return newCol081(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col081
+	})
+}
+
+func (f forWideRecordsDto[T]) Col082() *ast.StringColumnProjection[T, *string] {
+	return newCol082(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col082
+	})
+}
+
+func (f forWideRecordsDto[T]) Col083() *ast.StringColumnProjection[T, *string] {
+	return newCol083(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col083
+	})
+}
+
+func (f forWideRecordsDto[T]) Col084() *ast.StringColumnProjection[T, *string] {
+	return newCol084(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col084
+	})
+}
+
+func (f forWideRecordsDto[T]) Col085() *ast.StringColumnProjection[T, *string] {
+	return newCol085(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col085
+	})
+}
+
+func (f forWideRecordsDto[T]) Col086() *ast.StringColumnProjection[T, *string] {
+	return newCol086(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col086
+	})
+}
+
+func (f forWideRecordsDto[T]) Col087() *ast.StringColumnProjection[T, *string] {
+	return newCol087(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col087
+	})
+}
+
+func (f forWideRecordsDto[T]) Col088() *ast.StringColumnProjection[T, *string] {
+	return newCol088(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col088
+	})
+}
+
+func (f forWideRecordsDto[T]) Col089() *ast.StringColumnProjection[T, *string] {
+	return newCol089(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col089
+	})
+}
+
+func (f forWideRecordsDto[T]) Col090() *ast.StringColumnProjection[T, *string] {
+	return newCol090(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col090
+	})
+}
+
+func (f forWideRecordsDto[T]) Col091() *ast.StringColumnProjection[T, *string] {
+	return newCol091(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col091
+	})
+}
+
+func (f forWideRecordsDto[T]) Col092() *ast.StringColumnProjection[T, *string] {
+	return newCol092(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col092
+	})
+}
+
+func (f forWideRecordsDto[T]) Col093() *ast.StringColumnProjection[T, *string] {
+	return newCol093(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col093
+	})
+}
+
+func (f forWideRecordsDto[T]) Col094() *ast.StringColumnProjection[T, *string] {
+	return newCol094(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col094
+	})
+}
+
+func (f forWideRecordsDto[T]) Col095() *ast.StringColumnProjection[T, *string] {
+	return newCol095(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col095
+	})
+}
+
+func (f forWideRecordsDto[T]) Col096() *ast.StringColumnProjection[T, *string] {
+	return newCol096(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col096
+	})
+}
+
+func (f forWideRecordsDto[T]) Col097() *ast.StringColumnProjection[T, *string] {
+	return newCol097(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col097
+	})
+}
+
+func (f forWideRecordsDto[T]) Col098() *ast.StringColumnProjection[T, *string] {
+	return newCol098(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col098
+	})
+}
+
+func (f forWideRecordsDto[T]) Col099() *ast.StringColumnProjection[T, *string] {
+	return newCol099(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col099
+	})
+}
+
+func (f forWideRecordsDto[T]) Col100() *ast.StringColumnProjection[T, *string] {
+	return newCol100(`"public"."wide_records"`, func(t *T) *string {
+		dto := f.dest(t)
+		return &dto.Col100
+	})
+}
+
+func (f forWideRecordsDto[T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 		f.Id(),
 		f.Col001(),
@@ -4411,1931 +2068,2454 @@ func (f forWideRecordsDto[E, T]) AllColumns() []ast.Projection[T] {
 	}
 }
 
-type Alias struct {
-	*ast.Alias
+type Alias[T any] struct {
+	*ast.TableAlias
+	forWideRecordsDto[T]
 }
 
-func As(name string, columns ...ast.NamedExpression) *Alias {
-	return &Alias{
-		Alias: ast.NewAlias(name, columns...),
+func As(name string, columns ...ast.NamedExpression) Alias[models.WideRecordsDto] {
+	return Alias[models.WideRecordsDto]{
+		TableAlias: ast.NewTableAlias(name, columns...),
+		forWideRecordsDto: forWideRecordsDto[models.WideRecordsDto]{
+			dest: func(w *models.WideRecordsDto) *models.WideRecordsDto {
+				return w
+			},
+		},
 	}
 }
 
-func (a *Alias) Id() *ast.UUIDColumnProjection[models.WideRecordsDto, **uuid.UUID] {
-	column := Id()
-	alias := ast.NewUUIDColumnProjection[models.WideRecordsDto, **uuid.UUID](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) **uuid.UUID {
-			return &w.Id
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	projection := newId(a.TableAlias.GetName(), func(t *T) **uuid.UUID {
+		dto := a.dest(t)
+		return &dto.Id
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.Alias.Name()))
-	alias.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.GetName()))
+	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col001() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col001()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col001
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col001() *ast.StringColumnProjection[T, *string] {
+	projection := newCol001(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col001
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_001' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_001' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col002() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col002()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col002
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col002() *ast.StringColumnProjection[T, *string] {
+	projection := newCol002(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col002
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_002' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_002' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col003() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col003()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col003
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col003() *ast.StringColumnProjection[T, *string] {
+	projection := newCol003(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col003
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_003' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_003' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col004() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col004()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col004
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col004() *ast.StringColumnProjection[T, *string] {
+	projection := newCol004(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col004
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_004' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
-}
-
-func (a *Alias) Col005() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col005()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col005
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_004' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
+}
+
+func (a Alias[T]) Col005() *ast.StringColumnProjection[T, *string] {
+	projection := newCol005(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col005
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_005' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_005' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col006() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col006()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col006
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col006() *ast.StringColumnProjection[T, *string] {
+	projection := newCol006(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col006
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_006' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_006' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col007() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col007()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col007
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col007() *ast.StringColumnProjection[T, *string] {
+	projection := newCol007(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col007
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_007' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_007' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col008() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col008()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col008
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col008() *ast.StringColumnProjection[T, *string] {
+	projection := newCol008(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col008
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_008' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_008' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col009() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col009()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col009
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col009() *ast.StringColumnProjection[T, *string] {
+	projection := newCol009(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col009
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_009' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_009' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col010() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col010()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col010
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col010() *ast.StringColumnProjection[T, *string] {
+	projection := newCol010(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col010
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_010' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_010' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col011() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col011()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col011
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col011() *ast.StringColumnProjection[T, *string] {
+	projection := newCol011(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col011
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_011' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_011' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col012() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col012()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col012
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col012() *ast.StringColumnProjection[T, *string] {
+	projection := newCol012(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col012
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_012' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_012' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col013() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col013()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col013
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col013() *ast.StringColumnProjection[T, *string] {
+	projection := newCol013(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col013
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_013' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_013' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col014() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col014()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col014
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col014() *ast.StringColumnProjection[T, *string] {
+	projection := newCol014(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col014
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_014' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_014' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col015() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col015()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col015
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col015() *ast.StringColumnProjection[T, *string] {
+	projection := newCol015(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col015
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_015' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_015' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col016() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col016()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col016
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col016() *ast.StringColumnProjection[T, *string] {
+	projection := newCol016(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col016
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_016' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_016' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col017() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col017()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col017
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col017() *ast.StringColumnProjection[T, *string] {
+	projection := newCol017(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col017
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_017' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_017' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col018() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col018()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col018
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col018() *ast.StringColumnProjection[T, *string] {
+	projection := newCol018(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col018
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_018' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_018' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col019() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col019()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col019
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col019() *ast.StringColumnProjection[T, *string] {
+	projection := newCol019(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col019
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_019' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_019' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col020() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col020()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col020
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col020() *ast.StringColumnProjection[T, *string] {
+	projection := newCol020(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col020
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_020' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_020' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col021() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col021()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col021
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col021() *ast.StringColumnProjection[T, *string] {
+	projection := newCol021(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col021
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_021' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_021' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col022() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col022()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col022
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col022() *ast.StringColumnProjection[T, *string] {
+	projection := newCol022(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col022
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_022' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_022' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col023() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col023()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col023
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col023() *ast.StringColumnProjection[T, *string] {
+	projection := newCol023(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col023
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_023' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_023' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col024() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col024()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col024
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col024() *ast.StringColumnProjection[T, *string] {
+	projection := newCol024(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col024
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_024' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_024' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col025() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col025()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col025
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col025() *ast.StringColumnProjection[T, *string] {
+	projection := newCol025(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col025
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_025' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_025' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col026() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col026()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col026
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col026() *ast.StringColumnProjection[T, *string] {
+	projection := newCol026(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col026
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_026' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_026' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col027() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col027()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col027
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col027() *ast.StringColumnProjection[T, *string] {
+	projection := newCol027(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col027
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_027' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_027' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col028() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col028()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col028
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col028() *ast.StringColumnProjection[T, *string] {
+	projection := newCol028(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col028
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_028' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_028' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col029() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col029()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col029
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col029() *ast.StringColumnProjection[T, *string] {
+	projection := newCol029(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col029
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_029' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_029' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col030() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col030()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col030
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col030() *ast.StringColumnProjection[T, *string] {
+	projection := newCol030(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col030
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_030' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_030' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col031() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col031()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col031
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col031() *ast.StringColumnProjection[T, *string] {
+	projection := newCol031(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col031
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_031' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_031' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col032() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col032()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col032
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col032() *ast.StringColumnProjection[T, *string] {
+	projection := newCol032(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col032
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_032' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_032' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col033() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col033()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col033
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col033() *ast.StringColumnProjection[T, *string] {
+	projection := newCol033(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col033
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_033' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_033' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col034() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col034()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col034
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col034() *ast.StringColumnProjection[T, *string] {
+	projection := newCol034(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col034
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_034' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_034' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col035() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col035()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col035
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col035() *ast.StringColumnProjection[T, *string] {
+	projection := newCol035(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col035
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_035' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_035' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col036() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col036()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col036
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col036() *ast.StringColumnProjection[T, *string] {
+	projection := newCol036(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col036
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_036' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_036' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col037() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col037()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col037
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col037() *ast.StringColumnProjection[T, *string] {
+	projection := newCol037(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col037
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_037' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_037' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col038() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col038()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col038
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col038() *ast.StringColumnProjection[T, *string] {
+	projection := newCol038(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col038
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_038' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_038' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col039() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col039()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col039
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col039() *ast.StringColumnProjection[T, *string] {
+	projection := newCol039(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col039
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_039' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_039' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col040() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col040()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col040
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col040() *ast.StringColumnProjection[T, *string] {
+	projection := newCol040(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col040
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_040' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_040' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col041() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col041()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col041
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col041() *ast.StringColumnProjection[T, *string] {
+	projection := newCol041(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col041
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_041' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_041' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col042() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col042()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col042
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col042() *ast.StringColumnProjection[T, *string] {
+	projection := newCol042(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col042
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_042' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_042' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col043() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col043()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col043
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col043() *ast.StringColumnProjection[T, *string] {
+	projection := newCol043(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col043
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_043' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_043' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col044() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col044()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col044
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col044() *ast.StringColumnProjection[T, *string] {
+	projection := newCol044(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col044
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_044' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_044' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col045() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col045()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col045
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col045() *ast.StringColumnProjection[T, *string] {
+	projection := newCol045(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col045
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_045' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_045' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col046() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col046()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col046
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col046() *ast.StringColumnProjection[T, *string] {
+	projection := newCol046(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col046
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_046' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_046' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col047() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col047()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col047
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col047() *ast.StringColumnProjection[T, *string] {
+	projection := newCol047(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col047
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_047' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_047' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col048() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col048()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col048
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col048() *ast.StringColumnProjection[T, *string] {
+	projection := newCol048(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col048
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_048' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_048' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col049() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col049()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col049
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col049() *ast.StringColumnProjection[T, *string] {
+	projection := newCol049(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col049
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_049' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_049' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col050() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col050()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col050
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col050() *ast.StringColumnProjection[T, *string] {
+	projection := newCol050(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col050
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_050' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_050' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col051() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col051()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col051
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col051() *ast.StringColumnProjection[T, *string] {
+	projection := newCol051(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col051
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_051' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_051' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col052() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col052()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col052
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col052() *ast.StringColumnProjection[T, *string] {
+	projection := newCol052(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col052
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_052' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_052' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col053() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col053()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col053
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col053() *ast.StringColumnProjection[T, *string] {
+	projection := newCol053(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col053
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_053' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_053' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col054() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col054()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col054
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col054() *ast.StringColumnProjection[T, *string] {
+	projection := newCol054(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col054
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_054' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_054' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col055() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col055()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col055
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col055() *ast.StringColumnProjection[T, *string] {
+	projection := newCol055(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col055
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_055' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_055' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col056() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col056()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col056
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col056() *ast.StringColumnProjection[T, *string] {
+	projection := newCol056(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col056
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_056' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_056' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col057() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col057()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col057
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col057() *ast.StringColumnProjection[T, *string] {
+	projection := newCol057(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col057
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_057' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_057' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col058() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col058()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col058
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col058() *ast.StringColumnProjection[T, *string] {
+	projection := newCol058(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col058
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_058' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_058' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col059() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col059()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col059
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col059() *ast.StringColumnProjection[T, *string] {
+	projection := newCol059(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col059
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_059' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_059' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col060() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col060()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col060
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col060() *ast.StringColumnProjection[T, *string] {
+	projection := newCol060(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col060
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_060' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_060' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col061() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col061()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col061
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col061() *ast.StringColumnProjection[T, *string] {
+	projection := newCol061(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col061
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_061' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_061' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col062() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col062()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col062
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col062() *ast.StringColumnProjection[T, *string] {
+	projection := newCol062(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col062
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_062' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_062' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col063() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col063()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col063
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col063() *ast.StringColumnProjection[T, *string] {
+	projection := newCol063(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col063
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_063' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_063' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col064() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col064()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col064
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col064() *ast.StringColumnProjection[T, *string] {
+	projection := newCol064(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col064
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_064' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_064' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col065() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col065()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col065
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col065() *ast.StringColumnProjection[T, *string] {
+	projection := newCol065(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col065
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_065' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_065' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col066() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col066()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col066
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col066() *ast.StringColumnProjection[T, *string] {
+	projection := newCol066(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col066
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_066' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_066' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col067() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col067()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col067
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col067() *ast.StringColumnProjection[T, *string] {
+	projection := newCol067(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col067
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_067' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_067' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col068() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col068()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col068
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col068() *ast.StringColumnProjection[T, *string] {
+	projection := newCol068(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col068
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_068' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_068' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col069() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col069()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col069
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col069() *ast.StringColumnProjection[T, *string] {
+	projection := newCol069(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col069
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_069' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_069' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col070() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col070()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col070
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col070() *ast.StringColumnProjection[T, *string] {
+	projection := newCol070(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col070
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_070' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_070' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col071() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col071()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col071
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col071() *ast.StringColumnProjection[T, *string] {
+	projection := newCol071(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col071
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_071' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_071' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col072() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col072()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col072
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col072() *ast.StringColumnProjection[T, *string] {
+	projection := newCol072(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col072
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_072' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_072' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col073() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col073()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col073
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col073() *ast.StringColumnProjection[T, *string] {
+	projection := newCol073(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col073
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_073' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_073' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col074() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col074()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col074
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col074() *ast.StringColumnProjection[T, *string] {
+	projection := newCol074(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col074
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_074' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_074' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col075() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col075()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col075
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col075() *ast.StringColumnProjection[T, *string] {
+	projection := newCol075(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col075
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_075' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_075' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col076() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col076()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col076
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col076() *ast.StringColumnProjection[T, *string] {
+	projection := newCol076(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col076
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_076' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_076' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col077() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col077()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col077
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col077() *ast.StringColumnProjection[T, *string] {
+	projection := newCol077(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col077
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_077' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_077' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col078() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col078()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col078
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col078() *ast.StringColumnProjection[T, *string] {
+	projection := newCol078(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col078
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_078' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_078' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col079() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col079()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col079
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col079() *ast.StringColumnProjection[T, *string] {
+	projection := newCol079(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col079
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_079' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_079' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col080() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col080()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col080
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col080() *ast.StringColumnProjection[T, *string] {
+	projection := newCol080(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col080
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_080' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_080' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col081() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col081()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col081
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col081() *ast.StringColumnProjection[T, *string] {
+	projection := newCol081(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col081
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_081' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_081' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col082() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col082()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col082
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col082() *ast.StringColumnProjection[T, *string] {
+	projection := newCol082(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col082
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_082' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_082' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col083() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col083()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col083
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col083() *ast.StringColumnProjection[T, *string] {
+	projection := newCol083(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col083
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_083' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_083' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col084() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col084()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col084
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col084() *ast.StringColumnProjection[T, *string] {
+	projection := newCol084(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col084
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_084' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_084' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col085() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col085()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col085
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col085() *ast.StringColumnProjection[T, *string] {
+	projection := newCol085(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col085
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_085' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_085' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col086() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col086()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col086
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col086() *ast.StringColumnProjection[T, *string] {
+	projection := newCol086(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col086
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_086' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_086' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col087() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col087()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col087
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col087() *ast.StringColumnProjection[T, *string] {
+	projection := newCol087(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col087
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_087' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_087' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col088() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col088()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col088
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col088() *ast.StringColumnProjection[T, *string] {
+	projection := newCol088(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col088
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_088' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_088' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col089() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col089()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col089
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col089() *ast.StringColumnProjection[T, *string] {
+	projection := newCol089(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col089
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_089' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_089' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col090() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col090()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col090
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col090() *ast.StringColumnProjection[T, *string] {
+	projection := newCol090(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col090
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_090' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_090' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col091() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col091()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col091
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col091() *ast.StringColumnProjection[T, *string] {
+	projection := newCol091(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col091
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_091' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_091' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col092() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col092()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col092
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col092() *ast.StringColumnProjection[T, *string] {
+	projection := newCol092(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col092
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_092' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_092' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col093() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col093()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col093
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col093() *ast.StringColumnProjection[T, *string] {
+	projection := newCol093(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col093
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_093' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_093' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col094() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col094()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col094
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col094() *ast.StringColumnProjection[T, *string] {
+	projection := newCol094(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col094
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_094' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_094' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col095() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col095()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col095
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col095() *ast.StringColumnProjection[T, *string] {
+	projection := newCol095(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col095
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_095' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_095' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col096() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col096()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col096
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col096() *ast.StringColumnProjection[T, *string] {
+	projection := newCol096(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col096
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_096' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_096' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col097() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col097()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col097
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col097() *ast.StringColumnProjection[T, *string] {
+	projection := newCol097(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col097
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_097' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_097' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col098() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col098()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col098
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col098() *ast.StringColumnProjection[T, *string] {
+	projection := newCol098(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col098
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_098' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_098' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col099() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col099()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col099
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col099() *ast.StringColumnProjection[T, *string] {
+	projection := newCol099(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col099
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_099' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_099' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
 }
 
-func (a *Alias) Col100() *ast.StringColumnProjection[models.WideRecordsDto, *string] {
-	column := Col100()
-	alias := ast.NewStringColumnProjection[models.WideRecordsDto, *string](
-		a.Alias.Name(),
-		column.Name(),
-		func(w *models.WideRecordsDto) *string {
-			return &w.Col100
-		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
+func (a Alias[T]) Col100() *ast.StringColumnProjection[T, *string] {
+	projection := newCol100(a.TableAlias.GetName(), func(t *T) *string {
+		dto := a.dest(t)
+		return &dto.Col100
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
 	}) {
-		return alias
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_100' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
+}
+
+func (a Alias[T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		a.Id(),
+		a.Col001(),
+		a.Col002(),
+		a.Col003(),
+		a.Col004(),
+		a.Col005(),
+		a.Col006(),
+		a.Col007(),
+		a.Col008(),
+		a.Col009(),
+		a.Col010(),
+		a.Col011(),
+		a.Col012(),
+		a.Col013(),
+		a.Col014(),
+		a.Col015(),
+		a.Col016(),
+		a.Col017(),
+		a.Col018(),
+		a.Col019(),
+		a.Col020(),
+		a.Col021(),
+		a.Col022(),
+		a.Col023(),
+		a.Col024(),
+		a.Col025(),
+		a.Col026(),
+		a.Col027(),
+		a.Col028(),
+		a.Col029(),
+		a.Col030(),
+		a.Col031(),
+		a.Col032(),
+		a.Col033(),
+		a.Col034(),
+		a.Col035(),
+		a.Col036(),
+		a.Col037(),
+		a.Col038(),
+		a.Col039(),
+		a.Col040(),
+		a.Col041(),
+		a.Col042(),
+		a.Col043(),
+		a.Col044(),
+		a.Col045(),
+		a.Col046(),
+		a.Col047(),
+		a.Col048(),
+		a.Col049(),
+		a.Col050(),
+		a.Col051(),
+		a.Col052(),
+		a.Col053(),
+		a.Col054(),
+		a.Col055(),
+		a.Col056(),
+		a.Col057(),
+		a.Col058(),
+		a.Col059(),
+		a.Col060(),
+		a.Col061(),
+		a.Col062(),
+		a.Col063(),
+		a.Col064(),
+		a.Col065(),
+		a.Col066(),
+		a.Col067(),
+		a.Col068(),
+		a.Col069(),
+		a.Col070(),
+		a.Col071(),
+		a.Col072(),
+		a.Col073(),
+		a.Col074(),
+		a.Col075(),
+		a.Col076(),
+		a.Col077(),
+		a.Col078(),
+		a.Col079(),
+		a.Col080(),
+		a.Col081(),
+		a.Col082(),
+		a.Col083(),
+		a.Col084(),
+		a.Col085(),
+		a.Col086(),
+		a.Col087(),
+		a.Col088(),
+		a.Col089(),
+		a.Col090(),
+		a.Col091(),
+		a.Col092(),
+		a.Col093(),
+		a.Col094(),
+		a.Col095(),
+		a.Col096(),
+		a.Col097(),
+		a.Col098(),
+		a.Col099(),
+		a.Col100(),
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'col_100' in alias %s", a.Alias.Name()))
-	alias.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+}
+
+func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.WideRecordsDto) Alias[T] {
+	return Alias[T]{
+		TableAlias:        alias,
+		forWideRecordsDto: forWideRecordsDto[T]{dest: dest},
+	}
+}
+
+func newId[T any](table string, ref func(*T) **uuid.UUID) *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		table,
+		"id",
+		ref,
+	)
+}
+
+func newCol001[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_001",
+		ref,
+	)
+}
+
+func newCol002[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_002",
+		ref,
+	)
+}
+
+func newCol003[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_003",
+		ref,
+	)
+}
+
+func newCol004[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_004",
+		ref,
+	)
+}
+
+func newCol005[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_005",
+		ref,
+	)
+}
+
+func newCol006[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_006",
+		ref,
+	)
+}
+
+func newCol007[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_007",
+		ref,
+	)
+}
+
+func newCol008[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_008",
+		ref,
+	)
+}
+
+func newCol009[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_009",
+		ref,
+	)
+}
+
+func newCol010[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_010",
+		ref,
+	)
+}
+
+func newCol011[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_011",
+		ref,
+	)
+}
+
+func newCol012[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_012",
+		ref,
+	)
+}
+
+func newCol013[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_013",
+		ref,
+	)
+}
+
+func newCol014[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_014",
+		ref,
+	)
+}
+
+func newCol015[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_015",
+		ref,
+	)
+}
+
+func newCol016[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_016",
+		ref,
+	)
+}
+
+func newCol017[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_017",
+		ref,
+	)
+}
+
+func newCol018[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_018",
+		ref,
+	)
+}
+
+func newCol019[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_019",
+		ref,
+	)
+}
+
+func newCol020[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_020",
+		ref,
+	)
+}
+
+func newCol021[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_021",
+		ref,
+	)
+}
+
+func newCol022[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_022",
+		ref,
+	)
+}
+
+func newCol023[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_023",
+		ref,
+	)
+}
+
+func newCol024[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_024",
+		ref,
+	)
+}
+
+func newCol025[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_025",
+		ref,
+	)
+}
+
+func newCol026[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_026",
+		ref,
+	)
+}
+
+func newCol027[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_027",
+		ref,
+	)
+}
+
+func newCol028[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_028",
+		ref,
+	)
+}
+
+func newCol029[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_029",
+		ref,
+	)
+}
+
+func newCol030[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_030",
+		ref,
+	)
+}
+
+func newCol031[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_031",
+		ref,
+	)
+}
+
+func newCol032[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_032",
+		ref,
+	)
+}
+
+func newCol033[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_033",
+		ref,
+	)
+}
+
+func newCol034[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_034",
+		ref,
+	)
+}
+
+func newCol035[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_035",
+		ref,
+	)
+}
+
+func newCol036[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_036",
+		ref,
+	)
+}
+
+func newCol037[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_037",
+		ref,
+	)
+}
+
+func newCol038[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_038",
+		ref,
+	)
+}
+
+func newCol039[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_039",
+		ref,
+	)
+}
+
+func newCol040[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_040",
+		ref,
+	)
+}
+
+func newCol041[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_041",
+		ref,
+	)
+}
+
+func newCol042[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_042",
+		ref,
+	)
+}
+
+func newCol043[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_043",
+		ref,
+	)
+}
+
+func newCol044[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_044",
+		ref,
+	)
+}
+
+func newCol045[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_045",
+		ref,
+	)
+}
+
+func newCol046[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_046",
+		ref,
+	)
+}
+
+func newCol047[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_047",
+		ref,
+	)
+}
+
+func newCol048[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_048",
+		ref,
+	)
+}
+
+func newCol049[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_049",
+		ref,
+	)
+}
+
+func newCol050[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_050",
+		ref,
+	)
+}
+
+func newCol051[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_051",
+		ref,
+	)
+}
+
+func newCol052[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_052",
+		ref,
+	)
+}
+
+func newCol053[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_053",
+		ref,
+	)
+}
+
+func newCol054[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_054",
+		ref,
+	)
+}
+
+func newCol055[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_055",
+		ref,
+	)
+}
+
+func newCol056[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_056",
+		ref,
+	)
+}
+
+func newCol057[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_057",
+		ref,
+	)
+}
+
+func newCol058[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_058",
+		ref,
+	)
+}
+
+func newCol059[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_059",
+		ref,
+	)
+}
+
+func newCol060[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_060",
+		ref,
+	)
+}
+
+func newCol061[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_061",
+		ref,
+	)
+}
+
+func newCol062[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_062",
+		ref,
+	)
+}
+
+func newCol063[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_063",
+		ref,
+	)
+}
+
+func newCol064[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_064",
+		ref,
+	)
+}
+
+func newCol065[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_065",
+		ref,
+	)
+}
+
+func newCol066[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_066",
+		ref,
+	)
+}
+
+func newCol067[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_067",
+		ref,
+	)
+}
+
+func newCol068[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_068",
+		ref,
+	)
+}
+
+func newCol069[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_069",
+		ref,
+	)
+}
+
+func newCol070[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_070",
+		ref,
+	)
+}
+
+func newCol071[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_071",
+		ref,
+	)
+}
+
+func newCol072[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_072",
+		ref,
+	)
+}
+
+func newCol073[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_073",
+		ref,
+	)
+}
+
+func newCol074[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_074",
+		ref,
+	)
+}
+
+func newCol075[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_075",
+		ref,
+	)
+}
+
+func newCol076[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_076",
+		ref,
+	)
+}
+
+func newCol077[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_077",
+		ref,
+	)
+}
+
+func newCol078[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_078",
+		ref,
+	)
+}
+
+func newCol079[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_079",
+		ref,
+	)
+}
+
+func newCol080[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_080",
+		ref,
+	)
+}
+
+func newCol081[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_081",
+		ref,
+	)
+}
+
+func newCol082[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_082",
+		ref,
+	)
+}
+
+func newCol083[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_083",
+		ref,
+	)
+}
+
+func newCol084[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_084",
+		ref,
+	)
+}
+
+func newCol085[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_085",
+		ref,
+	)
+}
+
+func newCol086[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_086",
+		ref,
+	)
+}
+
+func newCol087[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_087",
+		ref,
+	)
+}
+
+func newCol088[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_088",
+		ref,
+	)
+}
+
+func newCol089[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_089",
+		ref,
+	)
+}
+
+func newCol090[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_090",
+		ref,
+	)
+}
+
+func newCol091[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_091",
+		ref,
+	)
+}
+
+func newCol092[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_092",
+		ref,
+	)
+}
+
+func newCol093[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_093",
+		ref,
+	)
+}
+
+func newCol094[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_094",
+		ref,
+	)
+}
+
+func newCol095[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_095",
+		ref,
+	)
+}
+
+func newCol096[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_096",
+		ref,
+	)
+}
+
+func newCol097[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_097",
+		ref,
+	)
+}
+
+func newCol098[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_098",
+		ref,
+	)
+}
+
+func newCol099[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_099",
+		ref,
+	)
+}
+
+func newCol100[T any](table string, ref func(*T) *string) *ast.StringColumnProjection[T, *string] {
+	return ast.NewStringColumnProjection(
+		table,
+		"col_100",
+		ref,
+	)
 }

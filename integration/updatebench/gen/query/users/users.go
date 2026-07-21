@@ -12,7 +12,7 @@ import (
 	"github.com/jalphad/gosqlgen/integration/updatebench/gen/query/builder"
 )
 
-// NewQuery returns a query builder for users
+// NewQuery returns a query builder for "public"."users"
 func NewQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto] {
 	return builder.NewKnownTableBuilder[models.UsersDto](pool, Table())
 }
@@ -21,39 +21,14 @@ var Into = intoUsersDto{}
 
 type intoUsersDto struct{}
 
-type forUsersDto[E models.ExportsUsersDto[T], T any] struct {
-	alias *Alias
-	err   error
-}
-
-// TODO(go1.27): if type parameters on methods are available, consider
-// supporting alias.For[*resultRow]() as the primary alias API.
-func For[E models.ExportsUsersDto[T], T any](alias ...*Alias) forUsersDto[E, T] {
-	switch len(alias) {
-	case 0:
-		return forUsersDto[E, T]{}
-	case 1:
-		if alias[0] == nil || alias[0].Alias == nil {
-			return forUsersDto[E, T]{err: fmt.Errorf("users.For requires a non-nil alias")}
-		}
-		return forUsersDto[E, T]{alias: alias[0]}
-	default:
-		return forUsersDto[E, T]{err: fmt.Errorf("users.For accepts at most one alias")}
-	}
-}
-
 func Table() *ast.TableSource {
-	return ast.NewTableSource("users")
+	return ast.NewTableSource(`"public"."users"`)
 }
 
 func Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
-	return ast.NewUUIDColumnProjection(
-		"users",
-		"id",
-		func(u *models.UsersDto) **uuid.UUID {
-			return &u.Id
-		},
-	)
+	return newId(`"public"."users"`, func(u *models.UsersDto) **uuid.UUID {
+		return &u.Id
+	})
 }
 
 func AllColumns() []ast.NamedExpression {
@@ -72,70 +47,75 @@ func (intoUsersDto) AllColumns() []ast.Projection[models.UsersDto] {
 	}
 }
 
-func (f forUsersDto[E, T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
-	column := Id()
-	projection := ast.NewUUIDColumnProjection[T, **uuid.UUID](
-		f.tableName(),
-		column.Name(),
-		func(t *T) **uuid.UUID {
-			e := E(t)
-			dto := e.GetUsersDto()
-			return &dto.Id
-		},
-	)
-	if f.err != nil {
-		errExpr := ast.NewErrorExpression(f.err)
-		projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
-		return projection
-	}
-	if f.alias == nil || slices.ContainsFunc(f.alias.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return projection
-	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", f.alias.Alias.Name()))
-	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
-	return projection
+type forUsersDto[T any] struct {
+	dest func(*T) *models.UsersDto
 }
 
-func (f forUsersDto[E, T]) tableName() string {
-	if f.alias == nil || f.alias.Alias == nil {
-		return "users"
-	}
-	return f.alias.Alias.Name()
+func For[T any](dest func(*T) *models.UsersDto) forUsersDto[T] {
+	return forUsersDto[T]{dest: dest}
 }
 
-func (f forUsersDto[E, T]) AllColumns() []ast.Projection[T] {
+func (f forUsersDto[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	return newId(`"public"."users"`, func(t *T) **uuid.UUID {
+		dto := f.dest(t)
+		return &dto.Id
+	})
+}
+
+func (f forUsersDto[T]) AllColumns() []ast.Projection[T] {
 	return []ast.Projection[T]{
 		f.Id(),
 	}
 }
 
-type Alias struct {
-	*ast.Alias
+type Alias[T any] struct {
+	*ast.TableAlias
+	forUsersDto[T]
 }
 
-func As(name string, columns ...ast.NamedExpression) *Alias {
-	return &Alias{
-		Alias: ast.NewAlias(name, columns...),
-	}
-}
-
-func (a *Alias) Id() *ast.UUIDColumnProjection[models.UsersDto, **uuid.UUID] {
-	column := Id()
-	alias := ast.NewUUIDColumnProjection[models.UsersDto, **uuid.UUID](
-		a.Alias.Name(),
-		column.Name(),
-		func(u *models.UsersDto) **uuid.UUID {
-			return &u.Id
+func As(name string, columns ...ast.NamedExpression) Alias[models.UsersDto] {
+	return Alias[models.UsersDto]{
+		TableAlias: ast.NewTableAlias(name, columns...),
+		forUsersDto: forUsersDto[models.UsersDto]{
+			dest: func(u *models.UsersDto) *models.UsersDto {
+				return u
+			},
 		},
-	)
-	if slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == column.Name()
-	}) {
-		return alias
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.Alias.Name()))
-	alias.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(column.Name(), errExpr)
-	return alias
+}
+
+func (a Alias[T]) Id() *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	projection := newId(a.TableAlias.GetName(), func(t *T) **uuid.UUID {
+		dto := a.dest(t)
+		return &dto.Id
+	})
+	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
+		return e.GetName() == projection.GetName()
+	}) {
+		return projection
+	}
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.GetName()))
+	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(projection.GetName(), errExpr)
+	return projection
+}
+
+func (a Alias[T]) AllColumns() []ast.Projection[T] {
+	return []ast.Projection[T]{
+		a.Id(),
+	}
+}
+
+func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.UsersDto) Alias[T] {
+	return Alias[T]{
+		TableAlias:  alias,
+		forUsersDto: forUsersDto[T]{dest: dest},
+	}
+}
+
+func newId[T any](table string, ref func(*T) **uuid.UUID) *ast.UUIDColumnProjection[T, **uuid.UUID] {
+	return ast.NewUUIDColumnProjection(
+		table,
+		"id",
+		ref,
+	)
 }

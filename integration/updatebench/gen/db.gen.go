@@ -22,12 +22,12 @@ func NewDB(pool *pgxpool.Pool) *DB {
 	return &DB{pool: pool}
 }
 
-// Users returns a query builder for users
+// Users returns a query builder for "public"."users"
 func (db *DB) Users() *builder.KnownTableBuilder[models.UsersDto] {
 	return NewUsersQuery(db.pool)
 }
 
-// WideRecords returns a query builder for wide_records
+// WideRecords returns a query builder for "public"."wide_records"
 func (db *DB) WideRecords() *builder.KnownTableBuilder[models.WideRecordsDto] {
 	return NewWideRecordsQuery(db.pool)
 }
@@ -62,20 +62,20 @@ func (tx *Tx) WideRecords() builder.KnownTableStartQuery[models.WideRecordsDto] 
 	return q.WithTx(tx.tx)
 }
 
-// NewUsersQuery returns a query builder for users
+// NewUsersQuery returns a query builder for "public"."users"
 func NewUsersQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.UsersDto] {
 	return users.NewQuery(pool)
 }
 
-// NewWideRecordsQuery returns a query builder for wide_records
+// NewWideRecordsQuery returns a query builder for "public"."wide_records"
 func NewWideRecordsQuery(pool *pgxpool.Pool) *builder.KnownTableBuilder[models.WideRecordsDto] {
 	return wide_records.NewQuery(pool)
 }
 
-func NewQuery[T any](pool *pgxpool.Pool, table *ast.TableSource) *builder.KnownTableBuilder[T] {
+func NewQuery[T any](pool *pgxpool.Pool, table ast.NamedTableExpression) *builder.KnownTableBuilder[T] {
 	return builder.NewKnownTableBuilder[T](pool, table)
 }
 
-func NewStatementQuery(table *ast.TableSource) *builder.StatementBuilder {
+func NewStatementQuery(table ast.NamedTableExpression) *builder.StatementBuilder {
 	return builder.NewStatementBuilder(table)
 }

@@ -337,16 +337,16 @@ func selectedCommentsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExp
 		}
 	}
 	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
-		if a.Name() < b.Name() {
+		if a.GetName() < b.GetName() {
 			return -1
 		}
-		if a.Name() > b.Name() {
+		if a.GetName() > b.GetName() {
 			return 1
 		}
 		return 0
 	})
 	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
-		return a.Name() == b.Name()
+		return a.GetName() == b.GetName()
 	})
 
 	valueColumns := make([]ast.NamedExpression, 0, len(requested)+1)
@@ -361,11 +361,11 @@ func selectedCommentsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExp
 
 	knownIndex := 0
 	for _, column := range requested {
-		name := column.Name()
-		for knownIndex < len(defaultCommentsDtoUpdateValueColumns) && defaultCommentsDtoUpdateValueColumns[knownIndex].Name() < name {
+		name := column.GetName()
+		for knownIndex < len(defaultCommentsDtoUpdateValueColumns) && defaultCommentsDtoUpdateValueColumns[knownIndex].GetName() < name {
 			knownIndex++
 		}
-		if knownIndex == len(defaultCommentsDtoUpdateValueColumns) || defaultCommentsDtoUpdateValueColumns[knownIndex].Name() != name {
+		if knownIndex == len(defaultCommentsDtoUpdateValueColumns) || defaultCommentsDtoUpdateValueColumns[knownIndex].GetName() != name {
 			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
 		}
 		set := defaultCommentsDtoUpdateSetByValueColumn[knownIndex]
@@ -384,7 +384,7 @@ func selectedCommentsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExp
 func updateCommentsDtoProjections(columns []ast.NamedExpression) []ast.Projection[models.CommentsDto] {
 	projections := make([]ast.Projection[models.CommentsDto], 0, len(columns))
 	for _, column := range columns {
-		switch column.Name() {
+		switch column.GetName() {
 		case "post_id":
 			projections = append(projections, comments.PostId())
 		case "user_id":
@@ -815,16 +815,16 @@ func selectedPostsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpres
 		}
 	}
 	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
-		if a.Name() < b.Name() {
+		if a.GetName() < b.GetName() {
 			return -1
 		}
-		if a.Name() > b.Name() {
+		if a.GetName() > b.GetName() {
 			return 1
 		}
 		return 0
 	})
 	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
-		return a.Name() == b.Name()
+		return a.GetName() == b.GetName()
 	})
 
 	valueColumns := make([]ast.NamedExpression, 0, len(requested)+1)
@@ -839,11 +839,11 @@ func selectedPostsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpres
 
 	knownIndex := 0
 	for _, column := range requested {
-		name := column.Name()
-		for knownIndex < len(defaultPostsDtoUpdateValueColumns) && defaultPostsDtoUpdateValueColumns[knownIndex].Name() < name {
+		name := column.GetName()
+		for knownIndex < len(defaultPostsDtoUpdateValueColumns) && defaultPostsDtoUpdateValueColumns[knownIndex].GetName() < name {
 			knownIndex++
 		}
-		if knownIndex == len(defaultPostsDtoUpdateValueColumns) || defaultPostsDtoUpdateValueColumns[knownIndex].Name() != name {
+		if knownIndex == len(defaultPostsDtoUpdateValueColumns) || defaultPostsDtoUpdateValueColumns[knownIndex].GetName() != name {
 			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
 		}
 		set := defaultPostsDtoUpdateSetByValueColumn[knownIndex]
@@ -862,7 +862,7 @@ func selectedPostsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpres
 func updatePostsDtoProjections(columns []ast.NamedExpression) []ast.Projection[models.PostsDto] {
 	projections := make([]ast.Projection[models.PostsDto], 0, len(columns))
 	for _, column := range columns {
-		switch column.Name() {
+		switch column.GetName() {
 		case "user_id":
 			projections = append(projections, posts.UserId())
 		case "title":
@@ -1157,16 +1157,16 @@ func selectedTagsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpress
 		}
 	}
 	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
-		if a.Name() < b.Name() {
+		if a.GetName() < b.GetName() {
 			return -1
 		}
-		if a.Name() > b.Name() {
+		if a.GetName() > b.GetName() {
 			return 1
 		}
 		return 0
 	})
 	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
-		return a.Name() == b.Name()
+		return a.GetName() == b.GetName()
 	})
 
 	valueColumns := make([]ast.NamedExpression, 0, len(requested)+1)
@@ -1181,11 +1181,11 @@ func selectedTagsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpress
 
 	knownIndex := 0
 	for _, column := range requested {
-		name := column.Name()
-		for knownIndex < len(defaultTagsDtoUpdateValueColumns) && defaultTagsDtoUpdateValueColumns[knownIndex].Name() < name {
+		name := column.GetName()
+		for knownIndex < len(defaultTagsDtoUpdateValueColumns) && defaultTagsDtoUpdateValueColumns[knownIndex].GetName() < name {
 			knownIndex++
 		}
-		if knownIndex == len(defaultTagsDtoUpdateValueColumns) || defaultTagsDtoUpdateValueColumns[knownIndex].Name() != name {
+		if knownIndex == len(defaultTagsDtoUpdateValueColumns) || defaultTagsDtoUpdateValueColumns[knownIndex].GetName() != name {
 			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
 		}
 		set := defaultTagsDtoUpdateSetByValueColumn[knownIndex]
@@ -1204,7 +1204,7 @@ func selectedTagsDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpress
 func updateTagsDtoProjections(columns []ast.NamedExpression) []ast.Projection[models.TagsDto] {
 	projections := make([]ast.Projection[models.TagsDto], 0, len(columns))
 	for _, column := range columns {
-		switch column.Name() {
+		switch column.GetName() {
 		case "name":
 			projections = append(projections, tags.Name())
 		case "slug":
@@ -1503,16 +1503,16 @@ func selectedUsersDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpres
 		}
 	}
 	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
-		if a.Name() < b.Name() {
+		if a.GetName() < b.GetName() {
 			return -1
 		}
-		if a.Name() > b.Name() {
+		if a.GetName() > b.GetName() {
 			return 1
 		}
 		return 0
 	})
 	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
-		return a.Name() == b.Name()
+		return a.GetName() == b.GetName()
 	})
 
 	valueColumns := make([]ast.NamedExpression, 0, len(requested)+1)
@@ -1527,11 +1527,11 @@ func selectedUsersDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpres
 
 	knownIndex := 0
 	for _, column := range requested {
-		name := column.Name()
-		for knownIndex < len(defaultUsersDtoUpdateValueColumns) && defaultUsersDtoUpdateValueColumns[knownIndex].Name() < name {
+		name := column.GetName()
+		for knownIndex < len(defaultUsersDtoUpdateValueColumns) && defaultUsersDtoUpdateValueColumns[knownIndex].GetName() < name {
 			knownIndex++
 		}
-		if knownIndex == len(defaultUsersDtoUpdateValueColumns) || defaultUsersDtoUpdateValueColumns[knownIndex].Name() != name {
+		if knownIndex == len(defaultUsersDtoUpdateValueColumns) || defaultUsersDtoUpdateValueColumns[knownIndex].GetName() != name {
 			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
 		}
 		set := defaultUsersDtoUpdateSetByValueColumn[knownIndex]
@@ -1550,7 +1550,7 @@ func selectedUsersDtoUpdateExpressions(options updateOptions) ([]ast.NamedExpres
 func updateUsersDtoProjections(columns []ast.NamedExpression) []ast.Projection[models.UsersDto] {
 	projections := make([]ast.Projection[models.UsersDto], 0, len(columns))
 	for _, column := range columns {
-		switch column.Name() {
+		switch column.GetName() {
 		case "username":
 			projections = append(projections, users.Username())
 		case "email":

@@ -40,7 +40,7 @@ type aliasedFunction[T MappedTypes] struct {
 	alias *ColumnAlias
 }
 
-func (n *aliasedFunction[T]) Name() string {
+func (n *aliasedFunction[T]) GetName() string {
 	return n.alias.name
 }
 
@@ -173,7 +173,7 @@ type aliasedWindowFunction[T MappedTypes] struct {
 	alias *ColumnAlias
 }
 
-func (n *aliasedWindowFunction[T]) Name() string {
+func (n *aliasedWindowFunction[T]) GetName() string {
 	return n.alias.name
 }
 
@@ -194,8 +194,8 @@ type NamedSetReturningFunction struct {
 	alias    *TableAlias
 }
 
-func (f *NamedSetReturningFunction) Name() string {
-	return f.alias.Name()
+func (f *NamedSetReturningFunction) GetName() string {
+	return f.alias.GetName()
 }
 
 func (f *NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -253,7 +253,7 @@ func (r *ColumnAlias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContex
 	builder.WriteString(r.name)
 }
 
-func (r *ColumnAlias) Name() string {
+func (r *ColumnAlias) GetName() string {
 	return r.name
 }
 
@@ -292,14 +292,14 @@ func (r *TableAlias) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCo
 	}
 	builder.WriteString("(")
 	for i := 0; i < len(r.columns)-1; i++ {
-		builder.WriteString(r.columns[i].Name())
+		builder.WriteString(r.columns[i].GetName())
 		builder.WriteString(", ")
 	}
-	builder.WriteString(r.columns[len(r.columns)-1].Name())
+	builder.WriteString(r.columns[len(r.columns)-1].GetName())
 	builder.WriteString(")")
 }
 
-func (r *TableAlias) Name() string {
+func (r *TableAlias) GetName() string {
 	return r.name
 }
 
@@ -313,8 +313,8 @@ func (r *TableAlias) Columns() []NamedExpression {
 
 func (r *TableAlias) Column(name string) NamedExpression {
 	for _, e := range r.columns {
-		if e.Name() == name {
-			return NewColumnNode(r.name, e.Name())
+		if e.GetName() == name {
+			return NewColumnNode(r.name, e.GetName())
 		}
 	}
 

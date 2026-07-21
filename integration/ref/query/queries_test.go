@@ -85,6 +85,19 @@ func TestCTEAliasJoinDoesNotRenderColumnList(t *testing.T) {
 	assert.Equal(t, "WITH active_users(id, email) AS (SELECT \"public\".\"users\".id, \"public\".\"users\".email FROM \"public\".\"users\") SELECT \"public\".\"posts\".id FROM \"public\".\"posts\" LEFT JOIN active_users ON \"public\".\"posts\".user_id = active_users.id", sql)
 }
 
+func TestAliasWithNameColumnImplementsNamedTableExpression(t *testing.T) {
+	// Arrange
+	alias := tags.As("tag_alias", tags.Name())
+
+	// Act
+	var namedTable ast.NamedTableExpression = alias
+	nameColumn := alias.Name()
+
+	// Assert
+	assert.Equal(t, "tag_alias", namedTable.GetName())
+	assert.Equal(t, "name", nameColumn.GetName())
+}
+
 func TestSelectWindowFunctionProjection(t *testing.T) {
 	// Arrange
 	rank := As("row_rank", RowNumber().
@@ -152,7 +165,7 @@ func TestStatementOnlySelectSupportsNamedExpressions(t *testing.T) {
 	params := make([]any, 0)
 
 	// Act
-	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: posts.Table().Name()})
+	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: posts.Table().GetName()})
 
 	// Assert
 	require.NoError(t, err)
@@ -171,7 +184,7 @@ func TestStatementOnlyUpdateSupportsNamedReturning(t *testing.T) {
 	params := make([]any, 0)
 
 	// Act
-	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: users.Table().Name()})
+	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: users.Table().GetName()})
 
 	// Assert
 	require.NoError(t, err)
@@ -189,7 +202,7 @@ func TestStatementOnlyDeleteSupportsNamedReturning(t *testing.T) {
 	params := make([]any, 0)
 
 	// Act
-	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: users.Table().Name()})
+	sql, err := ast.RenderWithContext(stmt, &params, &ast.QueryContext{PrimaryTable: users.Table().GetName()})
 
 	// Assert
 	require.NoError(t, err)

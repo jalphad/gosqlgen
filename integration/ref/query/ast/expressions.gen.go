@@ -64,7 +64,7 @@ type AsExpression[T MappedTypes, C AsExprConstraint[T]] interface {
 
 type NamedExpression interface {
 	Expression
-	Name() string
+	GetName() string
 }
 
 type NamedTableExpression interface {
@@ -90,7 +90,7 @@ func NewNamedExpression(name string, expression Expression) NamedExpression {
 	}
 }
 
-func (e namedExpression) Name() string {
+func (e namedExpression) GetName() string {
 	return e.name
 }
 
@@ -106,7 +106,7 @@ type NamedExpressionWrapper[T MappedTypes] struct {
 	name string
 }
 
-func (e *NamedExpressionWrapper[T]) Name() string {
+func (e *NamedExpressionWrapper[T]) GetName() string {
 	return e.name
 }
 
@@ -187,7 +187,7 @@ func NewStringColumnExpressionFromExpr(name string, expression Expression) *Stri
 	}
 }
 
-func (e *StringColumnExpression) Name() string {
+func (e *StringColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -210,7 +210,7 @@ func NewIntColumnExpressionFromExpr(name string, expression Expression) *IntColu
 	}
 }
 
-func (e *IntColumnExpression) Name() string {
+func (e *IntColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -233,7 +233,7 @@ func NewFloatColumnExpressionFromExpr(name string, expression Expression) *Float
 	}
 }
 
-func (e *FloatColumnExpression) Name() string {
+func (e *FloatColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -256,7 +256,7 @@ func NewNumericColumnExpressionFromExpr(name string, expression Expression) *Num
 	}
 }
 
-func (e *NumericColumnExpression) Name() string {
+func (e *NumericColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -279,7 +279,7 @@ func NewBoolColumnExpressionFromExpr(name string, expression Expression) *BoolCo
 	}
 }
 
-func (e *BoolColumnExpression) Name() string {
+func (e *BoolColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -302,7 +302,7 @@ func NewUUIDColumnExpressionFromExpr(name string, expression Expression) *UUIDCo
 	}
 }
 
-func (e *UUIDColumnExpression) Name() string {
+func (e *UUIDColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -325,7 +325,7 @@ func NewTimestampColumnExpressionFromExpr(name string, expression Expression) *T
 	}
 }
 
-func (e *TimestampColumnExpression) Name() string {
+func (e *TimestampColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -348,7 +348,7 @@ func NewDateColumnExpressionFromExpr(name string, expression Expression) *DateCo
 	}
 }
 
-func (e *DateColumnExpression) Name() string {
+func (e *DateColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -371,7 +371,7 @@ func NewTimeColumnExpressionFromExpr(name string, expression Expression) *TimeCo
 	}
 }
 
-func (e *TimeColumnExpression) Name() string {
+func (e *TimeColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -394,7 +394,7 @@ func NewJsonColumnExpressionFromExpr(name string, expression Expression) *JsonCo
 	}
 }
 
-func (e *JsonColumnExpression) Name() string {
+func (e *JsonColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -417,13 +417,13 @@ func NewBytesColumnExpressionFromExpr(name string, expression Expression) *Bytes
 	}
 }
 
-func (e *BytesColumnExpression) Name() string {
+func (e *BytesColumnExpression) GetName() string {
 	return e.name
 }
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
-	table string // Base table Name
+	table string      // Base table Name
 }
 
 func NewTableSource(name string) *TableSource {
@@ -448,20 +448,20 @@ func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	// Track primary table
 	if ctx != nil {
 		if ctx.PrimaryTable == "" {
-			ctx.PrimaryTable = s.Name()
+			ctx.PrimaryTable = s.GetName()
 		}
 		// Add to AllTables if not already there
 		if ctx.AllTables == nil {
-			ctx.AllTables = []string{s.Name()}
-		} else if !slices.Contains(ctx.AllTables, s.Name()) {
-			ctx.AllTables = append(ctx.AllTables, s.Name())
+			ctx.AllTables = []string{s.GetName()}
+		} else if !slices.Contains(ctx.AllTables, s.GetName()) {
+			ctx.AllTables = append(ctx.AllTables, s.GetName())
 		}
 	}
 
 	builder.WriteString(s.table)
 }
 
-func (s *TableSource) Name() string {
+func (s *TableSource) GetName() string {
 	return s.table
 }
 
@@ -471,14 +471,14 @@ func (s *TableSource) Join(join *JoinExpr) TableExpression {
 
 func renderTableExpression(table TableExpression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	if alias, ok := table.(*TableAlias); ok && alias.source == nil {
-		builder.WriteString(alias.Name())
+		builder.WriteString(alias.GetName())
 		return
 	}
 	if alias, ok := table.(interface {
-		Name() string
+		GetName() string
 		Columns() []NamedExpression
 	}); ok && len(alias.Columns()) > 0 {
-		builder.WriteString(alias.Name())
+		builder.WriteString(alias.GetName())
 		return
 	}
 	table.toSQL(builder, params, ctx)
@@ -487,7 +487,7 @@ func renderTableExpression(table TableExpression, builder *strings.Builder, para
 func TableExpressionName(table TableExpression) string {
 	switch table := table.(type) {
 	case NamedTableExpression:
-		return table.Name()
+		return table.GetName()
 	case *JoinedTableExpression:
 		return TableExpressionName(table.Left)
 	default:
@@ -544,7 +544,7 @@ func joinedTableNames(table TableExpression) []string {
 	ret := make([]string, 0, len(joined.Joins))
 	for _, join := range joined.Joins {
 		if join != nil && join.right != nil {
-			ret = append(ret, join.right.Name())
+			ret = append(ret, join.right.GetName())
 		}
 	}
 	return ret
@@ -615,7 +615,7 @@ func (q *usingJoinQualifier) afterJoin(builder *strings.Builder, _ *[]any, ctx *
 		if i > 0 {
 			builder.WriteString(", ")
 		}
-		builder.WriteString(column.Name())
+		builder.WriteString(column.GetName())
 	}
 	builder.WriteString(")")
 }
@@ -674,11 +674,11 @@ func (l *lateralTableExpression) Join(join *JoinExpr) TableExpression {
 	return joinTableExpression(l, join)
 }
 
-func (l *lateralTableExpression) Name() string {
+func (l *lateralTableExpression) GetName() string {
 	if l == nil || l.table == nil {
 		return ""
 	}
-	return l.table.Name()
+	return l.table.GetName()
 }
 
 func (l *lateralTableExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -724,9 +724,9 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 		if ctx.JoinedTables == nil {
 			ctx.JoinedTables = make(map[string]JoinType)
 		}
-		ctx.JoinedTables[j.right.Name()] = j.joinType
-		if !slices.Contains(ctx.AllTables, j.right.Name()) {
-			ctx.AllTables = append(ctx.AllTables, j.right.Name())
+		ctx.JoinedTables[j.right.GetName()] = j.joinType
+		if !slices.Contains(ctx.AllTables, j.right.GetName()) {
+			ctx.AllTables = append(ctx.AllTables, j.right.GetName())
 		}
 		ctx.CurrentPart = QueryPartJoin
 	}

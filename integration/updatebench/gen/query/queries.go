@@ -97,7 +97,7 @@ func newUpdateOptions(opts ...UpdateOption) (updateOptions, error) {
 	return options, nil
 }
 
-// UsersDtoSelectOne selects a single users DTO by primary key
+// UsersDtoSelectOne selects a single "public"."users" DTO by primary key
 func UsersDtoSelectOne(pool *pgxpool.Pool, dto *models.UsersDto, opts ...SelectOption[models.UsersDto]) (builder.SelectFinalizeQuery[models.UsersDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -112,7 +112,7 @@ func UsersDtoSelectOne(pool *pgxpool.Pool, dto *models.UsersDto, opts ...SelectO
 		Where(users.Id().Eq(Val(*dto.Id))), nil
 }
 
-// UsersDtoSelectMany selects users DTOs
+// UsersDtoSelectMany selects "public"."users" DTOs
 func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto]) (builder.SelectJoinQuery[models.UsersDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -126,19 +126,19 @@ func UsersDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.UsersDto
 		Select(columns...), nil
 }
 
-// UsersDtoDeleteOne deletes a single users DTO by primary key
+// UsersDtoDeleteOne deletes a single "public"."users" DTO by primary key
 func UsersDtoDeleteOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.DeleteFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
 		Delete().
 		Where(users.Id().Eq(Val(*dto.Id)))
 }
 
-// UsersDtoDeleteMany deletes users DTOs by primary key
+// UsersDtoDeleteMany deletes "public"."users" DTOs by primary key
 func UsersDtoDeleteMany(pool *pgxpool.Pool, dtos models.UsersDtos) builder.DeleteFinalizeQuery[models.UsersDto] {
 	v := users.As("v", primaryKeyUsersDtoDeleteValueColumns...)
 	return users.NewQuery(pool).
 		Delete().
-		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(UsersDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(users.Id().Eq(v.Id()))
 }
 
@@ -176,27 +176,27 @@ func (p UsersDtoDeleteValuesProvider) ColumnSQLType(column int) (string, error) 
 	}
 }
 
-// UsersDtoInsertOne inserts a single users DTO
+// UsersDtoInsertOne inserts a single "public"."users" DTO
 func UsersDtoInsertOne(pool *pgxpool.Pool, dto *models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
 		Insert(
 			users.Id(),
 		).
-		Returning(users.Id()).
-		Values(dto)
+		Values(dto).
+		Returning(users.Id())
 }
 
-// UsersDtoInsertMany inserts multiple users DTOs
+// UsersDtoInsertMany inserts multiple "public"."users" DTOs
 func UsersDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.UsersDto) builder.InsertFinalizeQuery[models.UsersDto] {
 	return users.NewQuery(pool).
 		Insert(
 			users.Id(),
 		).
-		Returning(users.Id()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(users.Id())
 }
 
-// WideRecordsDtoSelectOne selects a single wide_records DTO by primary key
+// WideRecordsDtoSelectOne selects a single "public"."wide_records" DTO by primary key
 func WideRecordsDtoSelectOne(pool *pgxpool.Pool, dto *models.WideRecordsDto, opts ...SelectOption[models.WideRecordsDto]) (builder.SelectFinalizeQuery[models.WideRecordsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -211,7 +211,7 @@ func WideRecordsDtoSelectOne(pool *pgxpool.Pool, dto *models.WideRecordsDto, opt
 		Where(wide_records.Id().Eq(Val(*dto.Id))), nil
 }
 
-// WideRecordsDtoSelectMany selects wide_records DTOs
+// WideRecordsDtoSelectMany selects "public"."wide_records" DTOs
 func WideRecordsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.WideRecordsDto]) (builder.SelectJoinQuery[models.WideRecordsDto], error) {
 	options, err := newSelectOptions(opts...)
 	if err != nil {
@@ -225,19 +225,19 @@ func WideRecordsDtoSelectMany(pool *pgxpool.Pool, opts ...SelectOption[models.Wi
 		Select(columns...), nil
 }
 
-// WideRecordsDtoDeleteOne deletes a single wide_records DTO by primary key
+// WideRecordsDtoDeleteOne deletes a single "public"."wide_records" DTO by primary key
 func WideRecordsDtoDeleteOne(pool *pgxpool.Pool, dto *models.WideRecordsDto) builder.DeleteFinalizeQuery[models.WideRecordsDto] {
 	return wide_records.NewQuery(pool).
 		Delete().
 		Where(wide_records.Id().Eq(Val(*dto.Id)))
 }
 
-// WideRecordsDtoDeleteMany deletes wide_records DTOs by primary key
+// WideRecordsDtoDeleteMany deletes "public"."wide_records" DTOs by primary key
 func WideRecordsDtoDeleteMany(pool *pgxpool.Pool, dtos models.WideRecordsDtos) builder.DeleteFinalizeQuery[models.WideRecordsDto] {
 	v := wide_records.As("v", primaryKeyWideRecordsDtoDeleteValueColumns...)
 	return wide_records.NewQuery(pool).
 		Delete().
-		Using(Values(WideRecordsDtoDeleteValuesProvider{dtos: dtos}).As(v.Alias)).
+		Using(Values(WideRecordsDtoDeleteValuesProvider{dtos: dtos}).As(v.TableAlias)).
 		Where(wide_records.Id().Eq(v.Id()))
 }
 
@@ -275,7 +275,7 @@ func (p WideRecordsDtoDeleteValuesProvider) ColumnSQLType(column int) (string, e
 	}
 }
 
-// WideRecordsDtoInsertOne inserts a single wide_records DTO
+// WideRecordsDtoInsertOne inserts a single "public"."wide_records" DTO
 func WideRecordsDtoInsertOne(pool *pgxpool.Pool, dto *models.WideRecordsDto) builder.InsertFinalizeQuery[models.WideRecordsDto] {
 	return wide_records.NewQuery(pool).
 		Insert(
@@ -381,11 +381,11 @@ func WideRecordsDtoInsertOne(pool *pgxpool.Pool, dto *models.WideRecordsDto) bui
 			wide_records.Col099(),
 			wide_records.Col100(),
 		).
-		Returning(wide_records.Id()).
-		Values(dto)
+		Values(dto).
+		Returning(wide_records.Id())
 }
 
-// WideRecordsDtoInsertMany inserts multiple wide_records DTOs
+// WideRecordsDtoInsertMany inserts multiple "public"."wide_records" DTOs
 func WideRecordsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.WideRecordsDto) builder.InsertFinalizeQuery[models.WideRecordsDto] {
 	return wide_records.NewQuery(pool).
 		Insert(
@@ -491,8 +491,8 @@ func WideRecordsDtoInsertMany(pool *pgxpool.Pool, dtos ...*models.WideRecordsDto
 			wide_records.Col099(),
 			wide_records.Col100(),
 		).
-		Returning(wide_records.Id()).
-		Values(dtos...)
+		Values(dtos...).
+		Returning(wide_records.Id())
 }
 
 type WideRecordsDtoUpdateValueExtractor func(*models.WideRecordsDto) any
@@ -1167,9 +1167,9 @@ func WideRecordsDtoUpdateMany(pool *pgxpool.Pool, dtos models.WideRecordsDtos, o
 		dtos:       dtos,
 		extractors: valueExtractors,
 		castTypes:  valueCastTypes,
-	}).As(v.Alias)
+	}).As(v.TableAlias)
 	if options.source == updateBatchSourceUnnest {
-		from = Unnest(WideRecordsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.Alias)
+		from = Unnest(WideRecordsDtoUpdateUnnestExpressions(dtos, updateColumnIndexes)...).As(v.TableAlias)
 	}
 	return wide_records.NewQuery(pool).
 		Update(sets...).
@@ -1190,16 +1190,16 @@ func selectedWideRecordsDtoUpdateExpressions(options updateOptions) ([]ast.Named
 		}
 	}
 	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
-		if a.Name() < b.Name() {
+		if a.GetName() < b.GetName() {
 			return -1
 		}
-		if a.Name() > b.Name() {
+		if a.GetName() > b.GetName() {
 			return 1
 		}
 		return 0
 	})
 	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
-		return a.Name() == b.Name()
+		return a.GetName() == b.GetName()
 	})
 
 	valueColumns := make([]ast.NamedExpression, 0, len(requested)+1)
@@ -1214,11 +1214,11 @@ func selectedWideRecordsDtoUpdateExpressions(options updateOptions) ([]ast.Named
 
 	knownIndex := 0
 	for _, column := range requested {
-		name := column.Name()
-		for knownIndex < len(defaultWideRecordsDtoUpdateValueColumns) && defaultWideRecordsDtoUpdateValueColumns[knownIndex].Name() < name {
+		name := column.GetName()
+		for knownIndex < len(defaultWideRecordsDtoUpdateValueColumns) && defaultWideRecordsDtoUpdateValueColumns[knownIndex].GetName() < name {
 			knownIndex++
 		}
-		if knownIndex == len(defaultWideRecordsDtoUpdateValueColumns) || defaultWideRecordsDtoUpdateValueColumns[knownIndex].Name() != name {
+		if knownIndex == len(defaultWideRecordsDtoUpdateValueColumns) || defaultWideRecordsDtoUpdateValueColumns[knownIndex].GetName() != name {
 			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
 		}
 		set := defaultWideRecordsDtoUpdateSetByValueColumn[knownIndex]
@@ -1237,7 +1237,7 @@ func selectedWideRecordsDtoUpdateExpressions(options updateOptions) ([]ast.Named
 func updateWideRecordsDtoProjections(columns []ast.NamedExpression) []ast.Projection[models.WideRecordsDto] {
 	projections := make([]ast.Projection[models.WideRecordsDto], 0, len(columns))
 	for _, column := range columns {
-		switch column.Name() {
+		switch column.GetName() {
 		case "col_001":
 			projections = append(projections, wide_records.Col001())
 		case "col_002":

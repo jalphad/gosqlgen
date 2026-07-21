@@ -137,8 +137,8 @@ type NamedValuesTable struct {
 	alias *TableAlias
 }
 
-func (v *NamedValuesTable) Name() string {
-	return v.alias.Name()
+func (v *NamedValuesTable) GetName() string {
+	return v.alias.GetName()
 }
 
 func (v *NamedValuesTable) isTableExpression() {}

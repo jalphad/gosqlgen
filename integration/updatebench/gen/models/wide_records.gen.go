@@ -815,7 +815,7 @@ func (w WideRecordsDtos) Col100() ast.OfType[[]string] {
 	return ast.NewSQLType(out)
 }
 
-// WideRecordsDto represents the wide_records table
+// WideRecordsDto represents the "public"."wide_records" table
 type WideRecordsDto struct {
 	Id     *uuid.UUID `db:"id" json:"id"`
 	Col001 string     `db:"col_001" json:"col_001"`
@@ -918,9 +918,4 @@ type WideRecordsDto struct {
 	Col098 string     `db:"col_098" json:"col_098"`
 	Col099 string     `db:"col_099" json:"col_099"`
 	Col100 string     `db:"col_100" json:"col_100"`
-}
-
-type ExportsWideRecordsDto[T any] interface {
-	*T
-	GetWideRecordsDto() *WideRecordsDto
 }

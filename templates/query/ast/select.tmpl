@@ -222,7 +222,7 @@ func (c *CTE) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) 
 	}
 	if c.Query == nil {
 		if ctx != nil {
-			ctx.Error = fmt.Errorf("CTE %q requires a query", c.Alias.Name())
+			ctx.Error = fmt.Errorf("CTE %q requires a query", c.Alias.GetName())
 		}
 		return
 	}

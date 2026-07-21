@@ -104,32 +104,32 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.PostTagsDto] {
 }
 
 func (a Alias[T]) PostId() *ast.IntColumnProjection[T, *int64] {
-	projection := newPostId(a.TableAlias.Name(), func(t *T) *int64 {
+	projection := newPostId(a.TableAlias.GetName(), func(t *T) *int64 {
 		dto := a.dest(t)
 		return &dto.PostId
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'post_id' in alias %s", a.TableAlias.Name()))
-	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'post_id' in alias %s", a.TableAlias.GetName()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) TagId() *ast.IntColumnProjection[T, *int64] {
-	projection := newTagId(a.TableAlias.Name(), func(t *T) *int64 {
+	projection := newTagId(a.TableAlias.GetName(), func(t *T) *int64 {
 		dto := a.dest(t)
 		return &dto.TagId
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'tag_id' in alias %s", a.TableAlias.Name()))
-	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'tag_id' in alias %s", a.TableAlias.GetName()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 

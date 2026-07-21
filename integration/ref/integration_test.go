@@ -889,7 +889,7 @@ func TestIntegration_ExpressionHelpers(t *testing.T) {
 func TestContextTracking(t *testing.T) {
 	t.Run("Simple select without joins", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Id(), users.Username()}, From: users.Table()}
-		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
+		ctx := &ast.QueryContext{PrimaryTable: users.Table().GetName()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
 		require.NoError(t, err)
@@ -904,7 +904,7 @@ func TestContextTracking(t *testing.T) {
 	t.Run("Select with LEFT JOIN", func(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title()}, From: users.Table()}
 		selectStmt.From = selectStmt.From.Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id()))))
-		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
+		ctx := &ast.QueryContext{PrimaryTable: users.Table().GetName()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
 		require.NoError(t, err)
@@ -917,7 +917,7 @@ func TestContextTracking(t *testing.T) {
 		selectStmt := &ast.SelectStatement{SelectList: []ast.NamedExpression{users.Username(), posts.Title(), comments.Content()}, From: users.Table()}
 		selectStmt.From = selectStmt.From.Join(ast.LeftJoin(posts.Table(), ast.On(posts.UserId().Eq(users.Id()))))
 		selectStmt.From = selectStmt.From.Join(ast.LeftJoin(comments.Table(), ast.On(comments.UserId().Eq(users.Id()))))
-		ctx := &ast.QueryContext{PrimaryTable: users.Table().Name()}
+		ctx := &ast.QueryContext{PrimaryTable: users.Table().GetName()}
 		sql, err := ast.RenderWithContext(selectStmt, &[]any{}, ctx)
 
 		require.NoError(t, err)

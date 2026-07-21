@@ -53,7 +53,7 @@ func (b *StatementBuilder) Update(toSet ...ast.UpdateSetExpr) StatementUpdateFro
 	return &StatementUpdateBuilder{
 		stmt: &ast.UpdateStatement{
 			With:    b.with,
-			Table:   b.table.Name(),
+			Table:   b.table.GetName(),
 			SetList: toSet,
 		},
 	}
@@ -63,7 +63,7 @@ func (b *StatementBuilder) Delete() StatementDeleteUsingQuery {
 	return &StatementDeleteBuilder{
 		stmt: &ast.DeleteStatement{
 			With:  b.with,
-			Table: b.table.Name(),
+			Table: b.table.GetName(),
 		},
 	}
 }
@@ -84,7 +84,7 @@ func (b *KnownTableBuilder[T]) Insert(columns ...ast.NamedExpression) InsertSour
 		tx:   b.tx,
 		stmt: &ast.InsertStatement{
 			With:  b.with,
-			Table: b.table.Name(),
+			Table: b.table.GetName(),
 			Into:  columns,
 		},
 	}
@@ -113,7 +113,7 @@ func (b *KnownTableBuilder[T]) Update(toSet ...ast.UpdateSetExpr) UpdateFromQuer
 		tx:   b.tx,
 		stmt: &ast.UpdateStatement{
 			With:    b.with,
-			Table:   b.table.Name(),
+			Table:   b.table.GetName(),
 			SetList: toSet,
 		},
 	}
@@ -125,7 +125,7 @@ func (b *KnownTableBuilder[T]) Delete() DeleteUsingQuery[T] {
 		tx:   b.tx,
 		stmt: &ast.DeleteStatement{
 			With:  b.with,
-			Table: b.table.Name(),
+			Table: b.table.GetName(),
 		},
 	}
 }
@@ -443,7 +443,7 @@ func (b *InsertBuilder[T]) Values(values ...*T) InsertOnConflictQuery[T] {
 			if column == nil {
 				provider.err = fmt.Errorf("INSERT column %d is nil", i)
 			} else {
-				provider.err = fmt.Errorf("INSERT column %q is not a projection for the inserted type", column.Name())
+				provider.err = fmt.Errorf("INSERT column %q is not a projection for the inserted type", column.GetName())
 			}
 		}
 	}

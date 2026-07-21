@@ -15,7 +15,7 @@ type SqlStatement interface {
 type SelectStatement struct {
 	With       []*CTE            // Common Table Expressions
 	SelectList []NamedExpression // Columns or expressions in SELECT
-	From       *TableSource      // Tables and joins
+	From       TableExpression   // Tables and joins
 	Where      OfType[bool]      // WHERE clause
 	GroupBy    []Expression      // GROUP BY fields
 	Having     OfType[bool]      // HAVING clause
@@ -33,11 +33,7 @@ func (s *SelectStatement) GetQueryContext() *QueryContext {
 }
 
 func (s *SelectStatement) GetJoinedTables() []string {
-	ret := make([]string, 0, len(s.From.joins))
-	for _, join := range s.From.joins {
-		ret = append(ret, join.Right.Name())
-	}
-	return ret
+	return joinedTableNames(s.From)
 }
 
 func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
@@ -78,7 +74,7 @@ func (s *SelectStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		ctx.CurrentPart = QueryPartFrom
 	}
 	builder.WriteString(" FROM ")
-	s.From.toSQL(builder, params, ctx)
+	renderTableExpression(s.From, builder, params, ctx)
 
 	if s.Where != nil {
 		if ctx != nil {
@@ -181,11 +177,11 @@ type LimitClause struct {
 
 // CTE represents a Common Table ExpressionNode (WITH clause).
 type CTE struct {
-	Alias *Alias
+	Alias *TableAlias
 	Query SqlStatement
 }
 
-func NewCTE(alias *Alias, query SqlStatement) *CTE {
+func NewCTE(alias *TableAlias, query SqlStatement) *CTE {
 	return &CTE{
 		Alias: alias,
 		Query: query,
@@ -226,7 +222,7 @@ func (c *CTE) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) 
 	}
 	if c.Query == nil {
 		if ctx != nil {
-			ctx.Error = fmt.Errorf("CTE %q requires a query", c.Alias.Name())
+			ctx.Error = fmt.Errorf("CTE %q requires a query", c.Alias.GetName())
 		}
 		return
 	}

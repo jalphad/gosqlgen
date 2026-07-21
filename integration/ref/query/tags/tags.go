@@ -164,47 +164,47 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.TagsDto] {
 }
 
 func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
-	projection := newId(a.TableAlias.Name(), func(t *T) **int64 {
+	projection := newId(a.TableAlias.GetName(), func(t *T) **int64 {
 		dto := a.dest(t)
 		return &dto.Id
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.Name()))
-	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.GetName()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Name() *ast.StringColumnProjection[T, *string] {
-	projection := newName(a.TableAlias.Name(), func(t *T) *string {
+	projection := newName(a.TableAlias.GetName(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Name
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'name' in alias %s", a.TableAlias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'name' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Slug() *ast.StringColumnProjection[T, *string] {
-	projection := newSlug(a.TableAlias.Name(), func(t *T) *string {
+	projection := newSlug(a.TableAlias.GetName(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Slug
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'slug' in alias %s", a.TableAlias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'slug' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 

@@ -36,13 +36,13 @@ func NewProjection[R any, T MappedTypes, D ScanDest[T]](expr OfType[T], dest fun
 		dest:   dest,
 	}
 	if named, ok := expr.(NamedExpression); ok {
-		projection.name = named.Name()
+		projection.name = named.GetName()
 	}
 
 	return projection
 }
 
-func (p *BaseProjection[R, T, D]) Name() string {
+func (p *BaseProjection[R, T, D]) GetName() string {
 	return p.name
 }
 
@@ -91,7 +91,7 @@ func NewCustomProjection[R any, T MappedTypes, O any](expr OfType[T], dest func(
 		convert: convert,
 	}
 	if named, ok := expr.(NamedExpression); ok {
-		projection.name = named.Name()
+		projection.name = named.GetName()
 	}
 
 	return projection
@@ -107,7 +107,7 @@ func NewJSONProjection[R any, O any](expr OfType[json.RawMessage], dest func(*R)
 	})
 }
 
-func (p *CustomProjection[R, T, O]) Name() string {
+func (p *CustomProjection[R, T, O]) GetName() string {
 	return p.name
 }
 

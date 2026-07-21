@@ -9,7 +9,8 @@ type InsertStatement struct {
 	With       []*CTE
 	Table      string
 	Into       []NamedExpression
-	Values     []Expression
+	Values     *ValuesTable
+	Select     *SelectStatement
 	OnConflict *Conflict
 	Returning  []NamedExpression
 	context    *QueryContext
@@ -46,20 +47,54 @@ func (s *InsertStatement) toSQL(builder *strings.Builder, params *[]any, ctx *Qu
 		ctx.CurrentPart = QueryPartInto
 	}
 	columns := make([]string, 0, len(s.Into))
-	for _, column := range s.Into {
-		columns = append(columns, column.Name())
+	for i, column := range s.Into {
+		if column == nil {
+			if ctx != nil && ctx.Error == nil {
+				ctx.Error = fmt.Errorf("INSERT column %d is nil", i)
+			}
+			return
+		}
+		columns = append(columns, column.GetName())
 	}
 	builder.WriteString("(" + strings.Join(columns, ", ") + ")")
 
-	if ctx != nil {
-		ctx.CurrentPart = QueryPartValues
+	switch {
+	case s.Values != nil && s.Select != nil:
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("INSERT requires exactly one VALUES or SELECT source")
+		}
+		return
+	case s.Values != nil:
+		if ctx != nil {
+			ctx.CurrentPart = QueryPartValues
+		}
+		builder.WriteString(" ")
+		s.Values.render(builder, params, ctx, false)
+	case s.Select != nil:
+		if len(s.Select.SelectList) > 0 && len(s.Into) != len(s.Select.SelectList) {
+			if ctx != nil && ctx.Error == nil {
+				ctx.Error = fmt.Errorf("INSERT has %d target columns but SELECT returns %d columns", len(s.Into), len(s.Select.SelectList))
+			}
+			return
+		}
+		builder.WriteString(" ")
+		savedType := QueryType("")
+		savedPart := QueryPart("")
+		if ctx != nil {
+			savedType = ctx.Type
+			savedPart = ctx.CurrentPart
+		}
+		s.Select.toSQL(builder, params, ctx)
+		if ctx != nil {
+			ctx.Type = savedType
+			ctx.CurrentPart = savedPart
+		}
+	default:
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("INSERT requires a VALUES or SELECT source")
+		}
+		return
 	}
-	builder.WriteString(" VALUES ")
-	for i := 0; i < len(s.Values)-1; i++ {
-		s.Values[i].toSQL(builder, params, ctx)
-		builder.WriteString(", ")
-	}
-	s.Values[len(s.Values)-1].toSQL(builder, params, ctx)
 
 	if s.OnConflict != nil {
 		s.OnConflict.toSQL(builder, params, ctx)
@@ -89,9 +124,16 @@ func (c *Conflict) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 	}
 	columns := make([]string, 0, len(c.Columns))
 	for _, column := range c.Columns {
-		columns = append(columns, column.Name())
+		columns = append(columns, column.GetName())
 	}
-	builder.WriteString(" ON CONFLICT (" + strings.Join(columns, ", ") + ") DO" + Render(c.Action, params))
+	builder.WriteString(" ON CONFLICT (" + strings.Join(columns, ", ") + ") DO")
+	if c.Action == nil {
+		if ctx != nil {
+			ctx.Error = fmt.Errorf("ON CONFLICT requires an action")
+		}
+		return
+	}
+	c.Action.toSQL(builder, params, ctx)
 }
 
 type OnConflictDoExpression interface {
@@ -105,7 +147,7 @@ func Nothing() OnConflictDoExpression {
 	}
 }
 
-func Update(set ...NamedExpression) OnConflictDoExpression {
+func Update(set ...UpdateSetExpr) OnConflictDoExpression {
 	return &ConflictAction{
 		Do:  " UPDATE",
 		Set: set,
@@ -114,7 +156,7 @@ func Update(set ...NamedExpression) OnConflictDoExpression {
 
 type ConflictAction struct {
 	Do        string
-	Set       []NamedExpression
+	Set       []UpdateSetExpr
 	WhereExpr OfType[bool]
 }
 
@@ -128,14 +170,32 @@ func (a *ConflictAction) toSQL(builder *strings.Builder, params *[]any, ctx *Que
 		return
 	}
 	builder.WriteString(a.Do)
-	if len(a.Set) > 0 {
-		var elems []string
-		for _, expr := range a.Set {
-			elems = append(elems, fmt.Sprintf("%s = EXCLUDED.%s", expr.Name(), expr.Name()))
+	if a.Do == " UPDATE" {
+		if len(a.Set) == 0 {
+			if ctx != nil {
+				ctx.Error = fmt.Errorf("ON CONFLICT DO UPDATE requires at least one SET assignment")
+			}
+			return
 		}
-		builder.WriteString(" SET " + strings.Join(elems, ", "))
+		builder.WriteString(" SET ")
+		for i, set := range a.Set {
+			if set == nil {
+				if ctx != nil {
+					ctx.Error = fmt.Errorf("ON CONFLICT DO UPDATE assignment %d is nil", i)
+				}
+				return
+			}
+			if i > 0 {
+				builder.WriteString(", ")
+			}
+			set.toSQL(builder, params, ctx)
+			if ctx != nil && ctx.Error != nil {
+				return
+			}
+		}
 	}
 	if a.WhereExpr != nil {
-		builder.WriteString(" WHERE " + Render(a.WhereExpr, params))
+		builder.WriteString(" WHERE ")
+		a.WhereExpr.toSQL(builder, params, ctx)
 	}
 }

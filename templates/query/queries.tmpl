@@ -358,16 +358,16 @@ func selected{{ $table.StructName }}UpdateExpressions(options updateOptions) ([]
 		}
 	}
 	slices.SortFunc(requested, func(a, b ast.NamedExpression) int {
-		if a.Name() < b.Name() {
+		if a.GetName() < b.GetName() {
 			return -1
 		}
-		if a.Name() > b.Name() {
+		if a.GetName() > b.GetName() {
 			return 1
 		}
 		return 0
 	})
 	requested = slices.CompactFunc(requested, func(a, b ast.NamedExpression) bool {
-		return a.Name() == b.Name()
+		return a.GetName() == b.GetName()
 	})
 
 	valueColumns := make([]ast.NamedExpression, 0, len(requested)+{{ len $table.PrimaryKeyColumns }})
@@ -382,11 +382,11 @@ func selected{{ $table.StructName }}UpdateExpressions(options updateOptions) ([]
 
 	knownIndex := 0
 	for _, column := range requested {
-		name := column.Name()
-		for knownIndex < len(default{{ $table.StructName }}UpdateValueColumns) && default{{ $table.StructName }}UpdateValueColumns[knownIndex].Name() < name {
+		name := column.GetName()
+		for knownIndex < len(default{{ $table.StructName }}UpdateValueColumns) && default{{ $table.StructName }}UpdateValueColumns[knownIndex].GetName() < name {
 			knownIndex++
 		}
-		if knownIndex == len(default{{ $table.StructName }}UpdateValueColumns) || default{{ $table.StructName }}UpdateValueColumns[knownIndex].Name() != name {
+		if knownIndex == len(default{{ $table.StructName }}UpdateValueColumns) || default{{ $table.StructName }}UpdateValueColumns[knownIndex].GetName() != name {
 			return nil, nil, nil, nil, nil, fmt.Errorf("unknown update column %q", name)
 		}
 		set := default{{ $table.StructName }}UpdateSetByValueColumn[knownIndex]
@@ -405,7 +405,7 @@ func selected{{ $table.StructName }}UpdateExpressions(options updateOptions) ([]
 func update{{ $table.StructName }}Projections(columns []ast.NamedExpression) []ast.Projection[models.{{ $table.StructName }}] {
 	projections := make([]ast.Projection[models.{{ $table.StructName }}], 0, len(columns))
 	for _, column := range columns {
-		switch column.Name() {
+		switch column.GetName() {
 	{{- range $table.UpdateColumns }}
 		case "{{ .ColumnName }}":
 			projections = append(projections, {{ $tablePkg }}.{{ .FieldName }}())

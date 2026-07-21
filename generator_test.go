@@ -201,7 +201,7 @@ func TestGenerator_GenerateFilesUsesJsonColumnProjectionForJsonColumns(t *testin
 	assert.Contains(t, queryFile, "func Payload() *ast.JsonColumnProjection[models.EventsDto, *json.RawMessage]")
 	assert.Contains(t, queryFile, "return ast.NewJsonColumnProjection(")
 	assert.Contains(t, queryFile, "func Metadata() *ast.JsonColumnProjection[models.EventsDto, **json.RawMessage]")
-	assert.Contains(t, queryFile, "projection.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(projection.Name(), errExpr)")
+	assert.Contains(t, queryFile, "projection.JsonColumnExpression = ast.NewJsonColumnExpressionFromExpr(projection.GetName(), errExpr)")
 	assert.Contains(t, queryFile, "func As(name string, columns ...ast.NamedExpression) Alias[models.EventsDto]")
 	assert.Contains(t, queryFile, "func AliasFor[T any](alias *ast.TableAlias, dest func(*T) *models.EventsDto) Alias[T]")
 }

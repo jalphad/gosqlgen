@@ -32,16 +32,16 @@ func IntoJSON[R any, O any](expr ast.OfType[json.RawMessage], dest func(*R) *O) 
 	return ast.NewJSONProjection(expr, dest)
 }
 
-func CTE(alias *ast.Alias, stmt ast.SqlStatement) *ast.CTE {
+func CTE(alias *ast.TableAlias, stmt ast.SqlStatement) *ast.CTE {
 	return ast.NewCTE(alias, stmt)
 }
 
-func Table(alias *ast.Alias) *ast.TableSource {
-	return ast.NewTableSource(alias.Name())
+func Table(alias *ast.TableAlias) *ast.TableSource {
+	return ast.NewTableSource(alias.GetName())
 }
 
-func Rel[T ast.MappedTypes](r *ast.Alias, c ast.NamedAndTyped[T]) ast.OfType[T] {
-	return ast.SetType[T](ast.NewColumnNode(r.Name(), c.Name()))
+func Rel[T ast.MappedTypes](r *ast.TableAlias, c ast.NamedAndTyped[T]) ast.OfType[T] {
+	return ast.SetType[T](ast.NewColumnNode(r.GetName(), c.GetName()))
 }
 
 func Set[T ast.MappedTypes](field ast.NamedAndTyped[T]) *SetPart[T] {
@@ -63,7 +63,7 @@ func SetTo[T any](dto *T, fields ...ast.Projection[T]) ast.UpdateSetExpr {
 		}
 		value, err := field.Value(dto)
 		if err != nil {
-			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.Name(), err))
+			return ast.NewUpdateSetError(fmt.Errorf("query.SetTo field %q: %w", field.GetName(), err))
 		}
 		set := ast.UpdateSet{
 			Key:   field,
@@ -81,7 +81,7 @@ type TypedTableExpression[T any] struct {
 }
 
 func As[T ast.MappedTypes, C ast.AsExprConstraint[T]](alias string, expression ast.AsExpression[T, C]) C {
-	return expression.As(ast.NewAlias(alias))
+	return expression.As(ast.NewColumnAlias(alias))
 }
 
 type SetPart[T ast.MappedTypes] struct {

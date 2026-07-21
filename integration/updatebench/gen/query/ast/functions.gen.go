@@ -13,7 +13,7 @@ type AliasedFunction[T MappedTypes] interface {
 
 type Function[T MappedTypes] interface {
 	ofType[T]
-	As(r *Alias) AliasedFunction[T]
+	As(r *ColumnAlias) AliasedFunction[T]
 	Over() WindowFunction[T]
 	isFunction()
 }
@@ -25,7 +25,7 @@ func NewFunction[T MappedTypes](node *FunctionNode) Function[T] {
 	return &function[T]{sqlType: sqlType[T]{node}}
 }
 
-func (f function[T]) As(alias *Alias) AliasedFunction[T] {
+func (f function[T]) As(alias *ColumnAlias) AliasedFunction[T] {
 	return &aliasedFunction[T]{function: f, alias: alias}
 }
 
@@ -37,10 +37,10 @@ func (f function[T]) isFunction() {}
 
 type aliasedFunction[T MappedTypes] struct {
 	function[T]
-	alias *Alias
+	alias *ColumnAlias
 }
 
-func (n *aliasedFunction[T]) Name() string {
+func (n *aliasedFunction[T]) GetName() string {
 	return n.alias.name
 }
 
@@ -59,7 +59,7 @@ func NewAggregationFunction[T MappedTypes](node *FunctionNode) *AggregationFunct
 	return &AggregationFunction[T]{sqlType: sqlType[T]{node}}
 }
 
-func (f *AggregationFunction[T]) As(alias *Alias) AliasedFunction[T] {
+func (f *AggregationFunction[T]) As(alias *ColumnAlias) AliasedFunction[T] {
 	return (*function[T])(f).As(alias)
 }
 
@@ -94,7 +94,7 @@ type WindowFunction[T MappedTypes] interface {
 	ofType[T]
 	PartitionBy(partitions ...Expression) WindowFunction[T]
 	OrderBy(orderBy ...*OrderByItem) WindowFunction[T]
-	As(alias *Alias) AliasedWindowFunction[T]
+	As(alias *ColumnAlias) AliasedWindowFunction[T]
 	isWindowFunction()
 }
 
@@ -118,7 +118,7 @@ func (f *windowFunction[T]) OrderBy(orderBy ...*OrderByItem) WindowFunction[T] {
 	return f
 }
 
-func (f *windowFunction[T]) As(alias *Alias) AliasedWindowFunction[T] {
+func (f *windowFunction[T]) As(alias *ColumnAlias) AliasedWindowFunction[T] {
 	return &aliasedWindowFunction[T]{windowFunction: f, alias: alias}
 }
 
@@ -170,10 +170,10 @@ func (f *windowFunction[T]) toSQL(builder *strings.Builder, params *[]any, ctx *
 
 type aliasedWindowFunction[T MappedTypes] struct {
 	*windowFunction[T]
-	alias *Alias
+	alias *ColumnAlias
 }
 
-func (n *aliasedWindowFunction[T]) Name() string {
+func (n *aliasedWindowFunction[T]) GetName() string {
 	return n.alias.name
 }
 
@@ -190,10 +190,31 @@ func (n *aliasedWindowFunction[T]) toSQL(builder *strings.Builder, params *[]any
 }
 
 type NamedSetReturningFunction struct {
-	aliasedFunction[[]any]
+	function function[[]any]
+	alias    *TableAlias
+}
+
+func (f *NamedSetReturningFunction) GetName() string {
+	return f.alias.GetName()
+}
+
+func (f *NamedSetReturningFunction) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	f.function.toSQL(builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString(" AS ")
+	f.alias.toSQL(builder, params, ctx)
 }
 
 func (f *NamedSetReturningFunction) isTableExpression() {}
+
+func (f *NamedSetReturningFunction) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(f, join)
+}
 
 type SetReturningFunction struct {
 	function[[]any]
@@ -204,28 +225,65 @@ func NewSetReturningFunction(node *FunctionNode) *SetReturningFunction {
 	return &SetReturningFunction{function: function[[]any]{sqlType[[]any]{node}}}
 }
 
-func (f *SetReturningFunction) As(alias *Alias) *NamedSetReturningFunction {
+func (f *SetReturningFunction) As(alias *TableAlias) *NamedSetReturningFunction {
 	if f == nil {
 		return nil
 	}
 
 	return &NamedSetReturningFunction{
-		aliasedFunction: aliasedFunction[[]any]{
-			function: f.function,
-			alias:    alias,
-		},
+		function: f.function,
+		alias:    alias,
 	}
 }
 
 func (f *SetReturningFunction) isTableExpression() {}
 
-type Alias struct {
-	name    string
-	columns []NamedExpression
+func (f *SetReturningFunction) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(f, join)
 }
 
-func (r Alias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+type ColumnAlias struct {
+	name string
+}
+
+func (r *ColumnAlias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
 	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	builder.WriteString(r.name)
+}
+
+func (r *ColumnAlias) GetName() string {
+	return r.name
+}
+
+func NewColumnAlias(alias string) *ColumnAlias {
+	return &ColumnAlias{name: alias}
+}
+
+type TableAlias struct {
+	name    string
+	columns []NamedExpression
+	source  *TableSource
+}
+
+func (r *TableAlias) isTableExpression() {}
+
+func (r *TableAlias) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(r, join)
+}
+
+func (r *TableAlias) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if r.source != nil {
+		r.source.toSQL(builder, params, ctx)
+		if ctx != nil && ctx.Error != nil {
+			return
+		}
+		builder.WriteString(" AS ")
+		builder.WriteString(r.name)
 		return
 	}
 	builder.WriteString(r.name)
@@ -234,18 +292,18 @@ func (r Alias) toSQL(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
 	}
 	builder.WriteString("(")
 	for i := 0; i < len(r.columns)-1; i++ {
-		builder.WriteString(r.columns[i].Name())
+		builder.WriteString(r.columns[i].GetName())
 		builder.WriteString(", ")
 	}
-	builder.WriteString(r.columns[len(r.columns)-1].Name())
+	builder.WriteString(r.columns[len(r.columns)-1].GetName())
 	builder.WriteString(")")
 }
 
-func (r Alias) Name() string {
+func (r *TableAlias) GetName() string {
 	return r.name
 }
 
-func (r Alias) Columns() []NamedExpression {
+func (r *TableAlias) Columns() []NamedExpression {
 	if r.columns == nil {
 		return []NamedExpression{}
 	}
@@ -253,10 +311,10 @@ func (r Alias) Columns() []NamedExpression {
 	return r.columns
 }
 
-func (r Alias) Column(name string) NamedExpression {
+func (r *TableAlias) Column(name string) NamedExpression {
 	for _, e := range r.columns {
-		if e.Name() == name {
-			return NewColumnNode(r.name, e.Name())
+		if e.GetName() == name {
+			return NewColumnNode(r.name, e.GetName())
 		}
 	}
 
@@ -264,8 +322,8 @@ func (r Alias) Column(name string) NamedExpression {
 		NewErrorExpression(fmt.Errorf("column does not exist for alias %s", r.name)))
 }
 
-func NewAlias(alias string, columns ...NamedExpression) *Alias {
-	return &Alias{name: alias,
+func NewTableAlias(alias string, columns ...NamedExpression) *TableAlias {
+	return &TableAlias{name: alias,
 		columns: columns}
 }
 

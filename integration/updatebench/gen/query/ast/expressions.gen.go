@@ -59,12 +59,12 @@ type AsExprConstraint[T MappedTypes] interface {
 
 type AsExpression[T MappedTypes, C AsExprConstraint[T]] interface {
 	Expression
-	As(alias *Alias) C
+	As(alias *ColumnAlias) C
 }
 
 type NamedExpression interface {
 	Expression
-	Name() string
+	GetName() string
 }
 
 type NamedTableExpression interface {
@@ -75,6 +75,7 @@ type NamedTableExpression interface {
 type TableExpression interface {
 	Expression
 	isTableExpression()
+	Join(join *JoinExpr) TableExpression
 }
 
 type namedExpression struct {
@@ -89,7 +90,7 @@ func NewNamedExpression(name string, expression Expression) NamedExpression {
 	}
 }
 
-func (e namedExpression) Name() string {
+func (e namedExpression) GetName() string {
 	return e.name
 }
 
@@ -105,7 +106,7 @@ type NamedExpressionWrapper[T MappedTypes] struct {
 	name string
 }
 
-func (e *NamedExpressionWrapper[T]) Name() string {
+func (e *NamedExpressionWrapper[T]) GetName() string {
 	return e.name
 }
 
@@ -186,7 +187,7 @@ func NewStringColumnExpressionFromExpr(name string, expression Expression) *Stri
 	}
 }
 
-func (e *StringColumnExpression) Name() string {
+func (e *StringColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -209,7 +210,7 @@ func NewIntColumnExpressionFromExpr(name string, expression Expression) *IntColu
 	}
 }
 
-func (e *IntColumnExpression) Name() string {
+func (e *IntColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -232,7 +233,7 @@ func NewFloatColumnExpressionFromExpr(name string, expression Expression) *Float
 	}
 }
 
-func (e *FloatColumnExpression) Name() string {
+func (e *FloatColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -255,7 +256,7 @@ func NewNumericColumnExpressionFromExpr(name string, expression Expression) *Num
 	}
 }
 
-func (e *NumericColumnExpression) Name() string {
+func (e *NumericColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -278,7 +279,7 @@ func NewBoolColumnExpressionFromExpr(name string, expression Expression) *BoolCo
 	}
 }
 
-func (e *BoolColumnExpression) Name() string {
+func (e *BoolColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -301,7 +302,7 @@ func NewUUIDColumnExpressionFromExpr(name string, expression Expression) *UUIDCo
 	}
 }
 
-func (e *UUIDColumnExpression) Name() string {
+func (e *UUIDColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -324,7 +325,7 @@ func NewTimestampColumnExpressionFromExpr(name string, expression Expression) *T
 	}
 }
 
-func (e *TimestampColumnExpression) Name() string {
+func (e *TimestampColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -347,7 +348,7 @@ func NewDateColumnExpressionFromExpr(name string, expression Expression) *DateCo
 	}
 }
 
-func (e *DateColumnExpression) Name() string {
+func (e *DateColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -370,7 +371,7 @@ func NewTimeColumnExpressionFromExpr(name string, expression Expression) *TimeCo
 	}
 }
 
-func (e *TimeColumnExpression) Name() string {
+func (e *TimeColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -393,7 +394,7 @@ func NewJsonColumnExpressionFromExpr(name string, expression Expression) *JsonCo
 	}
 }
 
-func (e *JsonColumnExpression) Name() string {
+func (e *JsonColumnExpression) GetName() string {
 	return e.name
 }
 
@@ -416,19 +417,25 @@ func NewBytesColumnExpressionFromExpr(name string, expression Expression) *Bytes
 	}
 }
 
-func (e *BytesColumnExpression) Name() string {
+func (e *BytesColumnExpression) GetName() string {
 	return e.name
 }
 
 // TableSource represents a table or a join in the FROM clause.
 type TableSource struct {
 	table string      // Base table Name
-	joins []*JoinExpr // Optional joins
 }
 
 func NewTableSource(name string) *TableSource {
 	return &TableSource{
 		table: name,
+	}
+}
+
+func (s *TableSource) As(alias string) *TableAlias {
+	return &TableAlias{
+		name:   alias,
+		source: s,
 	}
 }
 
@@ -441,44 +448,275 @@ func (s *TableSource) toSQL(builder *strings.Builder, params *[]any, ctx *QueryC
 	// Track primary table
 	if ctx != nil {
 		if ctx.PrimaryTable == "" {
-			ctx.PrimaryTable = s.table
+			ctx.PrimaryTable = s.GetName()
 		}
 		// Add to AllTables if not already there
 		if ctx.AllTables == nil {
-			ctx.AllTables = []string{s.table}
-		} else if !slices.Contains(ctx.AllTables, s.table) {
-			ctx.AllTables = append(ctx.AllTables, s.table)
+			ctx.AllTables = []string{s.GetName()}
+		} else if !slices.Contains(ctx.AllTables, s.GetName()) {
+			ctx.AllTables = append(ctx.AllTables, s.GetName())
 		}
 	}
 
 	builder.WriteString(s.table)
-	for _, join := range s.joins {
-		join.toSQL(builder, params, ctx)
-	}
 }
 
-func (s *TableSource) Name() string {
+func (s *TableSource) GetName() string {
 	return s.table
 }
 
-func (s *TableSource) Join(jointype JoinType, table NamedTableExpression, on OfType[bool]) *TableSource {
-	s.joins = append(s.joins, &JoinExpr{
-		Type:      jointype,
-		Right:     table,
-		Condition: on,
-	})
-	return s
+func (s *TableSource) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(s, join)
 }
 
-// JoinExpr represents a JOIN operation.
+func renderTableExpression(table TableExpression, builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if alias, ok := table.(*TableAlias); ok && alias.source == nil {
+		builder.WriteString(alias.GetName())
+		return
+	}
+	if alias, ok := table.(interface {
+		GetName() string
+		Columns() []NamedExpression
+	}); ok && len(alias.Columns()) > 0 {
+		builder.WriteString(alias.GetName())
+		return
+	}
+	table.toSQL(builder, params, ctx)
+}
+
+func TableExpressionName(table TableExpression) string {
+	switch table := table.(type) {
+	case NamedTableExpression:
+		return table.GetName()
+	case *JoinedTableExpression:
+		return TableExpressionName(table.Left)
+	default:
+		return ""
+	}
+}
+
+type JoinedTableExpression struct {
+	Left  TableExpression
+	Joins []*JoinExpr
+}
+
+func joinTableExpression(left TableExpression, join *JoinExpr) TableExpression {
+	if joined, ok := left.(*JoinedTableExpression); ok {
+		joined.Joins = append(joined.Joins, join)
+		return joined
+	}
+	return &JoinedTableExpression{
+		Left:  left,
+		Joins: []*JoinExpr{join},
+	}
+}
+
+func (j *JoinedTableExpression) isTableExpression() {}
+
+func (j *JoinedTableExpression) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(j, join)
+}
+
+func (j *JoinedTableExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if j == nil || j.Left == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("joined table expression requires a left table expression")
+		}
+		return
+	}
+	renderTableExpression(j.Left, builder, params, ctx)
+	for _, join := range j.Joins {
+		join.toSQL(builder, params, ctx)
+		if ctx != nil && ctx.Error != nil {
+			return
+		}
+	}
+}
+
+func joinedTableNames(table TableExpression) []string {
+	joined, ok := table.(*JoinedTableExpression)
+	if !ok {
+		return nil
+	}
+	ret := make([]string, 0, len(joined.Joins))
+	for _, join := range joined.Joins {
+		if join != nil && join.right != nil {
+			ret = append(ret, join.right.GetName())
+		}
+	}
+	return ret
+}
+
+// JoinExpr represents a complete JOIN operation.
 type JoinExpr struct {
-	Type      JoinType             // INNER, LEFT, RIGHT, FULL
-	Right     NamedTableExpression // The table being joined
-	Condition OfType[bool]         // ON condition
+	joinType  JoinType
+	right     NamedTableExpression
+	qualifier JoinQualifier
+}
+
+// JoinQualifier represents the qualification of a non-cross join.
+// Values are created with On, Using, or Natural.
+type JoinQualifier interface {
+	isJoinQualifier()
+	beforeJoin(builder *strings.Builder)
+	afterJoin(builder *strings.Builder, params *[]any, ctx *QueryContext)
+}
+
+type onJoinQualifier struct {
+	condition OfType[bool]
+}
+
+func (*onJoinQualifier) isJoinQualifier() {}
+
+func (*onJoinQualifier) beforeJoin(_ *strings.Builder) {}
+
+func (q *onJoinQualifier) afterJoin(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if q == nil || q.condition == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("ON join qualifier requires a condition")
+		}
+		return
+	}
+	builder.WriteString(" ON ")
+	q.condition.toSQL(builder, params, ctx)
+}
+
+// On qualifies a join with a boolean expression.
+func On(condition OfType[bool]) JoinQualifier {
+	return &onJoinQualifier{condition: condition}
+}
+
+type usingJoinQualifier struct {
+	columns []NamedExpression
+}
+
+func (*usingJoinQualifier) isJoinQualifier() {}
+
+func (*usingJoinQualifier) beforeJoin(_ *strings.Builder) {}
+
+func (q *usingJoinQualifier) afterJoin(builder *strings.Builder, _ *[]any, ctx *QueryContext) {
+	if q == nil || len(q.columns) == 0 {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("USING join qualifier requires at least one column")
+		}
+		return
+	}
+	builder.WriteString(" USING (")
+	for i, column := range q.columns {
+		if column == nil {
+			if ctx != nil && ctx.Error == nil {
+				ctx.Error = fmt.Errorf("USING join qualifier contains a nil column")
+			}
+			return
+		}
+		if i > 0 {
+			builder.WriteString(", ")
+		}
+		builder.WriteString(column.GetName())
+	}
+	builder.WriteString(")")
+}
+
+// Using qualifies a join with one or more shared column names.
+func Using(columns ...NamedExpression) JoinQualifier {
+	return &usingJoinQualifier{columns: columns}
+}
+
+type naturalJoinQualifier struct{}
+
+func (*naturalJoinQualifier) isJoinQualifier() {}
+
+func (*naturalJoinQualifier) beforeJoin(builder *strings.Builder) {
+	builder.WriteString("NATURAL ")
+}
+
+func (*naturalJoinQualifier) afterJoin(_ *strings.Builder, _ *[]any, _ *QueryContext) {}
+
+// Natural qualifies a join using all identically named columns.
+func Natural() JoinQualifier {
+	return &naturalJoinQualifier{}
+}
+
+func qualifiedJoin(joinType JoinType, right NamedTableExpression, qualifier JoinQualifier) *JoinExpr {
+	return &JoinExpr{joinType: joinType, right: right, qualifier: qualifier}
+}
+
+func InnerJoin(right NamedTableExpression, qualifier JoinQualifier) *JoinExpr {
+	return qualifiedJoin(JoinInner, right, qualifier)
+}
+
+func LeftJoin(right NamedTableExpression, qualifier JoinQualifier) *JoinExpr {
+	return qualifiedJoin(JoinLeft, right, qualifier)
+}
+
+func RightJoin(right NamedTableExpression, qualifier JoinQualifier) *JoinExpr {
+	return qualifiedJoin(JoinRight, right, qualifier)
+}
+
+func FullJoin(right NamedTableExpression, qualifier JoinQualifier) *JoinExpr {
+	return qualifiedJoin(JoinFull, right, qualifier)
+}
+
+func CrossJoin(right NamedTableExpression) *JoinExpr {
+	return &JoinExpr{joinType: JoinCross, right: right}
+}
+
+type lateralTableExpression struct {
+	table NamedTableExpression
+}
+
+func (l *lateralTableExpression) isTableExpression() {}
+
+func (l *lateralTableExpression) Join(join *JoinExpr) TableExpression {
+	return joinTableExpression(l, join)
+}
+
+func (l *lateralTableExpression) GetName() string {
+	if l == nil || l.table == nil {
+		return ""
+	}
+	return l.table.GetName()
+}
+
+func (l *lateralTableExpression) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if l == nil || l.table == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("LATERAL requires a table expression")
+		}
+		return
+	}
+	builder.WriteString("LATERAL ")
+	renderTableExpression(l.table, builder, params, ctx)
+}
+
+// Lateral marks a named FROM item as LATERAL.
+func Lateral(table NamedTableExpression) NamedTableExpression {
+	return &lateralTableExpression{table: table}
 }
 
 func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
 	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if j == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("join expression is nil")
+		}
+		return
+	}
+	if j.right == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("join expression requires a right table expression")
+		}
+		return
+	}
+	if j.joinType != JoinCross && j.qualifier == nil {
+		if ctx != nil && ctx.Error == nil {
+			ctx.Error = fmt.Errorf("%s JOIN requires a qualifier", j.joinType)
+		}
 		return
 	}
 	// Track joined table in context
@@ -486,27 +724,34 @@ func (j *JoinExpr) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 		if ctx.JoinedTables == nil {
 			ctx.JoinedTables = make(map[string]JoinType)
 		}
-		ctx.JoinedTables[j.Right.Name()] = j.Type
-		if !slices.Contains(ctx.AllTables, j.Right.Name()) {
-			ctx.AllTables = append(ctx.AllTables, j.Right.Name())
+		ctx.JoinedTables[j.right.GetName()] = j.joinType
+		if !slices.Contains(ctx.AllTables, j.right.GetName()) {
+			ctx.AllTables = append(ctx.AllTables, j.right.GetName())
 		}
 		ctx.CurrentPart = QueryPartJoin
 	}
 
-	builder.WriteString(string(j.Type) + " JOIN ")
-	j.Right.toSQL(builder, params, ctx)
-	builder.WriteString(" ON ")
-	j.Condition.toSQL(builder, params, ctx)
+	builder.WriteString(" ")
+	if j.qualifier != nil {
+		j.qualifier.beforeJoin(builder)
+	}
+	builder.WriteString(string(j.joinType) + " JOIN ")
+	renderTableExpression(j.right, builder, params, ctx)
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	if j.qualifier != nil {
+		j.qualifier.afterJoin(builder, params, ctx)
+	}
 }
 
 // JoinType enumerates join types.
 type JoinType string
 
 const (
-	JoinInner   JoinType = " INNER"
-	JoinLeft    JoinType = " LEFT"
-	JoinRight   JoinType = " RIGHT"
-	JoinFull    JoinType = " FULL"
-	JoinLateral JoinType = " LATERAL"
-	JoinCross   JoinType = " CROSS"
+	JoinInner JoinType = "INNER"
+	JoinLeft  JoinType = "LEFT"
+	JoinRight JoinType = "RIGHT"
+	JoinFull  JoinType = "FULL"
+	JoinCross JoinType = "CROSS"
 )

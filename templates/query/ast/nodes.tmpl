@@ -16,7 +16,7 @@ func NewColumnNode(table, column string) *ColumnNode {
 	}
 }
 
-func (n *ColumnNode) Name() string {
+func (n *ColumnNode) GetName() string {
 	return n.Column.Column
 }
 

@@ -15,12 +15,7 @@ func (u UsersDtos) Id() ast.OfType[[]uuid.UUID] {
 	return ast.SetType[[]uuid.UUID](ast.NewLiteralExpression(out))
 }
 
-// UsersDto represents the users table
+// UsersDto represents the "public"."users" table
 type UsersDto struct {
 	Id *uuid.UUID `db:"id" json:"id"`
-}
-
-type ExportsUsersDto[T any] interface {
-	*T
-	GetUsersDto() *UsersDto
 }

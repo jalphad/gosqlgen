@@ -194,17 +194,17 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.{{ .StructName
 
 {{ range .Fields }}
 func (a Alias[T]) {{ .FieldName }}() *ast.{{ toProjectionType .GoType .SQLType }}[T, {{ scanDestType .GoType }}] {
-	projection := new{{ .FieldName }}(a.TableAlias.Name(), func(t *T) {{ scanDestType .GoType }} {
+	projection := new{{ .FieldName }}(a.TableAlias.GetName(), func(t *T) {{ scanDestType .GoType }} {
 		dto := a.dest(t)
 		return &dto.{{ .FieldName }}
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.TableAlias.Name()))
-	projection.{{ toTypeExpression .GoType .SQLType }} = ast.New{{ toTypeExpression .GoType .SQLType }}FromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column '{{ .ColumnName }}' in alias %s", a.TableAlias.GetName()))
+	projection.{{ toTypeExpression .GoType .SQLType }} = ast.New{{ toTypeExpression .GoType .SQLType }}FromExpr(projection.GetName(), errExpr)
 	return projection
 }
 {{ end }}

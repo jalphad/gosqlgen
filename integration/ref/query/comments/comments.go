@@ -206,107 +206,107 @@ func As(name string, columns ...ast.NamedExpression) Alias[models.CommentsDto] {
 }
 
 func (a Alias[T]) Id() *ast.IntColumnProjection[T, **int64] {
-	projection := newId(a.TableAlias.Name(), func(t *T) **int64 {
+	projection := newId(a.TableAlias.GetName(), func(t *T) **int64 {
 		dto := a.dest(t)
 		return &dto.Id
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.Name()))
-	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'id' in alias %s", a.TableAlias.GetName()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) PostId() *ast.IntColumnProjection[T, *int64] {
-	projection := newPostId(a.TableAlias.Name(), func(t *T) *int64 {
+	projection := newPostId(a.TableAlias.GetName(), func(t *T) *int64 {
 		dto := a.dest(t)
 		return &dto.PostId
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'post_id' in alias %s", a.TableAlias.Name()))
-	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'post_id' in alias %s", a.TableAlias.GetName()))
+	projection.IntColumnExpression = ast.NewIntColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) UserId() *ast.UUIDColumnProjection[T, *uuid.UUID] {
-	projection := newUserId(a.TableAlias.Name(), func(t *T) *uuid.UUID {
+	projection := newUserId(a.TableAlias.GetName(), func(t *T) *uuid.UUID {
 		dto := a.dest(t)
 		return &dto.UserId
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'user_id' in alias %s", a.TableAlias.Name()))
-	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'user_id' in alias %s", a.TableAlias.GetName()))
+	projection.UUIDColumnExpression = ast.NewUUIDColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) Content() *ast.StringColumnProjection[T, *string] {
-	projection := newContent(a.TableAlias.Name(), func(t *T) *string {
+	projection := newContent(a.TableAlias.GetName(), func(t *T) *string {
 		dto := a.dest(t)
 		return &dto.Content
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'content' in alias %s", a.TableAlias.Name()))
-	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'content' in alias %s", a.TableAlias.GetName()))
+	projection.StringColumnExpression = ast.NewStringColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) IsApproved() *ast.BoolColumnProjection[T, **bool] {
-	projection := newIsApproved(a.TableAlias.Name(), func(t *T) **bool {
+	projection := newIsApproved(a.TableAlias.GetName(), func(t *T) **bool {
 		dto := a.dest(t)
 		return &dto.IsApproved
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_approved' in alias %s", a.TableAlias.Name()))
-	projection.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'is_approved' in alias %s", a.TableAlias.GetName()))
+	projection.BoolColumnExpression = ast.NewBoolColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) CreatedAt() *ast.TimestampColumnProjection[T, **time.Time] {
-	projection := newCreatedAt(a.TableAlias.Name(), func(t *T) **time.Time {
+	projection := newCreatedAt(a.TableAlias.GetName(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.CreatedAt
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", a.TableAlias.Name()))
-	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'created_at' in alias %s", a.TableAlias.GetName()))
+	projection.TimestampColumnExpression = ast.NewTimestampColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 
 func (a Alias[T]) TestDate() *ast.DateColumnProjection[T, **time.Time] {
-	projection := newTestDate(a.TableAlias.Name(), func(t *T) **time.Time {
+	projection := newTestDate(a.TableAlias.GetName(), func(t *T) **time.Time {
 		dto := a.dest(t)
 		return &dto.TestDate
 	})
 	if len(a.Columns()) == 0 || slices.ContainsFunc(a.Columns(), func(e ast.NamedExpression) bool {
-		return e.Name() == projection.Name()
+		return e.GetName() == projection.GetName()
 	}) {
 		return projection
 	}
-	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'test_date' in alias %s", a.TableAlias.Name()))
-	projection.DateColumnExpression = ast.NewDateColumnExpressionFromExpr(projection.Name(), errExpr)
+	errExpr := ast.NewErrorExpression(fmt.Errorf("unknown column 'test_date' in alias %s", a.TableAlias.GetName()))
+	projection.DateColumnExpression = ast.NewDateColumnExpressionFromExpr(projection.GetName(), errExpr)
 	return projection
 }
 

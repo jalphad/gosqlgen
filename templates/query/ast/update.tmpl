@@ -90,7 +90,7 @@ func (s UpdateSet) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCont
 	if ctx != nil && ctx.Error != nil {
 		return
 	}
-	builder.WriteString(s.Key.Name() + " = ")
+	builder.WriteString(s.Key.GetName() + " = ")
 	s.Value.toSQL(builder, params, ctx)
 }
 
