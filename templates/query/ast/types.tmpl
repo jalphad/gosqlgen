@@ -75,18 +75,7 @@ func (t *StringType) In(expr OfType[[]string]) *BoolType {
 }
 
 func (t *StringType) Between(start, end OfType[string]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *StringType) IsNull() *BoolType {
@@ -131,18 +120,7 @@ func (t *IntType) In(expr OfType[[]int64]) *BoolType {
 }
 
 func (t *IntType) Between(start, end OfType[int64]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *IntType) IsNull() *BoolType {
@@ -187,18 +165,7 @@ func (t *FloatType) In(expr OfType[[]float64]) *BoolType {
 }
 
 func (t *FloatType) Between(start, end OfType[float64]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *FloatType) IsNull() *BoolType {
@@ -239,18 +206,7 @@ func (t *NumericType) In(expr OfType[[]pgtype.Numeric]) *BoolType {
 }
 
 func (t *NumericType) Between(start, end OfType[pgtype.Numeric]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *NumericType) IsNull() *BoolType {
@@ -263,6 +219,16 @@ func (t *NumericType) IsNotNull() *BoolType {
 
 func Bool(e Expression) *BoolType {
 	return &BoolType{sqlType[bool]{e}}
+}
+
+// Not negates a boolean expression.
+func Not(expr OfType[bool]) *BoolType {
+	return Bool(&UnaryNode{
+		Op: "NOT",
+		Args: []Expression{
+			NewGroupedExpression(expr),
+		},
+	})
 }
 
 // BoolType represents a BOOLEAN column
@@ -327,18 +293,7 @@ func (t *TimestampType) Lte(expr OfType[time.Time]) *BoolType {
 }
 
 func (t *TimestampType) Between(start, end OfType[time.Time]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *TimestampType) IsNull() *BoolType {
@@ -348,7 +303,6 @@ func (t *TimestampType) IsNull() *BoolType {
 func (t *TimestampType) IsNotNull() *BoolType {
 	return isNotNull(t)
 }
-
 
 type DateType struct {
 	sqlType[time.Time]
@@ -379,18 +333,7 @@ func (t *DateType) Lte(expr OfType[time.Time]) *BoolType {
 }
 
 func (t *DateType) Between(start, end OfType[time.Time]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *DateType) IsNull() *BoolType {
@@ -400,7 +343,6 @@ func (t *DateType) IsNull() *BoolType {
 func (t *DateType) IsNotNull() *BoolType {
 	return isNotNull(t)
 }
-
 
 // TimeType represents a TIMESTAMP column
 type TimeType struct {
@@ -432,18 +374,7 @@ func (t *TimeType) Lte(expr OfType[time.Time]) *BoolType {
 }
 
 func (t *TimeType) Between(start, end OfType[time.Time]) *BoolType {
-	return Bool(&UnaryNode{
-		Op: "BETWEEN",
-		Args: []Expression{
-			&BinaryNode{
-				Op: "AND",
-				Args: []Expression{
-					start,
-					end,
-				},
-			},
-		},
-	})
+	return between(t, start, end)
 }
 
 func (t *TimeType) IsNull() *BoolType {
@@ -541,6 +472,24 @@ type (
 	jsonType      = JsonType
 	timestampType = TimestampType
 )
+
+func between(expr, start, end Expression) *BoolType {
+	return Bool(&ConcatNode{
+		Left: expr,
+		Right: &UnaryNode{
+			Op: "BETWEEN",
+			Args: []Expression{
+				&BinaryNode{
+					Op: "AND",
+					Args: []Expression{
+						start,
+						end,
+					},
+				},
+			},
+		},
+	})
+}
 
 func isNull(e Expression) *BoolType {
 	return Bool(&BinaryNode{

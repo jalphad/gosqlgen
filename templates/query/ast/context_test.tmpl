@@ -198,3 +198,115 @@ func TestNullPredicatesRenderAsBinaryIsExpressions(t *testing.T) {
 		t.Fatalf("expected users.email IS NOT NULL, got %q", isNotNullSQL)
 	}
 }
+
+func TestNot(t *testing.T) {
+	t.Run("negates equality and preserves parameters", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewStringColumnExpression("users", "name").Eq(NewSQLType("John"))
+
+		// Act
+		sql, err := RenderWithContext(Not(predicate), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "NOT (users.name = $1)", sql)
+		assert.Equal(t, []any{"John"}, params)
+	})
+
+	t.Run("negates like", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewStringColumnExpression("users", "email").Like("%example.com")
+
+		// Act
+		sql, err := RenderWithContext(Not(predicate), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "NOT (users.email LIKE $1)", sql)
+		assert.Equal(t, []any{"%example.com"}, params)
+	})
+
+	t.Run("keeps chained negation boundaries explicit", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		name := NewStringColumnExpression("users", "name").Eq(NewSQLType("John"))
+		email := NewStringColumnExpression("users", "email").Like("%example.com")
+
+		// Act
+		sql, err := RenderWithContext(Not(name).And(Not(email)), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "NOT (users.name = $1) AND NOT (users.email LIKE $2)", sql)
+		assert.Equal(t, []any{"John", "%example.com"}, params)
+	})
+
+	t.Run("accepts any typed boolean expression", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		expr := NewBoolColumnExpression("users", "active")
+
+		// Act
+		sql, err := RenderWithContext(Not(expr), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "NOT (users.active)", sql)
+		assert.Empty(t, params)
+	})
+}
+
+func TestConcatNode(t *testing.T) {
+	// Arrange
+	params := []any{}
+	expr := &ConcatNode{
+		Left:  NewLiteralExpression("left"),
+		Right: NewLiteralExpression("right"),
+	}
+
+	// Act
+	sql, err := RenderWithContext(expr, &params, &QueryContext{})
+
+	// Assert
+	assert.NoError(t, err)
+	assert.Equal(t, "$1 $2", sql)
+	assert.Equal(t, []any{"left", "right"}, params)
+}
+
+func TestBetween(t *testing.T) {
+	t.Run("renders the receiver and both bounds", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewIntColumnExpression("users", "age").Between(
+			NewSQLType(int64(18)),
+			NewSQLType(int64(65)),
+		)
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.age BETWEEN $1 AND $2", sql)
+		assert.Equal(t, []any{int64(18), int64(65)}, params)
+	})
+
+	t.Run("can be negated", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewIntColumnExpression("users", "age").Between(
+			NewSQLType(int64(18)),
+			NewSQLType(int64(65)),
+		)
+
+		// Act
+		sql, err := RenderWithContext(Not(predicate), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "NOT (users.age BETWEEN $1 AND $2)", sql)
+		assert.Equal(t, []any{int64(18), int64(65)}, params)
+	})
+}

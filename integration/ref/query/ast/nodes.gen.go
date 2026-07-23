@@ -104,6 +104,21 @@ func (n *UnaryNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryCon
 	n.Args[0].toSQL(builder, params, ctx)
 }
 
+// ConcatNode renders two expressions separated by a single space.
+type ConcatNode struct {
+	Left  Expression
+	Right Expression
+}
+
+func (n *ConcatNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
+	if ctx != nil && ctx.Error != nil {
+		return
+	}
+	n.Left.toSQL(builder, params, ctx)
+	builder.WriteString(" ")
+	n.Right.toSQL(builder, params, ctx)
+}
+
 type BinaryNode ExpressionNode
 
 func (n *BinaryNode) toSQL(builder *strings.Builder, params *[]any, ctx *QueryContext) {
