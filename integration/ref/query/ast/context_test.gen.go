@@ -1,9 +1,11 @@
 package ast
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -308,5 +310,155 @@ func TestBetween(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "NOT (users.age BETWEEN $1 AND $2)", sql)
 		assert.Equal(t, []any{int64(18), int64(65)}, params)
+	})
+}
+
+func TestPredicateOperators(t *testing.T) {
+	t.Run("in renders a scalar expression list", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewIntColumnExpression("users", "id").In(
+			NewSQLType(int64(1)),
+			NewSQLType(int64(2)),
+		)
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.id IN ($1, $2)", sql)
+		assert.Equal(t, []any{int64(1), int64(2)}, params)
+	})
+
+	t.Run("in supports one scalar expression", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewStringColumnExpression("users", "name").In(NewSQLType("John"))
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.name IN ($1)", sql)
+		assert.Equal(t, []any{"John"}, params)
+	})
+
+	t.Run("empty in returns a render error", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewIntColumnExpression("users", "id").In()
+
+		// Act
+		_, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.EqualError(t, err, "GroupedExpression has no expressions")
+		assert.Empty(t, params)
+	})
+
+	t.Run("any preserves string element type", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		values := []string{"John", "Jane"}
+		predicate := NewStringColumnExpression("users", "name").Eq(Any[string](NewSQLType(values)))
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.name = ANY($1)", sql)
+		assert.Equal(t, []any{values}, params)
+	})
+
+	t.Run("any preserves integer element type", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		values := []int64{18, 21}
+		predicate := NewIntColumnExpression("users", "age").Gt(Any[int64](NewSQLType(values)))
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.age > ANY($1)", sql)
+		assert.Equal(t, []any{values}, params)
+	})
+
+	t.Run("any preserves uuid element type", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		values := []uuid.UUID{uuid.New(), uuid.New()}
+		predicate := NewUUIDColumnExpression("users", "id").Eq(Any[uuid.UUID](NewSQLType(values)))
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.id = ANY($1)", sql)
+		assert.Equal(t, []any{values}, params)
+	})
+
+	t.Run("ilike renders a parameterized pattern", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		predicate := NewStringColumnExpression("users", "name").ILike("%john%")
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.name ILIKE $1", sql)
+		assert.Equal(t, []any{"%john%"}, params)
+	})
+
+	t.Run("distinct comparisons use null-safe predicates", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		column := NewStringColumnExpression("users", "name")
+		distinct := column.IsDistinctFrom(NewSQLType("John"))
+		notDistinct := column.IsNotDistinctFrom(NewSQLType("Jane"))
+
+		// Act
+		sql, err := RenderWithContext(distinct.And(notDistinct), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.name IS DISTINCT FROM $1 AND users.name IS NOT DISTINCT FROM $2", sql)
+		assert.Equal(t, []any{"John", "Jane"}, params)
+	})
+
+	t.Run("boolean truth predicates use is syntax", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		column := NewBoolColumnExpression("users", "active")
+
+		// Act
+		sql, err := RenderWithContext(column.IsTrue().And(column.IsFalse()), &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.active IS TRUE AND users.active IS FALSE", sql)
+		assert.Empty(t, params)
+	})
+
+	t.Run("json equality accepts a json expression", func(t *testing.T) {
+		// Arrange
+		params := []any{}
+		value := json.RawMessage(`{"active":true}`)
+		predicate := NewJsonColumnExpression("users", "attributes").Eq(NewSQLType(value))
+
+		// Act
+		sql, err := RenderWithContext(predicate, &params, &QueryContext{})
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Equal(t, "users.attributes = $1", sql)
+		assert.Equal(t, []any{value}, params)
 	})
 }

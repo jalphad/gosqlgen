@@ -14,6 +14,11 @@ type ArrayMappedTypes interface {
 		[]json.RawMessage | [][]byte | []any
 }
 
+type arrayOf[T BaseMappedTypes] interface {
+	ArrayMappedTypes
+	[]T
+}
+
 type NullableMappedTypes[T MappedTypes] interface {
 	*T
 }
@@ -66,12 +71,24 @@ func (t *StringType) Eq(expr OfType[string]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
+func (t *StringType) IsDistinctFrom(expr OfType[string]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *StringType) IsNotDistinctFrom(expr OfType[string]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
 func (t *StringType) Like(pattern string) *BoolType {
 	return Bool(&BinaryNode{Op: "LIKE", Args: []Expression{t, NewLiteralExpression(pattern)}})
 }
 
-func (t *StringType) In(expr OfType[[]string]) *BoolType {
-	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+func (t *StringType) ILike(pattern string) *BoolType {
+	return Bool(&BinaryNode{Op: "ILIKE", Args: []Expression{t, NewLiteralExpression(pattern)}})
+}
+
+func (t *StringType) In(values ...OfType[string]) *BoolType {
+	return in(t, values)
 }
 
 func (t *StringType) Between(start, end OfType[string]) *BoolType {
@@ -99,6 +116,14 @@ func (t *IntType) Eq(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
+func (t *IntType) IsDistinctFrom(expr OfType[int64]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *IntType) IsNotDistinctFrom(expr OfType[int64]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
 func (t *IntType) Gt(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
 }
@@ -115,8 +140,8 @@ func (t *IntType) Lte(expr OfType[int64]) *BoolType {
 	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
 }
 
-func (t *IntType) In(expr OfType[[]int64]) *BoolType {
-	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+func (t *IntType) In(values ...OfType[int64]) *BoolType {
+	return in(t, values)
 }
 
 func (t *IntType) Between(start, end OfType[int64]) *BoolType {
@@ -144,6 +169,14 @@ func (t *FloatType) Eq(expr OfType[float64]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
+func (t *FloatType) IsDistinctFrom(expr OfType[float64]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *FloatType) IsNotDistinctFrom(expr OfType[float64]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
 func (t *FloatType) Gt(expr OfType[float64]) *BoolType {
 	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
 }
@@ -160,8 +193,8 @@ func (t *FloatType) Lte(expr OfType[float64]) *BoolType {
 	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
 }
 
-func (t *FloatType) In(expr OfType[[]float64]) *BoolType {
-	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+func (t *FloatType) In(values ...OfType[float64]) *BoolType {
+	return in(t, values)
 }
 
 func (t *FloatType) Between(start, end OfType[float64]) *BoolType {
@@ -185,6 +218,14 @@ func (t *NumericType) Eq(expr OfType[pgtype.Numeric]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
+func (t *NumericType) IsDistinctFrom(expr OfType[pgtype.Numeric]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *NumericType) IsNotDistinctFrom(expr OfType[pgtype.Numeric]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
 func (t *NumericType) Gt(expr OfType[pgtype.Numeric]) *BoolType {
 	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
 }
@@ -201,8 +242,8 @@ func (t *NumericType) Lte(expr OfType[pgtype.Numeric]) *BoolType {
 	return Bool(&BinaryNode{Op: "<=", Args: []Expression{t, expr}})
 }
 
-func (t *NumericType) In(expr OfType[[]pgtype.Numeric]) *BoolType {
-	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+func (t *NumericType) In(values ...OfType[pgtype.Numeric]) *BoolType {
+	return in(t, values)
 }
 
 func (t *NumericType) Between(start, end OfType[pgtype.Numeric]) *BoolType {
@@ -248,12 +289,20 @@ func (t *BoolType) Eq(expr OfType[bool]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
+func (t *BoolType) IsDistinctFrom(expr OfType[bool]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *BoolType) IsNotDistinctFrom(expr OfType[bool]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
 func (t *BoolType) IsTrue() *BoolType {
-	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, NewLiteralExpression(true)}})
+	return Bool(&BinaryNode{Op: "IS", Args: []Expression{t, NewKeywordNode("TRUE")}})
 }
 
 func (t *BoolType) IsFalse() *BoolType {
-	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, NewLiteralExpression(false)}})
+	return Bool(&BinaryNode{Op: "IS", Args: []Expression{t, NewKeywordNode("FALSE")}})
 }
 
 func (t *BoolType) IsNull() *BoolType {
@@ -274,6 +323,14 @@ func Timestamp(e expression) *TimestampType {
 
 func (t *TimestampType) Eq(expr OfType[time.Time]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *TimestampType) IsDistinctFrom(expr OfType[time.Time]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *TimestampType) IsNotDistinctFrom(expr OfType[time.Time]) *BoolType {
+	return isNotDistinctFrom(t, expr)
 }
 
 func (t *TimestampType) Gt(expr OfType[time.Time]) *BoolType {
@@ -314,6 +371,14 @@ func Date(e expression) *DateType {
 
 func (t *DateType) Eq(expr OfType[time.Time]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *DateType) IsDistinctFrom(expr OfType[time.Time]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *DateType) IsNotDistinctFrom(expr OfType[time.Time]) *BoolType {
+	return isNotDistinctFrom(t, expr)
 }
 
 func (t *DateType) Gt(expr OfType[time.Time]) *BoolType {
@@ -357,6 +422,14 @@ func (t *TimeType) Eq(expr OfType[time.Time]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
+func (t *TimeType) IsDistinctFrom(expr OfType[time.Time]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *TimeType) IsNotDistinctFrom(expr OfType[time.Time]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
 func (t *TimeType) Gt(expr OfType[time.Time]) *BoolType {
 	return Bool(&BinaryNode{Op: ">", Args: []Expression{t, expr}})
 }
@@ -398,8 +471,16 @@ func (t *UUIDType) Eq(expr OfType[uuid.UUID]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
 }
 
-func (t *UUIDType) In(expr OfType[[]uuid.UUID]) *BoolType {
-	return Bool(&BinaryNode{Op: "IN", Args: []Expression{t, expr}})
+func (t *UUIDType) IsDistinctFrom(expr OfType[uuid.UUID]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *UUIDType) IsNotDistinctFrom(expr OfType[uuid.UUID]) *BoolType {
+	return isNotDistinctFrom(t, expr)
+}
+
+func (t *UUIDType) In(values ...OfType[uuid.UUID]) *BoolType {
+	return in(t, values)
 }
 
 func (t *UUIDType) IsNull() *BoolType {
@@ -418,6 +499,10 @@ type ArrayType[T ArrayMappedTypes] struct {
 	ofType[T]
 }
 
+func Any[T BaseMappedTypes, A arrayOf[T]](expr OfType[A]) OfType[T] {
+	return SetType[T](NewFunctionNode("ANY", []Expression{expr}, nil))
+}
+
 func Bytes(e Expression) *BytesType {
 	return &BytesType{sqlType[[]byte]{e}}
 }
@@ -429,6 +514,14 @@ type BytesType struct {
 
 func (t *BytesType) Eq(expr OfType[[]byte]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *BytesType) IsDistinctFrom(expr OfType[[]byte]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *BytesType) IsNotDistinctFrom(expr OfType[[]byte]) *BoolType {
+	return isNotDistinctFrom(t, expr)
 }
 
 func (t *BytesType) IsNull() *BoolType {
@@ -447,8 +540,16 @@ type JsonType struct {
 	sqlType[json.RawMessage]
 }
 
-func (t *JsonType) Eq(expr OfType[[]byte]) *BoolType {
+func (t *JsonType) Eq(expr OfType[json.RawMessage]) *BoolType {
 	return Bool(&BinaryNode{Op: "=", Args: []Expression{t, expr}})
+}
+
+func (t *JsonType) IsDistinctFrom(expr OfType[json.RawMessage]) *BoolType {
+	return isDistinctFrom(t, expr)
+}
+
+func (t *JsonType) IsNotDistinctFrom(expr OfType[json.RawMessage]) *BoolType {
+	return isNotDistinctFrom(t, expr)
 }
 
 func (t *JsonType) IsNull() *BoolType {
@@ -488,6 +589,34 @@ func between(expr, start, end Expression) *BoolType {
 				},
 			},
 		},
+	})
+}
+
+func in[T MappedTypes](expr Expression, values []OfType[T]) *BoolType {
+	expressions := make([]Expression, len(values))
+	for i, value := range values {
+		expressions[i] = value
+	}
+	return Bool(&BinaryNode{
+		Op: "IN",
+		Args: []Expression{
+			expr,
+			NewGroupedExpression(expressions...),
+		},
+	})
+}
+
+func isDistinctFrom(left, right Expression) *BoolType {
+	return Bool(&BinaryNode{
+		Op:   "IS DISTINCT FROM",
+		Args: []Expression{left, right},
+	})
+}
+
+func isNotDistinctFrom(left, right Expression) *BoolType {
+	return Bool(&BinaryNode{
+		Op:   "IS NOT DISTINCT FROM",
+		Args: []Expression{left, right},
 	})
 }
 
